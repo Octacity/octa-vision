@@ -91,7 +91,7 @@ const SignUpPage = () => {
                 )}
 
                 <div>
-                  <Label htmlFor="email" className="block text-left text-muted-foreground">Email</Label>
+                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-1">Email</Label>
                   <Input
                     type="email"
                     id="email"
@@ -102,7 +102,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="block text-left text-muted-foreground">Password</Label>
+                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-1">Password</Label>
                   <Input
                     type="password"
                     id="password"
@@ -113,7 +113,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationName" className="block text-left text-muted-foreground">Organization Name</Label>
+                  <Label htmlFor="organizationName" className="block text-left text-muted-foreground mb-1">Organization Name</Label>
                   <Input
                     type="text"
                     id="organizationName"
@@ -124,7 +124,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationEmail" className="block text-left text-muted-foreground">Organization Email</Label>
+                  <Label htmlFor="organizationEmail" className="block text-left text-muted-foreground mb-1">Organization Email</Label>
                   <Input
                     type="email"
                     id="organizationEmail"
@@ -135,7 +135,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground">Organization Phone</Label>
+                  <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-1">Organization Phone</Label>
                   <Input
                     type="tel"
                     id="organizationPhone"
@@ -146,7 +146,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="billingAddress" className="block text-left text-muted-foreground">Billing Address</Label>
+                  <Label htmlFor="billingAddress" className="block text-left text-muted-foreground mb-1">Billing Address</Label>
                   <Textarea
                     id="billingAddress"
                     value={billingAddress}
@@ -156,7 +156,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground">Organization Description</Label>
+                  <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-1">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
                     value={organizationDescription}
