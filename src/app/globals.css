@@ -92,3 +92,32 @@ body {
     color: var(--octaview-primary);
   }
 }
+
+/* Floating Label Styles */
+.form-item-floating-label {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  transition: all 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+.form-item-floating-label-focused {
+  top: -0.5rem;
+  left: 0.5rem;
+  font-size: 0.7rem;
+  color: hsl(var(--primary));
+  background-color: hsl(var(--background));
+  padding: 0 0.25rem;
+}
+
+.form-item-input:not(:placeholder-shown) + .form-item-floating-label {
+  top: -0.5rem;
+  left: 0.5rem;
+  font-size: 0.7rem;
+  color: hsl(var(--primary));
+  background-color: hsl(var(--background));
+  padding: 0 0.25rem;
+}
