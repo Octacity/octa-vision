@@ -87,14 +87,14 @@ const SignUpPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl font-bold text-gray-800">
           Sign Up for <span className="text-accent">OctaVision</span>
         </h1>
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-96">
             <CardHeader>
-              <CardTitle className="text-2xl">Create Your Account</CardTitle>
+              <CardTitle className="text-xl">Create Your Account</CardTitle>
               <CardDescription>Enter your details to get started.</CardDescription>
             </CardHeader>
             <CardContent>
