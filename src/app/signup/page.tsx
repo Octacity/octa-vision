@@ -11,12 +11,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { doc, setDoc, collection, addDoc, Timestamp } from "firebase/firestore";
+import { useState } from "react";
 
 const SignUpPage = () => {
   const [email, setEmail] = useState("");
@@ -27,7 +27,6 @@ const SignUpPage = () => {
   const [billingAddress, setBillingAddress] = useState("");
   const [organizationDescription, setOrganizationDescription] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,7 +91,7 @@ const SignUpPage = () => {
                 )}
 
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-muted-foreground">Email</Label>
                   <Input
                     type="email"
                     id="email"
@@ -103,7 +102,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-muted-foreground">Password</Label>
                   <Input
                     type="password"
                     id="password"
@@ -114,7 +113,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationName">Organization Name</Label>
+                  <Label htmlFor="organizationName" className="text-muted-foreground">Organization Name</Label>
                   <Input
                     type="text"
                     id="organizationName"
@@ -125,7 +124,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationEmail">Organization Email</Label>
+                  <Label htmlFor="organizationEmail" className="text-muted-foreground">Organization Email</Label>
                   <Input
                     type="email"
                     id="organizationEmail"
@@ -136,7 +135,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationPhone">Organization Phone</Label>
+                  <Label htmlFor="organizationPhone" className="text-muted-foreground">Organization Phone</Label>
                   <Input
                     type="tel"
                     id="organizationPhone"
@@ -147,7 +146,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="billingAddress">Billing Address</Label>
+                  <Label htmlFor="billingAddress" className="text-muted-foreground">Billing Address</Label>
                   <Textarea
                     id="billingAddress"
                     value={billingAddress}
@@ -157,7 +156,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationDescription">Organization Description</Label>
+                  <Label htmlFor="organizationDescription" className="text-muted-foreground">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
                     value={organizationDescription}
