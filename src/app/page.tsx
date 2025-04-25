@@ -26,16 +26,19 @@ const LandingPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-6xl font-bold text-gray-800">
+        <h1 className="text-5xl font-bold text-gray-800">
           Welcome to{" "}
           <span className="text-accent">
-            OctaView
+            Visionary Sentinel
           </span>
         </h1>
 
-        <p className="mt-3 text-2xl text-gray-600">
-          AI-Powered Security Camera Analytics
+        <p className="mt-3 text-xl text-gray-600">
+          AI-Powered Camera Analytics
         </p>
+          <p className="mt-3 text-xl text-gray-600">
+              Let your cameras talk to you
+          </p>
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-96">
@@ -76,21 +79,13 @@ const LandingPage = () => {
         </div>
       </main>
 
-      <footer className="flex items-center justify-center w-full h-24 border-t">
-        <a
-          className="flex items-center justify-center"
-          href="https://firebase.google.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{" "}
-          <span className="ml-2">
-            Firebase
-          </span>
-        </a>
+      <footer className="flex items-center justify-center w-full border-t">
       </footer>
     </div>
   );
 };
 
 export default LandingPage;
+
+
+    
