@@ -8,11 +8,11 @@ body {
 
 @layer base {
   :root {
-    --background: 250 0% 100%;
+    --background: 0 0% 100%;
     --foreground: 30 5% 18%;
-    --card: 250 0% 100%;
+    --card: 0 0% 100%;
     --card-foreground: 30 5% 18%;
-    --popover: 250 0% 100%;
+    --popover: 0 0% 100%;
     --popover-foreground: 30 5% 18%;
     --primary: 218 29% 20%;
     --primary-foreground: 0 0% 98%;
@@ -41,6 +41,10 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --octaview-primary: #24292F;
+    --octaview-secondary: #FFFFFF;
+    --octaview-accent: #26A69A;
   }
   .dark {
     --background: 218 17% 18%;
@@ -84,8 +88,7 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    background-color: var(--octaview-secondary);
+    color: var(--octaview-primary);
   }
 }
-
-
-    

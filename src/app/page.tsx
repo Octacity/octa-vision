@@ -26,10 +26,10 @@ const LandingPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-5xl font-bold text-gray-800">
+        <h1 className="text-4xl font-bold text-gray-800">
           Welcome to{" "}
           <span className="text-accent">
-            Visionary Sentinel
+            OctaView
           </span>
         </h1>
 
@@ -43,7 +43,7 @@ const LandingPage = () => {
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-96">
             <CardHeader>
-              <CardTitle>Sign Up</CardTitle>
+              <CardTitle className="text-2xl">Sign Up</CardTitle>
               <CardDescription>
                 Create an account to get started.
               </CardDescription>
@@ -86,6 +86,3 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
-
-
-    
