@@ -93,3 +93,32 @@ body {
   }
 }
 
+
+/* Add this to your globals.css or a CSS module */
+.form-item-floating-label {
+  position: absolute;
+  top: 0.75rem; /* Adjust as needed */
+  left: 0.75rem; /* Adjust as needed */
+  font-size: 0.8rem; /* Smaller font size for the floating label */
+  color: hsl(var(--muted-foreground)); /* Use your muted foreground color */
+  transition: all 0.2s ease-in-out;
+  pointer-events: none; /* Make sure the label doesn't interfere with input */
+}
+
+.form-item-floating-label-focused {
+  top: -0.5rem; /* Move label above the input */
+  left: 0.5rem;
+  font-size: 0.7rem; /* Even smaller when floating */
+  color: hsl(var(--primary)); /* Highlight the label when focused */
+  background-color: hsl(var(--background)); /* Match input background */
+  padding: 0 0.25rem; /* Add some padding around label */
+}
+
+.form-item-input:not(:placeholder-shown) + .form-item-floating-label {
+  top: -0.5rem;
+  left: 0.5rem;
+  font-size: 0.7rem;
+  color: hsl(var(--primary));
+  background-color: hsl(var(--background));
+  padding: 0 0.25rem;
+}
