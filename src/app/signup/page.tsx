@@ -112,6 +112,7 @@ const SignUpPage = () => {
                     type="email"
                     id="email"
                     value={email}
+										placeholder={focus.email || email ? "" : "Email"}
                     onChange={(e) => setEmail(e.target.value)}
                     onFocus={() => handleFocusChange("email", true)}
                     onBlur={() => handleFocusChange("email", false)}
@@ -133,6 +134,7 @@ const SignUpPage = () => {
                     type="password"
                     id="password"
                     value={password}
+										placeholder={focus.password || password ? "" : "Password"}
                     onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => handleFocusChange("password", true)}
                     onBlur={() => handleFocusChange("password", false)}
@@ -154,6 +156,7 @@ const SignUpPage = () => {
                     type="text"
                     id="organizationName"
                     value={organizationName}
+										placeholder={focus.organizationName || organizationName ? "" : "Organization Name"}
                     onChange={(e) => setOrganizationName(e.target.value)}
                     onFocus={() => handleFocusChange("organizationName", true)}
                     onBlur={() => handleFocusChange("organizationName", false)}
@@ -177,6 +180,7 @@ const SignUpPage = () => {
                     type="email"
                     id="organizationEmail"
                     value={organizationEmail}
+										placeholder={focus.organizationEmail || organizationEmail ? "" : "Organization Email"}
                     onChange={(e) => setOrganizationEmail(e.target.value)}
                     onFocus={() => handleFocusChange("organizationEmail", true)}
                     onBlur={() => handleFocusChange("organizationEmail", false)}
@@ -200,6 +204,7 @@ const SignUpPage = () => {
                     type="tel"
                     id="organizationPhone"
                     value={organizationPhone}
+										placeholder={focus.organizationPhone || organizationPhone ? "" : "Organization Phone"}
                     onChange={(e) => setOrganizationPhone(e.target.value)}
                     onFocus={() => handleFocusChange("organizationPhone", true)}
                     onBlur={() => handleFocusChange("organizationPhone", false)}
@@ -222,6 +227,7 @@ const SignUpPage = () => {
                   <Textarea
                     id="billingAddress"
                     value={billingAddress}
+										placeholder={focus.billingAddress || billingAddress ? "" : "Billing Address"}
                     onChange={(e) => setBillingAddress(e.target.value)}
                     onFocus={() => handleFocusChange("billingAddress", true)}
                     onBlur={() => handleFocusChange("billingAddress", false)}
@@ -244,6 +250,7 @@ const SignUpPage = () => {
                   <Textarea
                     id="organizationDescription"
                     value={organizationDescription}
+										placeholder={focus.organizationDescription || organizationDescription ? "" : "Organization Description"}
                     onChange={(e) => setOrganizationDescription(e.target.value)}
                     onFocus={() => handleFocusChange("organizationDescription", true)}
                     onBlur={() => handleFocusChange("organizationDescription", false)}
