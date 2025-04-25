@@ -28,22 +28,7 @@ const SignUpPage = () => {
   const [organizationDescription, setOrganizationDescription] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Use a single state object to manage focus states
-  const [focus, setFocus] = useState({
-    email: false,
-    password: false,
-    organizationName: false,
-    organizationEmail: false,
-    organizationPhone: false,
-    billingAddress: false,
-    organizationDescription: false,
-  });
-
   const router = useRouter();
-
-  const handleFocusChange = (field: string, isFocused: boolean) => {
-    setFocus((prev) => ({ ...prev, [field]: isFocused }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,14 +72,14 @@ const SignUpPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-2xl font-bold text-gray-800">
+        <h1 className="text-3xl font-bold text-gray-800">
           Sign Up for <span className="text-accent">OctaVision</span>
         </h1>
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-96">
             <CardHeader>
-              <CardTitle className="text-xl">Create Your Account</CardTitle>
+              <CardTitle className="text-2xl">Create Your Account</CardTitle>
               <CardDescription>Enter your details to get started.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -106,166 +91,79 @@ const SignUpPage = () => {
                   </Alert>
                 )}
 
-                {/* Email */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     type="email"
                     id="email"
                     value={email}
-										placeholder={focus.email || email ? "" : "Email"}
                     onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => handleFocusChange("email", true)}
-                    onBlur={() => handleFocusChange("email", false)}
                     required
                   />
-                  <Label
-                    htmlFor="email"
-                    className={`form-item-floating-label ${
-                      focus.email || email ? "form-item-floating-label-focused" : ""
-                    }`}
-                  >
-                    Email
-                  </Label>
                 </div>
 
-                {/* Password */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="password">Password</Label>
                   <Input
                     type="password"
                     id="password"
                     value={password}
-										placeholder={focus.password || password ? "" : "Password"}
                     onChange={(e) => setPassword(e.target.value)}
-                    onFocus={() => handleFocusChange("password", true)}
-                    onBlur={() => handleFocusChange("password", false)}
                     required
                   />
-                  <Label
-                    htmlFor="password"
-                    className={`form-item-floating-label ${
-                      focus.password || password ? "form-item-floating-label-focused" : ""
-                    }`}
-                  >
-                    Password
-                  </Label>
                 </div>
 
-                {/* Organization Name */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="organizationName">Organization Name</Label>
                   <Input
                     type="text"
                     id="organizationName"
                     value={organizationName}
-										placeholder={focus.organizationName || organizationName ? "" : "Organization Name"}
                     onChange={(e) => setOrganizationName(e.target.value)}
-                    onFocus={() => handleFocusChange("organizationName", true)}
-                    onBlur={() => handleFocusChange("organizationName", false)}
                     required
                   />
-                  <Label
-                    htmlFor="organizationName"
-                    className={`form-item-floating-label ${
-                      focus.organizationName || organizationName
-                        ? "form-item-floating-label-focused"
-                        : ""
-                    }`}
-                  >
-                    Organization Name
-                  </Label>
                 </div>
 
-                {/* Organization Email */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="organizationEmail">Organization Email</Label>
                   <Input
                     type="email"
                     id="organizationEmail"
                     value={organizationEmail}
-										placeholder={focus.organizationEmail || organizationEmail ? "" : "Organization Email"}
                     onChange={(e) => setOrganizationEmail(e.target.value)}
-                    onFocus={() => handleFocusChange("organizationEmail", true)}
-                    onBlur={() => handleFocusChange("organizationEmail", false)}
                     required
                   />
-                  <Label
-                    htmlFor="organizationEmail"
-                    className={`form-item-floating-label ${
-                      focus.organizationEmail || organizationEmail
-                        ? "form-item-floating-label-focused"
-                        : ""
-                    }`}
-                  >
-                    Organization Email
-                  </Label>
                 </div>
 
-                {/* Organization Phone */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="organizationPhone">Organization Phone</Label>
                   <Input
                     type="tel"
                     id="organizationPhone"
                     value={organizationPhone}
-										placeholder={focus.organizationPhone || organizationPhone ? "" : "Organization Phone"}
                     onChange={(e) => setOrganizationPhone(e.target.value)}
-                    onFocus={() => handleFocusChange("organizationPhone", true)}
-                    onBlur={() => handleFocusChange("organizationPhone", false)}
                     required
                   />
-                  <Label
-                    htmlFor="organizationPhone"
-                    className={`form-item-floating-label ${
-                      focus.organizationPhone || organizationPhone
-                        ? "form-item-floating-label-focused"
-                        : ""
-                    }`}
-                  >
-                    Organization Phone
-                  </Label>
                 </div>
 
-                {/* Billing Address */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="billingAddress">Billing Address</Label>
                   <Textarea
                     id="billingAddress"
                     value={billingAddress}
-										placeholder={focus.billingAddress || billingAddress ? "" : "Billing Address"}
                     onChange={(e) => setBillingAddress(e.target.value)}
-                    onFocus={() => handleFocusChange("billingAddress", true)}
-                    onBlur={() => handleFocusChange("billingAddress", false)}
                     required
                   />
-                  <Label
-                    htmlFor="billingAddress"
-                    className={`form-item-floating-label ${
-                      focus.billingAddress || billingAddress
-                        ? "form-item-floating-label-focused"
-                        : ""
-                    }`}
-                  >
-                    Billing Address
-                  </Label>
                 </div>
 
-                {/* Organization Description */}
-                <div className="relative">
+                <div>
+                  <Label htmlFor="organizationDescription">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
                     value={organizationDescription}
-										placeholder={focus.organizationDescription || organizationDescription ? "" : "Organization Description"}
                     onChange={(e) => setOrganizationDescription(e.target.value)}
-                    onFocus={() => handleFocusChange("organizationDescription", true)}
-                    onBlur={() => handleFocusChange("organizationDescription", false)}
                     required
                   />
-                  <Label
-                    htmlFor="organizationDescription"
-                    className={`form-item-floating-label ${
-                      focus.organizationDescription || organizationDescription
-                        ? "form-item-floating-label-focused"
-                        : ""
-                    }`}
-                  >
-                    Organization Description
-                  </Label>
                 </div>
 
                 <Button type="submit">Sign Up</Button>

@@ -8,22 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const LandingPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
   const router = useRouter();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-2xl font-bold text-gray-800">
+        <h1 className="text-4xl font-bold text-gray-800">
           Welcome to{" "}
           <span className="text-accent">
             OctaVision
@@ -40,7 +33,7 @@ const LandingPage = () => {
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-96">
             <CardHeader>
-              <CardTitle className="text-xl">Sign Up</CardTitle>
+              <CardTitle className="text-2xl">Sign Up</CardTitle>
               <CardDescription>
                 Create an account to get started.
               </CardDescription>
