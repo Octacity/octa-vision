@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, addDoc, Timestamp } from "firebase/firestore";
 
 const SignUpPage = () => {
   const [email, setEmail] = useState("");
@@ -43,14 +43,22 @@ const SignUpPage = () => {
       );
       const user = userCredential.user;
 
-      // Store additional user info in Firestore
+      // Create a new organization document
+      const orgRef = await addDoc(collection(db, "organizations"), {
+        name: organizationName,
+        email: organizationEmail,
+        phone: organizationPhone,
+        billingAddress: billingAddress,
+        description: organizationDescription,
+        approved: false,
+        createdAt: Timestamp.now(),
+      });
+
+      // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
-        organizationName: organizationName,
-        organizationEmail: organizationEmail,
-        organizationPhone: organizationPhone,
-        billingAddress: billingAddress,
-        organizationDescription: organizationDescription,
+        organizationId: orgRef.id, // Reference to the organization
+        createdAt: Timestamp.now(),
       });
 
       console.log("User created:", user);
