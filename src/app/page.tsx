@@ -29,7 +29,7 @@ const LandingPage = () => {
         <h1 className="text-4xl font-bold text-gray-800">
           Welcome to{" "}
           <span className="text-accent">
-            OctaView
+            OctaVision
           </span>
         </h1>
 
@@ -86,3 +86,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
