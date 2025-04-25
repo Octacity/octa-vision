@@ -105,7 +105,6 @@ const SignUpPage = () => {
                                     <Input
                                         type="email"
                                         id="email"
-                                        placeholder="Enter your email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         onFocus={() => setEmailFocus(true)}
@@ -123,7 +122,6 @@ const SignUpPage = () => {
                                     <Input
                                         type="password"
                                         id="password"
-                                        placeholder="Enter your password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         onFocus={() => setPasswordFocus(true)}
@@ -141,7 +139,6 @@ const SignUpPage = () => {
                                     <Input
                                         type="text"
                                         id="organizationName"
-                                        placeholder="Enter your organization name"
                                         value={organizationName}
                                         onChange={(e) => setOrganizationName(e.target.value)}
                                         onFocus={() => setOrganizationNameFocus(true)}
@@ -159,7 +156,6 @@ const SignUpPage = () => {
                                     <Input
                                         type="email"
                                         id="organizationEmail"
-                                        placeholder="Enter your organization email"
                                         value={organizationEmail}
                                         onChange={(e) => setOrganizationEmail(e.target.value)}
                                         onFocus={() => setOrganizationEmailFocus(true)}
@@ -177,7 +173,6 @@ const SignUpPage = () => {
                                     <Input
                                         type="tel"
                                         id="organizationPhone"
-                                        placeholder="Enter your organization phone"
                                         value={organizationPhone}
                                         onChange={(e) => setOrganizationPhone(e.target.value)}
                                         onFocus={() => setOrganizationPhoneFocus(true)}
@@ -194,7 +189,6 @@ const SignUpPage = () => {
                                 <div className="relative">
                                     <Textarea
                                         id="billingAddress"
-                                        placeholder="Enter your billing address"
                                         value={billingAddress}
                                         onChange={(e) => setBillingAddress(e.target.value)}
                                         onFocus={() => setBillingAddressFocus(true)}
@@ -211,7 +205,6 @@ const SignUpPage = () => {
                                 <div className="relative">
                                     <Textarea
                                         id="organizationDescription"
-                                        placeholder="Enter your organization description"
                                         value={organizationDescription}
                                         onChange={(e) => setOrganizationDescription(e.target.value)}
                                         onFocus={() => setOrganizationDescriptionFocus(true)}
@@ -239,4 +232,3 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
-
