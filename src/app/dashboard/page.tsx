@@ -160,6 +160,7 @@ const DashboardPage = () => {
           <Link
             href="/"
             className="text-lg font-semibold text-foreground block mb-6"
+            style={{ color: "rgb(var(--octaview-primary))" }}
           >
             OctaVision
           </Link>
@@ -194,7 +195,7 @@ const DashboardPage = () => {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <div>Version 3.0.0</div>
+          <div className="text-center text-xs">Version 3.0.0</div>
         </SidebarFooter>
       </Sidebar>
       <div className="flex-1">
@@ -202,7 +203,7 @@ const DashboardPage = () => {
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between">
           <div className="flex items-center">
             <SidebarTrigger />
-            <h1 className="text-lg font-semibold ml-2">Dashboard</h1>
+            <h1 className="text-lg font-semibold ml-2" style={{ color: "rgb(var(--octaview-primary))" }}>Dashboard</h1>
           </div>
           <div className="flex items-center space-x-4">
             <Avatar>
