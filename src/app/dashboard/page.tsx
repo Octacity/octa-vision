@@ -208,17 +208,15 @@ const DashboardPage = () => {
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
+              <Bell className="h-6 w-6" />
             </Button>
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
-                  <span className="sr-only">Open user menu</span>
-                  <MoreVertical className="h-4 w-4" />
+                  <Avatar>
+                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                    <AvatarFallback>CN</AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
