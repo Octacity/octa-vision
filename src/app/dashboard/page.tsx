@@ -154,6 +154,8 @@ const DashboardPage = () => {
     return () => unsubscribe(); // Cleanup subscription
   }, []);
 
+  const { state } = useSidebar();
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -163,7 +165,7 @@ const DashboardPage = () => {
             className="text-lg font-semibold text-foreground block mb-6"
             style={{ color: "rgb(var(--octaview-primary))" }}
           >
-            OctaVision
+            {state === "collapsed" ? "OV" : "OctaVision"}
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -207,14 +209,14 @@ const DashboardPage = () => {
             <h1 className="text-lg font-semibold ml-2" style={{ color: "rgb(var(--octaview-primary))" }}>Dashboard</h1>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-6 w-6" />
+            <Button variant="outline" size="icon">
+              <Bell className="h-5 w-5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
-                  <Avatar>
-                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                <Button variant="ghost" className="h-8 w-8 p-0 rounded-md">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" className="rounded-md" />
                     <AvatarFallback>CN</AvatarFallback>
                   </Avatar>
                 </Button>
