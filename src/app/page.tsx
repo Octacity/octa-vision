@@ -16,41 +16,6 @@ const LandingPage = () => {
           OctaVision
         </Link>
         <div className="flex items-center space-x-6">
-          <Link
-            href="#"
-            className="hover:text-octaview-accent"
-            style={{ color: "rgb(var(--octaview-accent))" }}
-          >
-            Home
-          </Link>
-          <Link
-            href="#"
-            className="hover:text-octaview-accent"
-            style={{ color: "rgb(var(--octaview-accent))" }}
-          >
-            Features
-          </Link>
-          <Link
-            href="#"
-            className="hover:text-octaview-accent"
-            style={{ color: "rgb(var(--octaview-accent))" }}
-          >
-            Pricing
-          </Link>
-          <Link
-            href="#"
-            className="hover:text-octaview-accent"
-            style={{ color: "rgb(var(--octaview-accent))" }}
-          >
-            Integrations
-          </Link>
-          <Link
-            href="#"
-            className="hover:text-octaview-accent"
-            style={{ color: "rgb(var(--octaview-accent))" }}
-          >
-            About Us
-          </Link>
         </div>
         <div>
           <Link
@@ -61,7 +26,7 @@ const LandingPage = () => {
             Log in
           </Link>
           <Link href="/signup">
-            <Button className="bg-octaview-primary text-octaview-secondary hover:bg-gray-800">
+            <Button className="bg-octaview-primary text-octaview-secondary hover:bg-accent hover:text-octaview-primary">
               Sign up
             </Button>
           </Link>
@@ -89,12 +54,12 @@ const LandingPage = () => {
             style={{ color: "rgb(var(--octaview-primary))" }}
           >
             Unleash the power of AI to get alerts on what you need! Build,
-            customize, and deploy alerts for your security cameras.
+            customize, and deploy alerts for your cameras.
           </p>
         </div>
         <div className="w-1/2">
           <img
-            src="https://picsum.photos/600/400" // Replace with your actual image
+            src="https://images.unsplash.com/photo-1661961112951-f2bfd17053f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" // Replace with your actual image
             alt="AI Camera Analytics"
             className="rounded-lg shadow-lg"
           />
@@ -105,3 +70,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
