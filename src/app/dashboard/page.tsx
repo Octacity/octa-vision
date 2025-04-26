@@ -25,6 +25,29 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 const cameras = [
   {
@@ -115,118 +138,50 @@ const DashboardPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-secondary border-r border-border flex flex-col py-4">
-        <div className="px-6 py-2">
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
           <Link
             href="/"
             className="text-lg font-semibold text-foreground block mb-6"
           >
-            OctaVision - OV3
+            OctaVision
           </Link>
-        </div>
-        <nav className="flex-1">
-          <ul>
-            <li className="px-6 py-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
-              <Link
-                href="/dashboard"
-                className="flex items-center space-x-2 text-sm"
-              >
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
                 <PanelLeft className="h-4 w-4" />
                 <span>Cameras</span>
-              </Link>
-            </li>
-            <li className="px-6 py-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
-              <Link
-                href="#"
-                className="flex items-center space-x-2 text-sm"
-              >
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
                 <BarChart4 className="h-4 w-4" />
                 <span>Report</span>
-              </Link>
-            </li>
-            <li className="px-6 py-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors relative">
-              <Link
-                href="#"
-                className="flex items-center space-x-2 text-sm"
-              >
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
                 <InboxIcon className="h-4 w-4" />
                 <span>Inbox</span>
-                <span className="absolute top-1 right-2 bg-destructive text-destructive-foreground text-xs px-1 rounded-full">
-                  9
-                </span>
-              </Link>
-            </li>
-            <li className="px-6 py-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors">
-              <Link
-                href="#"
-                className="flex items-center space-x-2 text-sm"
-              >
+                <SidebarMenuBadge>9</SidebarMenuBadge>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton>
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
-              </Link>
-            </li>
-          </ul>
-        </nav>
-        <div className="px-6 py-2 mt-auto">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase">
-            Label
-          </h3>
-          <ul className="mt-2">
-            <li className="flex items-center space-x-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors px-2 py-1">
-              <CheckCircle className="h-3 w-3" />
-              <span>Published</span>
-            </li>
-            <li className="flex items-center space-x-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors px-2 py-1">
-              <Clock className="h-3 w-3" />
-              <span>Today's Scheduled</span>
-            </li>
-            <li className="flex items-center space-x-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors px-2 py-1">
-              <Bookmark className="h-3 w-3" />
-              <span>Bookmarks</span>
-            </li>
-          </ul>
-        </div>
-      </aside>
-
-      {/* Main Content */}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+          <div>Version 3.0.0</div>
+        </SidebarFooter>
+      </Sidebar>
       <div className="flex-1 p-8">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Cameras</h1>
-          <div className="flex items-center space-x-4">
-            <Input type="search" placeholder="Search" className="max-w-xs" />
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Camera
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Users className="h-4 w-4 mr-2" />
-              Group
-            </Button>
-            <Button variant="ghost" size="sm">
-              <SlidersHorizontal className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="ghost" size="sm">
-              <ArrowDownToLine className="h-4 w-4 mr-2" />
-              Sort
-            </Button>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-            <Settings className="h-5 w-5 text-muted-foreground" />
-            <Button variant="ghost" size="icon">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>SC</AvatarFallback>
-              </Avatar>
-            </Button>
-          </div>
-        </header>
-
-        {/* Camera Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {cameras.map((camera, index) => (
             <Card key={index}>
@@ -258,13 +213,8 @@ const DashboardPage = () => {
             </Card>
           ))}
         </div>
-
-        {/* Next Button */}
-        <div className="flex justify-end mt-8">
-          <Button>Next</Button>
-        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
