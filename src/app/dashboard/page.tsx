@@ -48,6 +48,22 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const cameras = [
   {
@@ -181,37 +197,70 @@ const DashboardPage = () => {
           <div>Version 3.0.0</div>
         </SidebarFooter>
       </Sidebar>
-      <div className="flex-1 p-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {cameras.map((camera, index) => (
-            <Card key={index}>
-              <CardContent className="p-3">
-                <div className="relative">
-                  <Image
-                    src={camera.imageUrl}
-                    alt={camera.name}
-                    width={200}
-                    height={150}
-                    className="rounded-md aspect-video w-full"
-                  />
-                  <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500" />
-                </div>
-                <h3 className="text-sm font-semibold mt-2">{camera.name}</h3>
-                <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-                  <span>15 min</span>
-                  <div className="flex items-center space-x-2">
-                    <span>5</span>
-                    <Button variant="ghost" size="icon">
-                      <InboxIcon className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <Bookmark className="w-3 h-3" />
-                    </Button>
+      <div className="flex-1">
+        {/* App Bar */}
+        <div className="bg-background border-b px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center">
+            <SidebarTrigger />
+            <h1 className="text-lg font-semibold ml-2">Dashboard</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Avatar>
+              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                  <span className="sr-only">Open user menu</span>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuMenuItem>
+                  <Link href="/settings">Settings</Link>
+                </DropdownMenuMenuItem>
+                <DropdownMenuMenuItem>
+                  <Link href="/logout">Logout</Link>
+                </DropdownMenuMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {cameras.map((camera, index) => (
+              <Card key={index}>
+                <CardContent className="p-3">
+                  <div className="relative">
+                    <Image
+                      src={camera.imageUrl}
+                      alt={camera.name}
+                      width={200}
+                      height={150}
+                      className="rounded-md aspect-video w-full"
+                    />
+                    <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500" />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <h3 className="text-sm font-semibold mt-2">{camera.name}</h3>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                    <span>15 min</span>
+                    <div className="flex items-center space-x-2">
+                      <span>5</span>
+                      <Button variant="ghost" size="icon">
+                        <InboxIcon className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <Bookmark className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </SidebarProvider>
