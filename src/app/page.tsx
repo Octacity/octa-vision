@@ -18,8 +18,14 @@ const LandingPage = () => {
           OctaVision
         </Link>
         <div className="flex items-center space-x-6">
+          <Link href="/signin">
+            <Button variant="ghost">Sign In</Button>
+          </Link>
+          <Link href="/signup">
+            <Button>Sign Up</Button>
+          </Link>
         </div>
-        
+
       </nav>
 
       {/* Hero Section */}
