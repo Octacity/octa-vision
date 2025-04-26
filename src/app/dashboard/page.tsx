@@ -217,12 +217,12 @@ const DashboardPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuMenuItem>
+                <DropdownMenuItem>
                   <Link href="/settings">Settings</Link>
-                </DropdownMenuMenuItem>
-                <DropdownMenuMenuItem>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
                   <Link href="/logout">Logout</Link>
-                </DropdownMenuMenuItem>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
