@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { doc, setDoc, collection, addDoc, Timestamp } from "firebase/firestore";
+import { doc, setDoc, collection, addDoc, Timestamp, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
 
 const SignUpPage = () => {
@@ -48,18 +48,18 @@ const SignUpPage = () => {
         billingAddress: billingAddress,
         description: organizationDescription,
         approved: false,
-        createdAt: Timestamp.now(),
+        createdAt: serverTimestamp(),
       });
 
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
         organizationId: orgRef.id, // Reference to the organization
-        createdAt: Timestamp.now(),
+        createdAt: serverTimestamp(),
       });
 
       console.log("User created:", user);
-      router.push("/");
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Error signing up:", error);
       setErrorMessage(error.message);
@@ -89,7 +89,7 @@ const SignUpPage = () => {
                 )}
 
                 <div>
-                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-1">Email</Label>
+                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-0.5">Email</Label>
                   <Input
                     type="email"
                     id="email"
@@ -100,7 +100,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-1">Password</Label>
+                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-0.5">Password</Label>
                   <Input
                     type="password"
                     id="password"
@@ -111,7 +111,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationName" className="block text-left text-muted-foreground mb-1">Organization Name</Label>
+                  <Label htmlFor="organizationName" className="block text-left text-muted-foreground mb-0.5">Organization Name</Label>
                   <Input
                     type="text"
                     id="organizationName"
@@ -122,7 +122,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-1">Organization Phone</Label>
+                  <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-0.5">Organization Phone</Label>
                   <Input
                     type="tel"
                     id="organizationPhone"
@@ -133,7 +133,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="billingAddress" className="block text-left text-muted-foreground mb-1">Billing Address</Label>
+                  <Label htmlFor="billingAddress" className="block text-left text-muted-foreground mb-0.5">Billing Address</Label>
                   <Textarea
                     id="billingAddress"
                     value={billingAddress}
@@ -143,7 +143,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-1">Organization Description</Label>
+                  <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-0.5">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
                     value={organizationDescription}
