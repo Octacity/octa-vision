@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'user';
+    }
+    function isSystemAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'system-admin';
+    }
+
+    function isUserAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'user-admin'
+    }
+    function isOrgOwner(orgId) {
+      return isUserAdmin() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+    }
+
+  
+    function isUserDocOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function incomingData() {
+      return request.resource.data;
+    }
+    // User Rules
+    match /users/{userId} {
+      allow create: if (incomingData().role == "user-admin" && incomingData().organizationId != null) ||(incomingData().role == 'user' )|| (isSystemAdmin() && (incomingData().role == 'system-admin' || incomingData().role == 'user-admin' || incomingData().role == "user"));
+      allow read: if isUserDocOwner(userId) || isSystemAdmin();
+      allow update: if (isUserDocOwner(userId) 
+                    && request.resource.data.organizationId == resource.data.organizationId
+                    && request.resource.data.role == resource.data.role) || isSystemAdmin();
+    }
+    // Organization Rules
+    match /organizations/{orgId} {
+        // Only allow creating the document if the `createdAt` is set and approved is false.
+      allow create: if incomingData().createdAt != null && incomingData().approved == false;
+      allow read: if isOrgOwner(orgId) || isSystemAdmin() || isUser();
+      allow update: if isOrgOwner(orgId)|| isSystemAdmin();
+    }
+      // Admin rules: allow everything
+        match /{anyPath=**} {
+            allow read, write: if isSystemAdmin();
+        }
+  }
+}

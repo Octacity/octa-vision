@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { db } from "@/firebase/firebase";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
 import { doc, setDoc, collection, addDoc, Timestamp, serverTimestamp } from "firebase/firestore";
 import { useState } from "react";
 
@@ -52,17 +52,14 @@ const SignUpPage = () => {
         approved: false,
         createdAt: serverTimestamp(),
       });
-      console.log(orgRef);
 
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
         organizationId: orgRef.id, // Reference to the organization
-        createdAt: serverTimestamp(),
-        role: 'standard', // Default role for new users
+        role: 'user-admin', // Default role for new users
       });
 
-      console.log("User created:", user);
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Error signing up:", error);
