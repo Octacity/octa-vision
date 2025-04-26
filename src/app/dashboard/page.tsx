@@ -20,6 +20,7 @@ import {
   Bookmark,
   CheckCircle,
   Clock,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -200,12 +201,15 @@ const DashboardPage = () => {
       </Sidebar>
       <div className="flex-1">
         {/* App Bar */}
-        <div className="bg-background border-b px-4 py-2 flex items-center justify-between">
+        <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center">
             <SidebarTrigger />
             <h1 className="text-lg font-semibold ml-2" style={{ color: "rgb(var(--octaview-primary))" }}>Dashboard</h1>
           </div>
           <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="icon">
+              <Bell className="h-5 w-5" />
+            </Button>
             <Avatar>
               <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
               <AvatarFallback>CN</AvatarFallback>
