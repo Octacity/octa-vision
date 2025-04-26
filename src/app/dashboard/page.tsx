@@ -1,12 +1,12 @@
-;"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { db } from "@/firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {useEffect, useState} from 'react';
+import {getAuth, onAuthStateChanged} from 'firebase/auth';
+import {db} from '@/firebase/firebase';
+import {doc, getDoc} from 'firebase/firestore';
+import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
 import {
   Settings,
   PanelLeft,
@@ -21,11 +21,11 @@ import {
   CheckCircle,
   Clock,
   Bell,
-} from "lucide-react";
-import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
-import Image from "next/image";
+} from 'lucide-react';
+import Link from 'next/link';
+import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
+import {Card, CardContent} from '@/components/ui/card';
+import Image from 'next/image';
 import {
   Sidebar,
   SidebarContent,
@@ -48,13 +48,13 @@ import {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Sheet,
   SheetClose,
@@ -64,44 +64,44 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet";
+} from '@/components/ui/sheet';
 
 const cameras = [
   {
-    name: "Camera 1",
-    imageUrl: "https://picsum.photos/id/237/200/150",
+    name: 'Camera 1',
+    imageUrl: 'https://picsum.photos/id/237/200/150',
   },
   {
-    name: "Camera 2",
-    imageUrl: "https://picsum.photos/id/238/200/150",
+    name: 'Camera 2',
+    imageUrl: 'https://picsum.photos/id/238/200/150',
   },
   {
-    name: "Camera 3",
-    imageUrl: "https://picsum.photos/id/239/200/150",
+    name: 'Camera 3',
+    imageUrl: 'https://picsum.photos/id/239/200/150',
   },
   {
-    name: "Camera 4",
-    imageUrl: "https://picsum.photos/id/240/200/150",
+    name: 'Camera 4',
+    imageUrl: 'https://picsum.photos/id/240/200/150',
   },
   {
-    name: "Camera 5",
-    imageUrl: "https://picsum.photos/id/241/200/150",
+    name: 'Camera 5',
+    imageUrl: 'https://picsum.photos/id/241/200/150',
   },
   {
-    name: "Camera 6",
-    imageUrl: "https://picsum.photos/id/242/200/150",
+    name: 'Camera 6',
+    imageUrl: 'https://picsum.photos/id/242/200/150',
   },
   {
-    name: "Camera 7",
-    imageUrl: "https://picsum.photos/id/243/200/150",
+    name: 'Camera 7',
+    imageUrl: 'https://picsum.photos/id/243/200/150',
   },
   {
-    name: "Camera 8",
-    imageUrl: "https://picsum.photos/id/244/200/150",
+    name: 'Camera 8',
+    imageUrl: 'https://picsum.photos/id/244/200/150',
   },
   {
-    name: "Camera 9",
-    imageUrl: "https://picsum.photos/id/245/200/150",
+    name: 'Camera 9',
+    imageUrl: 'https://picsum.photos/id/245/200/150',
   },
 ];
 
@@ -113,11 +113,11 @@ const DashboardPage = () => {
 
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async user => {
       if (user) {
         setUserEmail(user.email); // Set the user's email
         // Fetch user data from Firestore
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
@@ -125,24 +125,24 @@ const DashboardPage = () => {
           const role = userData?.role; // Get the user's role
 
           // Check if the user is an admin
-          if (role === "system_admin") {
+          if (role === 'system_admin') {
             setIsAdmin(true);
           }
 
           // Fetch organization data to check approval status
           const orgDoc = await getDoc(
-            doc(db, "organizations", organizationId)
+            doc(db, 'organizations', organizationId)
           );
 
           if (orgDoc.exists()) {
             const orgData = orgDoc.data();
             setIsApproved(orgData?.approved || false);
           } else {
-            console.error("Organization not found.");
+            console.error('Organization not found.');
             setIsApproved(false); // Treat as not approved
           }
         } else {
-          console.error("User data not found.");
+          console.error('User data not found.');
           setIsApproved(false); // Treat as not approved
         }
       } else {
@@ -154,7 +154,7 @@ const DashboardPage = () => {
     return () => unsubscribe(); // Cleanup subscription
   }, []);
 
-  const { state } = useSidebar();
+  const {state} = useSidebar();
 
   return (
     <SidebarProvider>
@@ -163,9 +163,9 @@ const DashboardPage = () => {
           <Link
             href="/"
             className="text-lg font-semibold text-foreground block mb-6"
-            style={{ color: "rgb(var(--octaview-primary))" }}
+            style={{color: 'rgb(var(--octaview-primary))'}}
           >
-            {state === "collapsed" ? "OV" : "OctaVision"}
+            {state === 'collapsed' ? 'OV' : 'OctaVision'}
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -206,7 +206,12 @@ const DashboardPage = () => {
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center">
             <SidebarTrigger />
-            <h1 className="text-lg font-semibold ml-2" style={{ color: "rgb(var(--octaview-primary))" }}>Dashboard</h1>
+            <h1
+              className="text-lg font-semibold ml-2"
+              style={{color: 'rgb(var(--octaview-primary))'}}
+            >
+              Dashboard
+            </h1>
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="outline" size="icon">
@@ -216,7 +221,11 @@ const DashboardPage = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-md">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" className="rounded-md" />
+                    <AvatarImage
+                      src="https://github.com/shadcn.png"
+                      alt="@shadcn"
+                      className="rounded-md"
+                    />
                     <AvatarFallback>CN</AvatarFallback>
                   </Avatar>
                 </Button>
