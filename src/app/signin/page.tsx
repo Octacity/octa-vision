@@ -21,11 +21,13 @@ const SignInPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Added loading state
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsLoading(true); // Set loading to true on submit
 
     try {
       const auth = getAuth();
@@ -64,6 +66,8 @@ const SignInPage = () => {
     } catch (error: any) {
       console.error("Error signing in:", error);
       setErrorMessage(error.message);
+    } finally {
+      setIsLoading(false); // Set loading to false after operation
     }
   };
 
@@ -90,7 +94,7 @@ const SignInPage = () => {
                 )}
 
                 <div>
-                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-1">Email</Label>
+                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-0.5">Email</Label>
                   <Input
                     type="email"
                     id="email"
@@ -101,7 +105,7 @@ const SignInPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-1">Password</Label>
+                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-0.5">Password</Label>
                   <Input
                     type="password"
                     id="password"
@@ -111,7 +115,9 @@ const SignInPage = () => {
                   />
                 </div>
 
-                <Button type="submit">Sign In</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Signing In..." : "Sign In"}
+                </Button>
               </form>
             </CardContent>
           </Card>

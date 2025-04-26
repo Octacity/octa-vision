@@ -26,11 +26,13 @@ const SignUpPage = () => {
   const [billingAddress, setBillingAddress] = useState("");
   const [organizationDescription, setOrganizationDescription] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Added loading state
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setIsLoading(true); // Set loading to true on submit
 
     try {
       const auth = getAuth();
@@ -40,7 +42,7 @@ const SignUpPage = () => {
         password
       );
       const user = userCredential.user;
-      console.log(user)
+
       // Create a new organization document
       const orgRef = await addDoc(collection(db, "organizations"), {
         name: organizationName,
@@ -64,6 +66,8 @@ const SignUpPage = () => {
     } catch (error: any) {
       console.error("Error signing up:", error);
       setErrorMessage(error.message);
+    } finally {
+      setIsLoading(false); // Set loading to false after operation
     }
   };
 
@@ -153,7 +157,9 @@ const SignUpPage = () => {
                   />
                 </div>
 
-                <Button type="submit">Sign Up</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Signing Up..." : "Sign Up"}
+                </Button>
               </form>
             </CardContent>
           </Card>
