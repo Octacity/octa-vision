@@ -59,6 +59,7 @@ const SignUpPage = () => {
         email: email,
         organizationId: orgRef.id, // Reference to the organization
         createdAt: serverTimestamp(),
+        role: 'standard', // Default role for new users
       });
 
       console.log("User created:", user);

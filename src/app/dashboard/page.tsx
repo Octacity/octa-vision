@@ -5,10 +5,12 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 const DashboardPage = () => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const auth = getAuth();
@@ -20,6 +22,12 @@ const DashboardPage = () => {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           const organizationId = userData?.organizationId;
+          const role = userData?.role; // Get the user's role
+
+          // Check if the user is an admin
+          if (role === 'system-admin') {
+            setIsAdmin(true);
+          }
 
           // Fetch organization data to check approval status
           const orgDoc = await getDoc(doc(db, "organizations", organizationId));
@@ -65,6 +73,13 @@ const DashboardPage = () => {
               access all features.
             </AlertDescription>
           </Alert>
+        )}
+
+        {/* Conditionally render admin button */}
+        {isAdmin && (
+          <Button onClick={() => alert('Admin functionality here!')}>
+            Go to Admin Panel
+          </Button>
         )}
       </main>
 
