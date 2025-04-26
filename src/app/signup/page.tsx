@@ -40,7 +40,7 @@ const SignUpPage = () => {
         password
       );
       const user = userCredential.user;
-
+      console.log(user)
       // Create a new organization document
       const orgRef = await addDoc(collection(db, "organizations"), {
         name: organizationName,
@@ -50,6 +50,7 @@ const SignUpPage = () => {
         approved: false,
         createdAt: serverTimestamp(),
       });
+      console.log(orgRef);
 
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
