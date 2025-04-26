@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from 'next/image';
+import bannerImage from '@/assets/banner.jpg';
 
 const LandingPage = () => {
   return (
@@ -45,8 +47,8 @@ const LandingPage = () => {
           </p>
         </div>
         <div className="w-1/2">
-          <img
-            src="https://raw.githubusercontent.com/git-yusuf-ilhan/nextjs/09808a1fd58113855dff827ca4d2dd6239114bc9/image.png" // Replace with your actual image
+          <Image
+            src={bannerImage} // Replace with your actual image
             alt="AI Camera Analytics"
             className="rounded-lg shadow-lg"
           />
