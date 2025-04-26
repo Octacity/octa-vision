@@ -17,20 +17,7 @@ const LandingPage = () => {
         </Link>
         <div className="flex items-center space-x-6">
         </div>
-        <div>
-          <Link
-            href="/signin"
-            className="mr-4 hover:text-octaview-accent"
-            style={{ color: "rgb(var(--octaview-accent))" }}
-          >
-            Log in
-          </Link>
-          <Link href="/signup">
-            <Button className="bg-octaview-primary text-octaview-secondary hover:bg-accent hover:text-octaview-primary">
-              Sign up
-            </Button>
-          </Link>
-        </div>
+        
       </nav>
 
       {/* Hero Section */}
@@ -59,7 +46,7 @@ const LandingPage = () => {
         </div>
         <div className="w-1/2">
           <img
-            src="https://images.unsplash.com/photo-1661961112951-f2bfd17053f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" // Replace with your actual image
+            src="https://raw.githubusercontent.com/git-yusuf-ilhan/nextjs/09808a1fd58113855dff827ca4d2dd6239114bc9/image.png" // Replace with your actual image
             alt="AI Camera Analytics"
             className="rounded-lg shadow-lg"
           />
@@ -70,4 +57,3 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
-
