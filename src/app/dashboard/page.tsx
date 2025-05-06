@@ -1,4 +1,3 @@
-
 'use client';
 
 import {useEffect, useState} from 'react';
@@ -23,6 +22,7 @@ import {
   Clock,
   Bell,
   MessageSquare,
+  AlertTriangle, // Added AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
@@ -165,7 +165,7 @@ const DashboardPageContent = () => {
     return () => unsubscribe(); // Cleanup subscription
   }, []);
 
-  const {state} = useSidebar();
+  const {state, isMobile} = useSidebar();
 
   return (
     <>
@@ -182,26 +182,26 @@ const DashboardPageContent = () => {
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                 <PanelLeft className="h-4 w-4" />
                 {state === 'expanded' && <span>Cameras</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                 <BarChart4 className="h-4 w-4" />
                 {state === 'expanded' && <span>Report</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                 <InboxIcon className="h-4 w-4" />
                 {state === 'expanded' && <span>Inbox</span>}
                 {state === 'expanded' && <SidebarMenuBadge>9</SidebarMenuBadge>}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                 <Settings className="h-4 w-4" />
                 {state === 'expanded' && <span>Settings</span>}
               </SidebarMenuButton>
@@ -216,7 +216,7 @@ const DashboardPageContent = () => {
         {/* App Bar */}
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
-            <SidebarTrigger variant="outline" className="h-8 w-8 p-0" />
+            <SidebarTrigger variant="outline" className="h-8 w-8 p-1.5" />
             <h1
               className="text-lg font-semibold ml-2"
               style={{color: 'rgb(var(--octaview-primary))'}}
@@ -278,6 +278,10 @@ const DashboardPageContent = () => {
                       <Clock className="w-3 h-3" />
                     </div>
                     <div className="flex items-center space-x-2">
+                       <div className="flex items-center space-x-1">
+                        <span>2</span>
+                        <AlertTriangle className="w-3 h-3" />
+                      </div>
                       <div className="flex items-center space-x-1">
                         <span>5</span>
                         <Bell className="w-3 h-3" />
