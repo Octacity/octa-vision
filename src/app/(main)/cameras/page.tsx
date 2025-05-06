@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { NextPage } from 'next';
@@ -20,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon } from 'lucide-react'; // Renamed AlertCircle to AlertCircleIcon
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond } from 'lucide-react'; // Renamed AlertCircle to AlertCircleIcon, Added Diamond
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -94,7 +93,7 @@ const addCameraStep1Schema = z.object({
   group: z.string().optional(),
   newGroupName: z.string().optional(),
   groupDescription: z.string().optional(),
-  groupAIDetection: z.string().optional(), // Renamed from 'whatAiDetect' to match image
+  groupAIDetection: z.string().optional(), 
   alertClasses: z.string().optional(),
 }).refine(data => {
   if (data.group === 'add_new_group' && !data.newGroupName) {
@@ -114,6 +113,9 @@ const addCameraStep2Schema = z.object({
 type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 
 const addCameraStep3Schema = z.object({
+    cameraPurposeDescription: z.string().min(1, "This field is required."), // "What does this camera do?"
+    aiDetectionPrompt: z.string().min(1, "AI detection prompt is required."), // "What does the things you want the AI to detect from this camera?"
+    cameraAlertClasses: z.string().optional(), // "Alert Classes" - specific to this camera
     videoChunks: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     numFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoOverlap: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
@@ -153,6 +155,9 @@ const CamerasPage: NextPage = () => {
   const formStep3 = useForm<AddCameraStep3Values>({
     resolver: zodResolver(addCameraStep3Schema),
     defaultValues: {
+        cameraPurposeDescription: '',
+        aiDetectionPrompt: '',
+        cameraAlertClasses: '',
         videoChunks: '',
         numFrames: '',
         videoOverlap: '',
@@ -211,6 +216,30 @@ const CamerasPage: NextPage = () => {
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
     console.log("Step 2 Data:", data);
+    // Pre-populate Step 3 fields based on Step 1 and Step 2 data
+    const groupDesc = formStep1.getValues('groupDescription');
+    const groupAIDetection = formStep1.getValues('groupAIDetection');
+    const sceneDesc = data.sceneDescription;
+
+    let cameraPurpose = `Based on the dense scene description: "${sceneDesc}"`;
+    if (groupDesc) {
+        cameraPurpose += ` and the group's description: "${groupDesc}", this camera's role is to...`;
+    }
+    formStep3.setValue('cameraPurposeDescription', cameraPurpose);
+
+    let aiPrompt = '';
+    if (groupAIDetection) {
+        aiPrompt += `Inherited from group: "${groupAIDetection}". `;
+    }
+    aiPrompt += 'Additionally, for this specific camera detect...';
+    formStep3.setValue('aiDetectionPrompt', aiPrompt);
+
+    const groupAlertClasses = formStep1.getValues('alertClasses');
+    if (groupAlertClasses) {
+        formStep3.setValue('cameraAlertClasses', groupAlertClasses);
+    }
+
+
     setDrawerStep(3);
   };
   
@@ -441,50 +470,27 @@ const CamerasPage: NextPage = () => {
         return (
             <Form {...formStep3}>
                 <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6 px-[5px]">
-                    <h3 className="text-lg font-semibold text-foreground">Video Processing Settings</h3>
                     <FormField
                         control={formStep3.control}
-                        name="videoChunks"
+                        name="cameraPurposeDescription"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="flex items-center">
-                                    <Film className="w-4 h-4 mr-2 text-muted-foreground" />
-                                    Video Chunks (seconds)
+                                    <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground" />
+                                    What does this camera do?
                                 </FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 10" {...field} className="w-[calc(100%-10px)]" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={formStep3.control}
-                        name="numFrames"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="flex items-center">
-                                    <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
-                                    No. of Frames (per chunk)
-                                </FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 5" {...field} className="w-[calc(100%-10px)]" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={formStep3.control}
-                        name="videoOverlap"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="flex items-center">
-                                    <AlertCircleIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                                    Video Overlap (seconds)
-                                </FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 2" {...field} className="w-[calc(100%-10px)]" />
+                                    <div className="relative">
+                                        <Textarea 
+                                            placeholder="Based on the dense description and the group's description, generate the detailed scene" 
+                                            {...field} 
+                                            rows={3}
+                                            className="pr-10 w-[calc(100%-10px)]"
+                                        />
+                                        <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7">
+                                            <Mic className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -492,12 +498,110 @@ const CamerasPage: NextPage = () => {
                     />
                      <FormField
                         control={formStep3.control}
+                        name="aiDetectionPrompt"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center">
+                                    <Wand2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                                    What does the things you want the AI to detect from this camera?
+                                </FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                        <Textarea 
+                                            placeholder="If there is Group value + any specific value." 
+                                            {...field} 
+                                            rows={3}
+                                            className="pr-10 w-[calc(100%-10px)]"
+                                        />
+                                        <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7">
+                                            <Mic className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={formStep3.control}
+                        name="cameraAlertClasses"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center">
+                                    <Diamond className="w-4 h-4 mr-2 text-muted-foreground" /> {/* Using Diamond as a placeholder for Alert Classes icon */}
+                                    Alert Classes
+                                </FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        placeholder="e.g., safety: worker not wearing ppe, safety: worker not wearing helmet, safety: unlit work area" 
+                                        {...field} 
+                                        className="w-[calc(100%-10px)]"
+                                    />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert classes for this camera.</p>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                        <FormField
+                            control={formStep3.control}
+                            name="videoChunks"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center">
+                                        <Film className="w-4 h-4 mr-2 text-muted-foreground" />
+                                        Video Chunks (s)
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 10" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={formStep3.control}
+                            name="numFrames"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center">
+                                        <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
+                                        No of frames
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 5" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={formStep3.control}
+                            name="videoOverlap"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center">
+                                        <AlertCircleIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                                        Video Overlap (s)
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 2" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                     <FormField
+                        control={formStep3.control}
                         name="totalFramesPerDay"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="flex items-center">
                                     <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
-                                    Total no. of frames processed in a day
+                                    Total no. of frames processed in a day:
                                 </FormLabel>
                                 <FormControl>
                                     <Input type="number" placeholder="e.g., 10000" {...field} className="w-[calc(100%-10px)]" />
@@ -648,8 +752,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
-
-    
-
-    
