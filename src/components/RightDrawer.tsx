@@ -30,7 +30,7 @@ const RightDrawer = ({
 }: RightDrawerProps) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-lg w-[90vw] p-0 flex flex-col">
+      <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
         <SheetHeader className="p-6 border-b">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
