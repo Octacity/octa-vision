@@ -62,7 +62,7 @@ import {
   SheetContent,
   SheetDescription,
   SheetFooter,
-  SheetHeader,
+  SheetHeader as SheetHeaderComponent,
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
@@ -169,10 +169,10 @@ const DashboardPageContent = () => {
   return (
     <>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
+        <SidebarHeader className="h-16 border-b border-border flex items-center justify-center">
           <Link
             href="/"
-            className="text-lg font-semibold text-foreground block mb-6"
+            className="text-lg font-semibold"
             style={{color: 'rgb(var(--octaview-primary))'}}
           >
             {state === 'collapsed' ? 'OV' : 'OctaVision'}
@@ -232,8 +232,8 @@ const DashboardPageContent = () => {
                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-md">
                   <Avatar className="h-8 w-8 rounded-md">
                     <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="@shadcn"
+                      src="https://picsum.photos/id/1005/50/50"
+                      alt="User Avatar"
                       className="rounded-md"
                       data-ai-hint="user avatar"
                     />
