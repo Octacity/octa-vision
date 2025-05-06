@@ -122,7 +122,7 @@ const addCameraStep3Schema = z.object({
     numFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoOverlapValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoOverlapUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
-    totalFramesPerDay: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    // totalFramesPerDay: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}), Removed as per request
 });
 type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
 
@@ -166,7 +166,7 @@ const CamerasPage: NextPage = () => {
         numFrames: '',
         videoOverlapValue: '',
         videoOverlapUnit: 'seconds',
-        totalFramesPerDay: '',
+        // totalFramesPerDay: '',
     }
   });
 
@@ -588,22 +588,7 @@ const CamerasPage: NextPage = () => {
                                 )}
                             />
                         </div>
-                        <FormField
-                            control={formStep3.control}
-                            name="numFrames"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center">
-                                        <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
-                                        No of frames
-                                    </FormLabel>
-                                    <FormControl>
-                                        <Input type="number" placeholder="e.g., 5" {...field} className="w-[calc(100%-10px)]" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        
                         <div className="grid grid-cols-2 gap-x-4">
                             <FormField
                                 control={formStep3.control}
@@ -642,23 +627,27 @@ const CamerasPage: NextPage = () => {
                                 )}
                             />
                         </div>
+                        <FormField
+                            control={formStep3.control}
+                            name="numFrames"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center">
+                                        <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
+                                        No of frames
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 5" {...field} className="w-[calc(100%-10px)]" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </div>
-                     <FormField
-                        control={formStep3.control}
-                        name="totalFramesPerDay"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="flex items-center">
-                                    <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
-                                    Total no. of frames processed in a day:
-                                </FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 10000" {...field} className="w-[calc(100%-10px)]" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                     <div className="flex items-center space-x-2 mt-4 px-[5px]">
+                        <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Total no. of frames processed in a day: <span className="font-medium text-foreground"> (Calculated based on above values)</span></p>
+                    </div>
                 </form>
             </Form>
         );
@@ -801,3 +790,4 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
