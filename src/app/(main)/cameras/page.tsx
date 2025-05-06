@@ -4,7 +4,8 @@
 import type { NextPage } from 'next';
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 
 const cameras = [
   {
@@ -57,44 +58,63 @@ const cameras = [
 const CamerasPage: NextPage = () => {
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Cameras</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold">Cameras</h2>
+        <div className="flex items-center space-x-2">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" /> Add Camera
+          </Button>
+          <Button variant="outline">
+            <Users className="mr-2 h-4 w-4" /> Group
+          </Button>
+          <Button variant="outline">
+            <ListFilter className="mr-2 h-4 w-4" /> Filter
+          </Button>
+          <Button variant="outline">
+            <ArrowUpDown className="mr-2 h-4 w-4" /> Sort
+          </Button>
+          <Button variant="outline" size="icon">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {cameras.map((camera, index) => (
-          <Card key={index}>
-            <CardContent className="p-3">
+          <Card key={index} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200">
+            <CardContent className="p-0">
               <div className="relative">
                 <Image
                   src={camera.imageUrl}
                   alt={camera.name}
                   width={200}
                   height={150}
-                  className="rounded-md aspect-video w-full"
+                  className="rounded-t-md aspect-video w-full object-cover"
                   data-ai-hint={camera.dataAiHint}
                 />
-                <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500" />
+                <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
               </div>
-              <h3 className="text-sm font-semibold mt-2">{camera.name}</h3>
-              <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-                {/* Configuration Icons Group */}
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-1">
-                    <span>15 min</span>
-                    <Clock className="w-3 h-3" />
+              <div className="p-3">
+                <h3 className="text-sm font-semibold mb-2 truncate">{camera.name}</h3>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  {/* Configuration Icons Group */}
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1 cursor-pointer hover:text-primary">
+                      <Clock className="w-3 h-3" />
+                      <span>15 min</span>
+                    </div>
+                    <div className="flex items-center space-x-1 cursor-pointer hover:text-destructive">
+                      <AlertTriangle className="w-3 h-3 text-destructive" />
+                       <span>2</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <span>2</span>
-                    <AlertTriangle className="w-3 h-3 text-destructive" />
-                  </div>
-                </div>
-                {/* Action Icons Group */}
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-1">
-                    <span>5</span>
-                    <Bell className="w-3 h-3" />
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span>5</span>
-                    <MessageSquare className="w-3 h-3" />
+                  {/* Action Icons Group */}
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Bell className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
               </div>
