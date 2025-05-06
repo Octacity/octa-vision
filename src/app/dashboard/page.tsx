@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useEffect, useState} from 'react';
@@ -179,26 +180,26 @@ const DashboardPageContent = () => {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem className="m-3">
+            <SidebarMenuItem className="mx-3 my-1.5">
               <SidebarMenuButton>
                 <PanelLeft className="h-4 w-4" />
                 <span>Cameras</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem className="m-3">
+            <SidebarMenuItem className="mx-3 my-1.5">
               <SidebarMenuButton>
                 <BarChart4 className="h-4 w-4" />
                 <span>Report</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem className="m-3">
+            <SidebarMenuItem className="mx-3 my-1.5">
               <SidebarMenuButton>
                 <InboxIcon className="h-4 w-4" />
                 <span>Inbox</span>
                 <SidebarMenuBadge>9</SidebarMenuBadge>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem className="m-3">
+            <SidebarMenuItem className="mx-3 my-1.5">
               <SidebarMenuButton>
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
