@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react"
@@ -20,15 +19,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useSidebar as useSidebarContextHook } from "@/hooks/use-sidebar"; // Renamed import
+
+// Ensure useSidebar hook is correctly defined and exported from its actual location
+// For this example, assuming it's correctly provided by SidebarProvider below.
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "12rem";
+const SIDEBAR_WIDTH = "12rem"; // Adjusted width
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
+const SIDEBAR_WIDTH_ICON = "3rem" // Adjusted width for collapsed state
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
-type SidebarContext = {
+type SidebarContextType = {
   state: "expanded" | "collapsed"
   open: boolean
   setOpen: (open: boolean) => void
@@ -38,9 +41,9 @@ type SidebarContext = {
   toggleSidebar: () => void
 }
 
-const SidebarContext = React.createContext<SidebarContext | null>(null)
+const SidebarContext = React.createContext<SidebarContextType | null>(null)
 
-function useSidebar() {
+export function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
@@ -121,7 +124,7 @@ const SidebarProvider = React.forwardRef<
 
     const state = open ? "expanded" : "collapsed"
 
-    const contextValue = React.useMemo<SidebarContext>(
+    const contextValue = React.useMemo<SidebarContextType>(
       () => ({
         state,
         open,
@@ -166,7 +169,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebarContextHook() // Use the aliased hook
 
     if (collapsible === "none") {
       return (
@@ -272,7 +275,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar } = useSidebarContextHook() // Use the aliased hook
 
   return (
     <Button
@@ -280,7 +283,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={cn("h-8 w-8 p-1 border border-input", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -298,7 +301,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar } = useSidebarContextHook() // Use the aliased hook
 
   return (
     <button
@@ -357,7 +360,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("p-3", className)}
+      className={cn("p-3 py-5", className)} // Increased py for more padding
       {...props}
     />
   )
@@ -508,13 +511,13 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
-  const { state } = useSidebar();
+  const { state } = useSidebarContextHook() // Use the aliased hook
   return (
     <li
       ref={ref}
       data-sidebar="menu-item"
       className={cn(
-        "group/menu-item relative flex flex-col my-1.5",
+        "group/menu-item relative flex flex-col my-0.5", // Reduced my
         state === 'expanded' ? 'mx-3' : 'mx-0 justify-center items-center',
         className
         )}
@@ -525,7 +528,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md text-left outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-1.5 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md text-left outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -534,9 +537,10 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm p-2", 
-        sm: "h-9 text-xs p-2", 
-        lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0 p-2",
+        default: "h-10 text-sm p-3", // Increased p
+        sm: "h-9 text-xs p-3", // Increased p
+        lg: "h-12 text-sm p-3", // Increased p
+        icon: "h-10 w-10 p-2", // Explicit padding for icon size (collapsed state)
       },
     },
     defaultVariants: {
@@ -559,7 +563,7 @@ const SidebarMenuButton = React.forwardRef<
       asChild = false,
       isActive = false,
       variant = "default",
-      size = "default",
+      size = "default", // This will be correctly 'icon' or 'default' based on props from dashboard
       tooltip,
       className,
       children,
@@ -568,17 +572,16 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state } = useSidebar()
+    const { isMobile, state: sidebarState } = useSidebarContextHook(); // Use the aliased hook
 
     const buttonContent = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
-        data-size={size}
+        data-size={size} 
         data-active={isActive}
         className={cn(
-          sidebarMenuButtonVariants({ variant, size }),
-          state === 'collapsed' && 'p-1.5', // Reduced padding when collapsed
+          sidebarMenuButtonVariants({ variant, size }), 
           className
         )}
         {...props}
@@ -604,7 +607,7 @@ const SidebarMenuButton = React.forwardRef<
         <TooltipContent
           side="right"
           align="center"
-          hidden={state !== "collapsed" || isMobile}
+          hidden={sidebarState !== "collapsed" || isMobile}
           {...tooltip}
         />
       </Tooltip>
@@ -761,9 +764,5 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
+  // useSidebar is already exported above
 }
-
-    
-
-    
