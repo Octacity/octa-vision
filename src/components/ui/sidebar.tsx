@@ -1,5 +1,5 @@
 
-"use client";
+"use client"
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
@@ -26,7 +26,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "12rem";
+const SIDEBAR_WIDTH = "12rem"; // Adjusted from 14rem
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3.5rem" // Adjusted for icon button size + padding
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -281,9 +281,9 @@ const SidebarTrigger = React.forwardRef<
     <Button
       ref={ref}
       data-sidebar="trigger"
-      variant="outline" // Changed to outline to match notification button
-      size="icon" // Standard icon size
-      className={cn("h-8 w-8 p-1.5", className)} // Adjusted padding
+      variant="outline" 
+      size="icon" 
+      className={cn("h-8 w-8 p-1.5 border", className)} 
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -517,8 +517,8 @@ const SidebarMenuItem = React.forwardRef<
       ref={ref}
       data-sidebar="menu-item"
       className={cn(
-        "group/menu-item relative flex flex-col my-0.5", 
-        state === 'expanded' ? 'mx-3' : 'mx-0 justify-center items-center', // mx-0 for collapsed
+        "group/menu-item relative flex flex-col", 
+        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', 
         className
         )}
       {...props}
@@ -537,10 +537,10 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm p-3", 
-        sm: "h-9 text-xs p-3", 
-        lg: "h-12 text-sm p-3", 
-        icon: "h-8 w-8 p-1.5", // Adjusted size for collapsed state, matching notification/profile
+        default: "h-10 text-sm py-3", 
+        sm: "h-9 text-xs py-3", 
+        lg: "h-12 text-sm py-3", 
+        icon: "h-8 w-8 p-1.5", 
       },
     },
     defaultVariants: {
@@ -575,6 +575,7 @@ const SidebarMenuButton = React.forwardRef<
     const { isMobile, state: sidebarState } = useSidebar(); 
 
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
+    const paddingClass = sidebarState === 'collapsed' && !isMobile ? 'p-1.5' : 'px-3';
     
     const buttonContent = (
       <Comp
@@ -584,7 +585,7 @@ const SidebarMenuButton = React.forwardRef<
         data-active={isActive}
         className={cn(
           sidebarMenuButtonVariants({ variant, size }), 
-          sidebarState === 'collapsed' && !isMobile && 'p-1.5', // Ensure padding for icon state
+          paddingClass,
           className
         )}
         {...props}
@@ -769,4 +770,5 @@ export {
   SidebarTrigger,
   // useSidebar is already exported above
 }
+
 
