@@ -49,7 +49,7 @@ const sheetVariants = cva(
   }
 )
 
-interface SheetContentProps
+export interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {}
 
@@ -132,9 +132,10 @@ export {
   SheetOverlay,
   SheetTrigger,
   SheetClose,
-  SheetContent,
+  SheetContent, // Default export this
   SheetHeader,
   SheetFooter,
   SheetTitle,
   SheetDescription,
 }
+export default SheetContent; // Add default export
