@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -113,12 +114,14 @@ const addCameraStep2Schema = z.object({
 type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 
 const addCameraStep3Schema = z.object({
-    cameraPurposeDescription: z.string().min(1, "This field is required."), // "What does this camera do?"
-    aiDetectionPrompt: z.string().min(1, "AI detection prompt is required."), // "What does the things you want the AI to detect from this camera?"
-    cameraAlertClasses: z.string().optional(), // "Alert Classes" - specific to this camera
-    videoChunks: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    cameraPurposeDescription: z.string().min(1, "This field is required."),
+    aiDetectionPrompt: z.string().min(1, "AI detection prompt is required."),
+    cameraAlertClasses: z.string().optional(), 
+    videoChunksValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoChunksUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
     numFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
-    videoOverlap: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoOverlapValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoOverlapUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
     totalFramesPerDay: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
 });
 type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
@@ -158,9 +161,11 @@ const CamerasPage: NextPage = () => {
         cameraPurposeDescription: '',
         aiDetectionPrompt: '',
         cameraAlertClasses: '',
-        videoChunks: '',
+        videoChunksValue: '',
+        videoChunksUnit: 'seconds',
         numFrames: '',
-        videoOverlap: '',
+        videoOverlapValue: '',
+        videoOverlapUnit: 'seconds',
         totalFramesPerDay: '',
     }
   });
@@ -528,7 +533,7 @@ const CamerasPage: NextPage = () => {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="flex items-center">
-                                    <Diamond className="w-4 h-4 mr-2 text-muted-foreground" /> {/* Using Diamond as a placeholder for Alert Classes icon */}
+                                    <Diamond className="w-4 h-4 mr-2 text-muted-foreground" /> 
                                     Alert Classes
                                 </FormLabel>
                                 <FormControl>
@@ -544,23 +549,45 @@ const CamerasPage: NextPage = () => {
                         )}
                     />
 
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                        <FormField
-                            control={formStep3.control}
-                            name="videoChunks"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center">
-                                        <Film className="w-4 h-4 mr-2 text-muted-foreground" />
-                                        Video Chunks (s)
-                                    </FormLabel>
+                    <div className="grid grid-cols-1 gap-y-6">
+                         <div className="grid grid-cols-2 gap-x-4">
+                            <FormField
+                                control={formStep3.control}
+                                name="videoChunksValue"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center">
+                                            <Film className="w-4 h-4 mr-2 text-muted-foreground" />
+                                            Video Chunks
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 10" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={formStep3.control}
+                                name="videoChunksUnit"
+                                render={({ field }) => (
+                                <FormItem className="self-end">
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
-                                        <Input type="number" placeholder="e.g., 10" {...field} />
+                                        <SelectTrigger>
+                                        <SelectValue placeholder="Unit" />
+                                        </SelectTrigger>
                                     </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="seconds">Seconds</SelectItem>
+                                        <SelectItem value="minutes">Minutes</SelectItem>
+                                    </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                 </FormItem>
-                            )}
-                        />
+                                )}
+                            />
+                        </div>
                         <FormField
                             control={formStep3.control}
                             name="numFrames"
@@ -571,28 +598,50 @@ const CamerasPage: NextPage = () => {
                                         No of frames
                                     </FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="e.g., 5" {...field} />
+                                        <Input type="number" placeholder="e.g., 5" {...field} className="w-[calc(100%-10px)]" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={formStep3.control}
-                            name="videoOverlap"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center">
-                                        <AlertCircleIcon className="w-4 h-4 mr-2 text-muted-foreground" />
-                                        Video Overlap (s)
-                                    </FormLabel>
+                        <div className="grid grid-cols-2 gap-x-4">
+                            <FormField
+                                control={formStep3.control}
+                                name="videoOverlapValue"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center">
+                                            <AlertCircleIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                                            Video Overlap
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input type="number" placeholder="e.g., 2" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={formStep3.control}
+                                name="videoOverlapUnit"
+                                render={({ field }) => (
+                                <FormItem className="self-end">
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
-                                        <Input type="number" placeholder="e.g., 2" {...field} />
+                                        <SelectTrigger>
+                                        <SelectValue placeholder="Unit" />
+                                        </SelectTrigger>
                                     </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="seconds">Seconds</SelectItem>
+                                        <SelectItem value="minutes">Minutes</SelectItem>
+                                    </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                 </FormItem>
-                            )}
-                        />
+                                )}
+                            />
+                        </div>
                     </div>
                      <FormField
                         control={formStep3.control}
