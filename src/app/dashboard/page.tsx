@@ -61,7 +61,7 @@ import {
   SheetClose,
   SheetContent,
   SheetDescription,
-  SheetFooter,
+  SheetFooter as SheetFooterComponent,
   SheetHeader as SheetHeaderComponent,
   SheetTitle,
   SheetTrigger,
@@ -169,7 +169,7 @@ const DashboardPageContent = () => {
   return (
     <>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="h-16 border-b border-border flex items-center justify-center">
+        <SidebarHeader className="h-16 border-b border-border flex items-center justify-center px-4 py-2">
           <Link
             href="/"
             className="text-lg font-semibold"
