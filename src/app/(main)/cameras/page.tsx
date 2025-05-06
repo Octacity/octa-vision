@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon } from 'lucide-react'; // Renamed AlertCircle to AlertCircleIcon
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -94,7 +94,7 @@ const addCameraStep1Schema = z.object({
   group: z.string().optional(),
   newGroupName: z.string().optional(),
   groupDescription: z.string().optional(),
-  groupAIDetection: z.string().optional(),
+  groupAIDetection: z.string().optional(), // Renamed from 'whatAiDetect' to match image
   alertClasses: z.string().optional(),
 }).refine(data => {
   if (data.group === 'add_new_group' && !data.newGroupName) {
@@ -110,15 +110,14 @@ type AddCameraStep1Values = z.infer<typeof addCameraStep1Schema>;
 
 const addCameraStep2Schema = z.object({
     sceneDescription: z.string().min(1, "Scene description is required."),
-    // Add other step 2 fields if any
 });
 type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 
 const addCameraStep3Schema = z.object({
-    videoChunks: z.string().optional(),
-    numFrames: z.string().optional(),
-    videoOverlap: z.string().optional(),
-    totalFramesPerDay: z.string().optional(),
+    videoChunks: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    numFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoOverlap: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    totalFramesPerDay: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
 });
 type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
 
@@ -130,7 +129,7 @@ const CamerasPage: NextPage = () => {
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
   const [isProcessingStep2, setIsProcessingStep2] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
-  // Step 1 form
+
   const formStep1 = useForm<AddCameraStep1Values>({
     resolver: zodResolver(addCameraStep1Schema),
     defaultValues: {
@@ -144,7 +143,6 @@ const CamerasPage: NextPage = () => {
     },
   });
 
-  // Step 2 form
   const formStep2 = useForm<AddCameraStep2Values>({
     resolver: zodResolver(addCameraStep2Schema),
     defaultValues: {
@@ -152,7 +150,6 @@ const CamerasPage: NextPage = () => {
     },
   });
 
-  // Step 3 form
   const formStep3 = useForm<AddCameraStep3Values>({
     resolver: zodResolver(addCameraStep3Schema),
     defaultValues: {
@@ -173,13 +170,12 @@ const CamerasPage: NextPage = () => {
     setShowNewGroupForm(false);
     setSelectedGroup(undefined);
     setSnapshotUrl(null);
-    // setSceneDescription(null); // sceneDescription is part of formStep2 now
   };
 
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
     setShowNewGroupForm(false);
-    setDrawerStep(1); // Reset step on close
+    setDrawerStep(1); 
     formStep1.reset();
     formStep2.reset();
     formStep3.reset();
@@ -227,7 +223,6 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data (final):", formStep1.getValues());
     console.log("Step 2 Data (final):", formStep2.getValues());
     console.log("Step 3 Data (final):", data);
-    // Actual save logic here, combine data from all steps
     handleDrawerClose();
   };
 
@@ -246,7 +241,7 @@ const CamerasPage: NextPage = () => {
                       <Video className="w-4 h-4 mr-2 text-muted-foreground"/> RTSP URL
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="rtsp://..." {...field} />
+                    <Input placeholder="rtsp://..." {...field} className="w-[calc(100%-10px)]" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -261,7 +256,7 @@ const CamerasPage: NextPage = () => {
                       <Edit3 className="w-4 h-4 mr-2 text-muted-foreground"/> Name
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Front Door Camera" {...field} />
+                    <Input placeholder="e.g., Front Door Camera" {...field} className="w-[calc(100%-10px)]" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -277,7 +272,7 @@ const CamerasPage: NextPage = () => {
                   </FormLabel>
                   <Select onValueChange={handleGroupChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger id="group">
+                      <SelectTrigger id="group" className="w-[calc(100%-10px)]">
                         <SelectValue placeholder="Select a group" />
                       </SelectTrigger>
                     </FormControl>
@@ -428,7 +423,7 @@ const CamerasPage: NextPage = () => {
                                 {...field}
                                 rows={3}
                                 readOnly={isProcessingStep2 && !field.value}
-                                className="pr-10"
+                                className="pr-10 w-[calc(100%-10px)]"
                             />
                             <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7">
                                 <Mic className="w-4 h-4" />
@@ -457,7 +452,7 @@ const CamerasPage: NextPage = () => {
                                     Video Chunks (seconds)
                                 </FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 10" {...field} />
+                                    <Input type="number" placeholder="e.g., 10" {...field} className="w-[calc(100%-10px)]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -473,7 +468,7 @@ const CamerasPage: NextPage = () => {
                                     No. of Frames (per chunk)
                                 </FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 5" {...field} />
+                                    <Input type="number" placeholder="e.g., 5" {...field} className="w-[calc(100%-10px)]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -485,11 +480,11 @@ const CamerasPage: NextPage = () => {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="flex items-center">
-                                    <AlertCircle className="w-4 h-4 mr-2 text-muted-foreground" /> {/* Using AlertCircle as placeholder */}
+                                    <AlertCircleIcon className="w-4 h-4 mr-2 text-muted-foreground" />
                                     Video Overlap (seconds)
                                 </FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 2" {...field} />
+                                    <Input type="number" placeholder="e.g., 2" {...field} className="w-[calc(100%-10px)]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -505,7 +500,7 @@ const CamerasPage: NextPage = () => {
                                     Total no. of frames processed in a day
                                 </FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 10000" {...field} />
+                                    <Input type="number" placeholder="e.g., 10000" {...field} className="w-[calc(100%-10px)]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -654,5 +649,7 @@ const CamerasPage: NextPage = () => {
 
 export default CamerasPage;
 
+
+    
 
     
