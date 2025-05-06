@@ -58,8 +58,7 @@ const cameras = [
 const CamerasPage: NextPage = () => {
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">Cameras</h2>
+      <div className="flex justify-end items-center mb-6"> {/* Changed justify-between to justify-end */}
         <div className="flex items-center space-x-2">
           <Button>
             <Plus className="mr-2 h-4 w-4" /> Add Camera

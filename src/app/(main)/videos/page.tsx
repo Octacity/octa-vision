@@ -7,7 +7,6 @@ import { Archive } from 'lucide-react';
 const VideosPage: NextPage = () => {
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Recorded Videos</h2>
       <Card>
         <CardHeader>
           <CardTitle>Video Archive</CardTitle>

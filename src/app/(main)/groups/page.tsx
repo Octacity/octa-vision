@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 const GroupsPage: NextPage = () => {
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Manage Groups</h2>
       <Card>
         <CardHeader>
           <CardTitle>Camera Groups</CardTitle>

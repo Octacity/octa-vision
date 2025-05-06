@@ -8,7 +8,6 @@ import { Video } from 'lucide-react';
 const MonitorPage: NextPage = () => {
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Live Monitoring</h2>
       <Card>
         <CardHeader>
           <CardTitle>Real-time Camera Feeds</CardTitle>

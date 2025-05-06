@@ -133,7 +133,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <SidebarMenu>
             <SidebarMenuItem>
               <Link href="/dashboard" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                   <Home className="h-4 w-4" />
                   {sidebarState === 'expanded' && <span>Dashboard</span>}
                 </SidebarMenuButton>
@@ -143,7 +143,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <>
                 <SidebarMenuItem>
                   <Link href="/cameras" passHref legacyBehavior>
-                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                       <CameraIcon className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Cameras</span>}
                     </SidebarMenuButton>
@@ -151,7 +151,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/groups" passHref legacyBehavior>
-                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                       <Users className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Groups</span>}
                     </SidebarMenuButton>
@@ -159,7 +159,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/monitor" passHref legacyBehavior>
-                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                       <Activity className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Monitor</span>}
                     </SidebarMenuButton>
@@ -167,7 +167,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/videos" passHref legacyBehavior>
-                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                       <Film className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Videos</span>}
                     </SidebarMenuButton>
@@ -175,7 +175,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/settings" passHref legacyBehavior>
-                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                       <Settings className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Settings</span>}
                     </SidebarMenuButton>
@@ -183,7 +183,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/account" passHref legacyBehavior>
-                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                       <CircleUserRound className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Account</span>}
                     </SidebarMenuButton>

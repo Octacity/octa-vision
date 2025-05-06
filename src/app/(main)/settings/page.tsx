@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -10,7 +11,6 @@ import { Button } from '@/components/ui/button';
 const SettingsPage: NextPage = () => {
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-6">Application Settings</h2>
       <div className="grid gap-6">
         <Card>
           <CardHeader>
