@@ -204,7 +204,7 @@ const CamerasPage: NextPage = () => {
         title="Add New Camera"
         footerContent={drawerFooter}
       >
-        <form id="add-camera-form" className="space-y-6">
+        <form id="add-camera-form" className="space-y-8"> {/* Changed space-y-6 to space-y-8 */}
           <div>
             <Label htmlFor="rtspUrl" className="flex items-center mb-1.5">
                 <Video className="w-4 h-4 mr-2 text-muted-foreground"/> RTSP URL
