@@ -180,29 +180,29 @@ const DashboardPageContent = () => {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem className="mx-3 my-1.5">
-              <SidebarMenuButton>
+            <SidebarMenuItem>
+              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
                 <PanelLeft className="h-4 w-4" />
-                <span>Cameras</span>
+                {state === 'expanded' && <span>Cameras</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem className="mx-3 my-1.5">
-              <SidebarMenuButton>
+            <SidebarMenuItem>
+              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
                 <BarChart4 className="h-4 w-4" />
-                <span>Report</span>
+                {state === 'expanded' && <span>Report</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem className="mx-3 my-1.5">
-              <SidebarMenuButton>
+            <SidebarMenuItem>
+              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
                 <InboxIcon className="h-4 w-4" />
-                <span>Inbox</span>
-                <SidebarMenuBadge>9</SidebarMenuBadge>
+                {state === 'expanded' && <span>Inbox</span>}
+                {state === 'expanded' && <SidebarMenuBadge>9</SidebarMenuBadge>}
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem className="mx-3 my-1.5">
-              <SidebarMenuButton>
+            <SidebarMenuItem>
+              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
                 <Settings className="h-4 w-4" />
-                <span>Settings</span>
+                {state === 'expanded' && <span>Settings</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -215,7 +215,7 @@ const DashboardPageContent = () => {
         {/* App Bar */}
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
-            <SidebarTrigger />
+            <SidebarTrigger variant="outline" className="h-8 w-8 p-0" />
             <h1
               className="text-lg font-semibold ml-2"
               style={{color: 'rgb(var(--octaview-primary))'}}
