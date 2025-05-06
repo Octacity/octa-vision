@@ -21,15 +21,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-// Renamed import to avoid conflict with the local useSidebar hook
-import { useSidebar as useSidebarContextHook } from "@/hooks/use-sidebar-provider"; 
-
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "12rem"; 
+const SIDEBAR_WIDTH = "12rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3.5rem" 
+const SIDEBAR_WIDTH_ICON = "3.5rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextType = {
@@ -86,7 +83,7 @@ const SidebarProvider = React.forwardRef<
     })
 
     const open = openProp ?? _open
-    
+
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
         const openState = typeof value === "function" ? value(open) : value
@@ -170,7 +167,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebarContextHook() 
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -276,15 +273,15 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar, state, isMobile } = useSidebarContextHook()
+  const { toggleSidebar, state, isMobile } = useSidebar()
 
   return (
     <Button
       ref={ref}
       data-sidebar="trigger"
-      variant="outline" 
-      size="icon" 
-      className={cn("h-8 w-8 p-1.5 border", className)} 
+      variant="outline"
+      size="icon"
+      className={cn("h-8 w-8 p-1.5 border", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -302,7 +299,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebarContextHook() 
+  const { toggleSidebar } = useSidebar()
 
   return (
     <button
@@ -361,7 +358,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("h-16 border-b border-border flex items-center justify-center px-4 py-5", className)} 
+      className={cn("h-16 border-b border-border flex items-center justify-center px-4 py-5", className)}
       {...props}
     />
   )
@@ -512,14 +509,14 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
-  const { state } = useSidebarContextHook() 
+  const { state } = useSidebar()
   return (
     <li
       ref={ref}
       data-sidebar="menu-item"
       className={cn(
-        "group/menu-item relative flex flex-col", 
-        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', 
+        "group/menu-item relative flex flex-col",
+        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5',
         className
         )}
       {...props}
@@ -538,10 +535,10 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-hover-background hover:text-sidebar-hover-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm py-3", 
-        sm: "h-9 text-xs py-3", 
-        lg: "h-12 text-sm py-3", 
-        icon: "h-8 w-8 p-1.5", 
+        default: "h-10 text-sm py-3",
+        sm: "h-9 text-xs py-3",
+        lg: "h-12 text-sm py-3",
+        icon: "h-8 w-8 p-1.5",
       },
     },
     defaultVariants: {
@@ -564,7 +561,7 @@ const SidebarMenuButton = React.forwardRef<
       asChild = false,
       isActive = false,
       variant = "default",
-      size: propSize, 
+      size: propSize,
       tooltip,
       className,
       children,
@@ -573,19 +570,19 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state: sidebarState } = useSidebarContextHook(); 
+    const { isMobile, state: sidebarState } = useSidebar();
 
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
     const paddingClass = sidebarState === 'collapsed' && !isMobile ? 'p-1.5' : 'px-3';
-    
+
     const buttonContent = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
-        data-size={size} 
+        data-size={size}
         data-active={isActive}
         className={cn(
-          sidebarMenuButtonVariants({ variant, size }), 
+          sidebarMenuButtonVariants({ variant, size }),
           paddingClass,
           className
         )}
@@ -772,6 +769,4 @@ export {
   sidebarMenuButtonVariants,
   // useSidebar is already exported above
 }
-
-
 
