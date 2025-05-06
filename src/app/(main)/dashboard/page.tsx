@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const DashboardPage: NextPage = () => {
   return (
-    <div className="p-8">
+    <div>
       <h2 className="text-2xl font-semibold mb-6">Dashboard Overview</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
