@@ -8,20 +8,22 @@ import { db } from '@/firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation'; 
+import { usePathname } from 'next/navigation';
 import {
   Settings,
   Users,
   Activity,
   Film,
   Home,
-  Camera as CameraIcon, 
+  Camera as CameraIcon,
   CircleUserRound,
   Bell,
   Menu,
   ArrowLeft,
-  ArrowRight, 
+  ArrowRight,
   Loader2,
+  Shield,
+  UserPlus,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -42,7 +44,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import NotificationDrawer from '@/components/NotificationDrawer';
 
@@ -59,15 +61,18 @@ const pageTitles: Record<string, string> = {
   '/videos': 'Videos',
   '/settings': 'Settings',
   '/account': 'My Account',
+  '/organization-users': 'Organization Users',
+  '/system-admin': 'System Administration',
 };
 
 
 const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const pathname = usePathname(); 
+  const pathname = usePathname();
   const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
-  const currentPageTitle = pageTitles[pathname] || 'OctaVision'; 
+  const currentPageTitle = pageTitles[pathname] || 'OctaVision';
   const { openNotificationDrawer } = useNotificationDrawer();
 
 
@@ -79,8 +84,9 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          setUserRole(userData?.role || 'user'); // Default to 'user' if no role
           const organizationId = userData?.organizationId;
-          
+
           if (organizationId) {
             const orgDoc = await getDoc(doc(db, 'organizations', organizationId));
             if (orgDoc.exists()) {
@@ -97,9 +103,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         } else {
           console.error('User data not found.');
           setIsApproved(false);
+          setUserRole(null);
         }
       } else {
-        setIsApproved(false); 
+        setIsApproved(false);
+        setUserRole(null);
       }
       setIsLoading(false);
     });
@@ -124,7 +132,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             className="text-lg font-semibold"
             style={{ color: 'rgb(var(--octaview-primary))' }}
           >
-            {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'} 
+            {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'}
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -187,6 +195,26 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
+                {userRole === 'user_admin' && (
+                  <SidebarMenuItem>
+                    <Link href="/organization-users" passHref legacyBehavior>
+                      <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                        <UserPlus className="h-4 w-4" />
+                        {sidebarState === 'expanded' && <span>Org Users</span>}
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                )}
+                {userRole === 'system_admin' && (
+                  <SidebarMenuItem>
+                    <Link href="/system-admin" passHref legacyBehavior>
+                      <SidebarMenuButton isActive={pathname === '/system-admin'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                        <Shield className="h-4 w-4" />
+                        {sidebarState === 'expanded' && <span>System Admin</span>}
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                )}
               </>
             )}
           </SidebarMenu>
@@ -235,7 +263,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/logout">Logout</Link> 
+                  <Link href="/logout">Logout</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -254,7 +282,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           </div>
         )}
         <main className="p-8 flex-1 overflow-y-auto">
-          { (isLoading === false && isApproved === null) ? <div className="flex h-full items-center justify-center w-full"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div> : children }
+          { (isLoading === false && isApproved === null && userRole === null) ? <div className="flex h-full items-center justify-center w-full"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div> : children }
         </main>
          <NotificationDrawer />
       </div>
