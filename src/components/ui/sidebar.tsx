@@ -135,8 +135,10 @@ const SidebarProvider = React.forwardRef<
 
     return (
       <TooltipProvider>
-        <SidebarContext.Provider value={contextValue} {...props}>
-          {children}
+        <SidebarContext.Provider value={contextValue}>
+          <div ref={ref} {...props}>
+            {children}
+          </div>
         </SidebarContext.Provider>
       </TooltipProvider>
     )
@@ -192,7 +194,7 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
@@ -203,6 +205,7 @@ const Sidebar = React.forwardRef<
               } as React.CSSProperties
             }
             side={side}
+            {...props}
           >
             <div
               data-variant={variant}
@@ -508,7 +511,7 @@ const SidebarMenuItem = React.forwardRef<
     <li
       ref={ref}
       data-sidebar="menu-item"
-      className={cn("group/menu-item relative flex flex-col", className)}
+      className={cn("group/menu-item relative flex flex-col mx-3 my-1.5", className)}
       {...props}
     />
   )
@@ -525,8 +528,8 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
+        default: "h-10 text-sm", // Increased height for more padding
+        sm: "h-9 text-xs", // Increased height for more padding
         lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0",
       },
     },
