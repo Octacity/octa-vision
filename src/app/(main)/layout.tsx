@@ -125,54 +125,58 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/cameras" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <CameraIcon className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Cameras</span>}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/groups" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <Users className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Groups</span>}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-               <Link href="/monitor" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <Activity className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Monitor</span>}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/videos" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <Film className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Videos</span>}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <Link href="/settings" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <Settings className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Settings</span>}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-               <Link href="/account" passHref legacyBehavior>
-                <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <CircleUserRound className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Account</span>}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
+            {isApproved === true && (
+              <>
+                <SidebarMenuItem>
+                  <Link href="/cameras" passHref legacyBehavior>
+                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <CameraIcon className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>Cameras</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/groups" passHref legacyBehavior>
+                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <Users className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>Groups</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/monitor" passHref legacyBehavior>
+                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <Activity className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>Monitor</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/videos" passHref legacyBehavior>
+                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <Film className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>Videos</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/settings" passHref legacyBehavior>
+                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <Settings className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>Settings</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/account" passHref legacyBehavior>
+                    <SidebarMenuButton size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <CircleUserRound className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>Account</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              </>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
