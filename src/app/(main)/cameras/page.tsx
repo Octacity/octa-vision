@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -74,15 +75,19 @@ const CamerasPage: NextPage = () => {
               </div>
               <h3 className="text-sm font-semibold mt-2">{camera.name}</h3>
               <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-                <div className="flex items-center space-x-1">
-                  <span>15 min</span>
-                  <Clock className="w-3 h-3" />
-                </div>
-                <div className="flex items-center space-x-2">
+                {/* Configuration Icons Group */}
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-1">
+                    <span>15 min</span>
+                    <Clock className="w-3 h-3" />
+                  </div>
                   <div className="flex items-center space-x-1">
                     <span>2</span>
-                    <AlertTriangle className="w-3 h-3 text-destructive" /> {/* Added text-destructive */}
+                    <AlertTriangle className="w-3 h-3 text-destructive" />
                   </div>
+                </div>
+                {/* Action Icons Group */}
+                <div className="flex items-center space-x-3">
                   <div className="flex items-center space-x-1">
                     <span>5</span>
                     <Bell className="w-3 h-3" />
