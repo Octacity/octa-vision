@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -10,7 +11,6 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation'; // Import usePathname
 import {
   Settings,
-  PanelLeft,
   Users,
   Activity,
   Film,
@@ -18,6 +18,9 @@ import {
   Camera as CameraIcon, // Renamed to avoid conflict
   CircleUserRound,
   Bell,
+  Menu,
+  ArrowLeft,
+  Loader2, // Added Loader2
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -106,13 +109,13 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     return () => unsubscribe();
   }, []);
 
-  const { state: sidebarState, isMobile } = useSidebar();
+  const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
   const currentPageTitle = pageTitles[pathname] || 'OctaVision'; // Get title based on path
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Loading...</p>
+      <div className="flex h-screen items-center justify-center w-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -200,7 +203,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       <div className="flex-1 flex flex-col">
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
-            <SidebarTrigger variant="outline" className="h-8 w-8 p-1.5" />
+            {/* Updated SidebarTrigger */}
+            <Button variant="outline" className="h-8 w-8 p-1.5 border" onClick={toggleSidebar}>
+              {sidebarState === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              <span className="sr-only">Toggle Sidebar</span>
+            </Button>
             <h1
               className="text-lg font-semibold ml-2"
               style={{ color: 'rgb(var(--octaview-primary))' }}
@@ -252,8 +259,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </Alert>
           </div>
         )}
-        {isApproved === true && <main className="p-8 flex-1 overflow-y-auto">{children}</main>}
-        {isApproved === null && <main className="p-8 flex-1 overflow-y-auto">{children}</main>}
+        {/* Ensure children are rendered within the main content area regardless of approval status for initial load/routing */}
+        <main className="p-8 flex-1 overflow-y-auto">
+          { (isLoading === false && isApproved === null) ? <div className="flex h-full items-center justify-center w-full"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div> : children }
+        </main>
+
       </div>
     </>
   );
