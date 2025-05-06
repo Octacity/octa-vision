@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -21,13 +22,13 @@ const SignInPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Added loading state
+  const [isLoading, setIsLoading] = useState(false); 
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    setIsLoading(true); // Set loading to true on submit
+    setIsLoading(true); 
 
     try {
       const auth = getAuth();
@@ -55,7 +56,7 @@ const SignInPage = () => {
           if (isApproved) {
             router.push("/dashboard");
           } else {
-            router.push("/dashboard");
+            router.push("/dashboard"); // User should still go to dashboard to see "not approved" message
           }
         } else {
           setErrorMessage("Organization not found.");
@@ -67,7 +68,7 @@ const SignInPage = () => {
       console.error("Error signing in:", error);
       setErrorMessage(error.message);
     } finally {
-      setIsLoading(false); // Set loading to false after operation
+      setIsLoading(false); 
     }
   };
 
@@ -94,7 +95,7 @@ const SignInPage = () => {
                 )}
 
                 <div>
-                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-0.5">Email</Label>
+                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-1">Email</Label>
                   <Input
                     type="email"
                     id="email"
@@ -105,7 +106,7 @@ const SignInPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-0.5">Password</Label>
+                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-1">Password</Label>
                   <Input
                     type="password"
                     id="password"
@@ -130,3 +131,4 @@ const SignInPage = () => {
 };
 
 export default SignInPage;
+

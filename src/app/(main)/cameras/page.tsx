@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/select';
 import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2 } from 'lucide-react';
 import RightDrawer from '@/components/RightDrawer'; // Import the RightDrawer component
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 const cameras = [
   {
@@ -279,26 +281,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
-// TooltipProvider and Tooltip components for better UX on icons
-const TooltipProvider = ({ children }: { children: React.ReactNode }) => {
-  // In a real app, this would come from @radix-ui/react-tooltip
-  return <>{children}</>;
-};
-
-const Tooltip = ({ children }: { children: React.ReactNode }) => {
-  return <div className="relative inline-block">{children}</div>;
-};
-
-const TooltipTrigger = ({ children, asChild }: { children: React.ReactNode, asChild?: boolean }) => {
-  if (asChild) return <>{children}</>;
-  return <span className="cursor-default">{children}</span>;
-};
-
-const TooltipContent = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div className="absolute z-10 invisible group-hover:visible bg-black text-white text-xs rounded py-1 px-2 bottom-full left-1/2 transform -translate-x-1/2 mb-2 whitespace-nowrap">
-      {children}
-    </div>
-  );
-};

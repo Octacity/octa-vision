@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -24,7 +25,7 @@ const AccountPage: NextPage = () => {
             <CardTitle>Profile Information</CardTitle>
             <CardDescription>View and update your personal details.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6"> {/* Changed space-y-4 to space-y-6 */}
             <div className="flex items-center space-x-4">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint="profile picture" />
@@ -53,7 +54,7 @@ const AccountPage: NextPage = () => {
             <CardTitle>Security</CardTitle>
             <CardDescription>Manage your account security settings.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6"> {/* Changed space-y-4 to space-y-6 for consistency, though it might be more specific here */}
             <div>
               <Label htmlFor="current-password">Current Password</Label>
               <Input id="current-password" type="password" />

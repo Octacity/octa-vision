@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -26,13 +27,13 @@ const SignUpPage = () => {
   const [billingAddress, setBillingAddress] = useState("");
   const [organizationDescription, setOrganizationDescription] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Added loading state
+  const [isLoading, setIsLoading] = useState(false); 
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    setIsLoading(true); // Set loading to true on submit
+    setIsLoading(true); 
 
     try {
       const auth = getAuth();
@@ -56,8 +57,9 @@ const SignUpPage = () => {
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
-        organizationId: orgRef.id, // Reference to the organization
-        role: 'user-admin', // Default role for new users
+        organizationId: orgRef.id, 
+        role: 'user-admin', 
+        createdAt: serverTimestamp(),
       });
 
       router.push("/dashboard");
@@ -65,7 +67,7 @@ const SignUpPage = () => {
       console.error("Error signing up:", error);
       setErrorMessage(error.message);
     } finally {
-      setIsLoading(false); // Set loading to false after operation
+      setIsLoading(false); 
     }
   };
 
@@ -92,7 +94,7 @@ const SignUpPage = () => {
                 )}
 
                 <div>
-                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-0.5">Email</Label>
+                  <Label htmlFor="email" className="block text-left text-muted-foreground mb-1">Email</Label>
                   <Input
                     type="email"
                     id="email"
@@ -103,7 +105,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-0.5">Password</Label>
+                  <Label htmlFor="password" className="block text-left text-muted-foreground mb-1">Password</Label>
                   <Input
                     type="password"
                     id="password"
@@ -114,7 +116,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationName" className="block text-left text-muted-foreground mb-0.5">Organization Name</Label>
+                  <Label htmlFor="organizationName" className="block text-left text-muted-foreground mb-1">Organization Name</Label>
                   <Input
                     type="text"
                     id="organizationName"
@@ -125,7 +127,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-0.5">Organization Phone</Label>
+                  <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-1">Organization Phone</Label>
                   <Input
                     type="tel"
                     id="organizationPhone"
@@ -136,7 +138,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="billingAddress" className="block text-left text-muted-foreground mb-0.5">Billing Address</Label>
+                  <Label htmlFor="billingAddress" className="block text-left text-muted-foreground mb-1">Billing Address</Label>
                   <Textarea
                     id="billingAddress"
                     value={billingAddress}
@@ -146,7 +148,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-0.5">Organization Description</Label>
+                  <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-1">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
                     value={organizationDescription}
@@ -170,3 +172,4 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
+
