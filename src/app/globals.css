@@ -37,8 +37,8 @@ body {
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent: 172 61% 38%; /* Teal for active/hover background */
+    --sidebar-accent-foreground: 0 0% 100%; /* White for active/hover text/icon */
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
@@ -75,8 +75,8 @@ body {
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-accent: 172 61% 38%; /* Teal for active/hover background */
+    --sidebar-accent-foreground: 0 0% 100%; /* White for active/hover text/icon */
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
@@ -91,33 +91,4 @@ body {
     background-color: rgb(var(--octaview-secondary));
     color: rgb(var(--octaview-primary));
   }
-}
-
-/* Floating Label Styles */
-.form-item-floating-label {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  font-size: 0.8rem;
-  color: hsl(var(--muted-foreground));
-  transition: all 0.2s ease-in-out;
-  pointer-events: none;
-}
-
-.form-item-floating-label-focused {
-  top: -0.5rem;
-  left: 0.5rem;
-  font-size: 0.7rem;
-  color: hsl(var(--primary));
-  background-color: hsl(var(--background));
-  padding: 0 0.25rem;
-}
-
-.form-item-input:not(:placeholder-shown) + .form-item-floating-label {
-  top: -0.5rem;
-  left: 0.5rem;
-  font-size: 0.7rem;
-  color: hsl(var(--primary));
-  background-color: hsl(var(--background));
-  padding: 0 0.25rem;
 }

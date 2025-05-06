@@ -110,8 +110,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }, []);
 
   const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
-  const currentPageTitle = pageTitles[pathname] || 'OctaVision'; // Get title based on path
-
+  const currentPageTitle = pageTitles[pathname] || 'OctaVision'; 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center w-full">
@@ -129,7 +128,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             className="text-lg font-semibold"
             style={{ color: 'rgb(var(--octaview-primary))' }}
           >
-            {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'}
+            {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'} 
           </Link>
         </SidebarHeader>
         <SidebarContent>
