@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -6,7 +7,8 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from 'next/image';
-import bannerImage from '@/assets/banner.jpg'; // Corrected import path
+import bannerImage from '@/assets/banner.jpg'; 
+import '@/firebase/firebase'; // Ensure Firebase is initialized
 
 const LandingPage = () => {
   const router = useRouter();
@@ -41,7 +43,7 @@ const LandingPage = () => {
             </Button>
           </Link>
           <Link href="/signup">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/80"> {/* Adjusted hover for primary button to be slightly darker primary */}
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/80">
               Sign Up
             </Button>
           </Link>
@@ -85,7 +87,7 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* Features Section (Optional) */}
+      {/* Features Section */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-8 text-center">
           <h2 className="text-3xl font-bold mb-12" style={{ color: "rgb(var(--octaview-primary))" }}>
