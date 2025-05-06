@@ -195,7 +195,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
-                {userRole === 'user_admin' && (
+                {userRole === 'user-admin' && (
                   <SidebarMenuItem>
                     <Link href="/organization-users" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
@@ -205,7 +205,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     </Link>
                   </SidebarMenuItem>
                 )}
-                {userRole === 'system_admin' && (
+                {userRole === 'system-admin' && (
                   <SidebarMenuItem>
                     <Link href="/system-admin" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname === '/system-admin'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
