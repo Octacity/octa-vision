@@ -5,7 +5,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import type { VariantProps} from "class-variance-authority";
 import { cva } from "class-variance-authority"
-import { PanelLeft, ArrowLeft, Menu, ArrowRight } from "lucide-react" // Added ArrowRight
+import { PanelLeft, ArrowLeft, Menu, ArrowRight } from "lucide-react" 
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -20,8 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-// Renamed import to avoid conflict with the local useSidebar hook
-import { useSidebar as useSidebarContextHook } from "@/hooks/use-sidebar-provider"; 
+// Removed problematic import: import { useSidebar as useSidebarContextHook } from "@/hooks/use-sidebar"; 
 
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -171,7 +170,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebarContextHook() // Use the renamed hook
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebar() 
 
     if (collapsible === "none") {
       return (
@@ -277,7 +276,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar, state, isMobile } = useSidebarContextHook() // Use the renamed hook
+  const { toggleSidebar, state, isMobile } = useSidebar() 
 
   return (
     <Button
@@ -285,14 +284,13 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="outline"
       size="icon"
-      className={cn("h-8 w-8 p-1.5 border", className)} // Added border for consistency
+      className={cn("h-8 w-8 p-1.5 border", className)} 
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-       {/* Updated icon logic */}
       {state === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
@@ -304,7 +302,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebarContextHook() // Use the renamed hook
+  const { toggleSidebar } = useSidebar() 
 
   return (
     <button
@@ -514,14 +512,14 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
-  const { state } = useSidebarContextHook() // Use the renamed hook
+  const { state } = useSidebar() 
   return (
     <li
       ref={ref}
       data-sidebar="menu-item"
       className={cn(
         "group/menu-item relative flex flex-col",
-        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', // Apply top margin when collapsed
+        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', 
         className
         )}
       {...props}
@@ -540,10 +538,10 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))] hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm py-3", // Default padding and height
+        default: "h-10 text-sm py-3", 
         sm: "h-9 text-xs py-3",
         lg: "h-12 text-sm py-3",
-        icon: "h-8 w-8 p-1.5 justify-center", // Ensure icon is centered, adjust padding as needed
+        icon: "h-8 w-8 p-1.5 justify-center", 
       },
     },
     defaultVariants: {
@@ -575,13 +573,12 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state: sidebarState } = useSidebarContextHook() // Use the renamed hook
+    const { isMobile, state: sidebarState } = useSidebar() 
 
-    // Determine size based on sidebar state and mobile view
+    
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
     
-    // Determine padding based on sidebar state and mobile view
-    // When collapsed and not mobile, use padding for 'icon' size. Otherwise, use 'px-3'.
+    
     const paddingClass = sidebarState === 'collapsed' && !isMobile ? 'p-1.5' : 'px-3';
 
 
@@ -589,11 +586,11 @@ const SidebarMenuButton = React.forwardRef<
       <Comp
         ref={ref}
         data-sidebar="menu-button"
-        data-size={size} // Use the dynamically determined size
+        data-size={size} 
         data-active={isActive}
         className={cn(
-          sidebarMenuButtonVariants({ variant, size }), // Pass determined size to variants
-          paddingClass, // Apply dynamic padding
+          sidebarMenuButtonVariants({ variant, size }), 
+          paddingClass, 
           className
         )}
         {...props}
