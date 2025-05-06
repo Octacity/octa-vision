@@ -58,7 +58,7 @@ const SignUpPage = () => {
       await setDoc(doc(db, "users", user.uid), {
         email: email,
         organizationId: orgRef.id, 
-        role: 'user-admin', 
+        role: 'user_admin', // Standardized to user_admin
         createdAt: serverTimestamp(),
       });
 
@@ -74,8 +74,8 @@ const SignUpPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Sign Up for <span className="text-accent">OctaVision</span>
+        <h1 className="text-3xl font-bold" style={{ color: 'rgb(var(--octaview-primary))' }}>
+          Sign Up for <span style={{ color: 'rgb(var(--octaview-accent))' }}>OctaVision</span>
         </h1>
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
@@ -157,7 +157,7 @@ const SignUpPage = () => {
                   />
                 </div>
 
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/80">
                   {isLoading ? "Signing Up..." : "Sign Up"}
                 </Button>
               </form>
@@ -166,10 +166,9 @@ const SignUpPage = () => {
         </div>
       </main>
 
-      <footer className="flex items-center justify-center w-full border-t"></footer>
+      <footer className="flex items-center justify-center w-full h-20 border-t"></footer>
     </div>
   );
 };
 
 export default SignUpPage;
-
