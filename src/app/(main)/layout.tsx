@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -20,7 +19,8 @@ import {
   Bell,
   Menu,
   ArrowLeft,
-  Loader2, // Added Loader2
+  ArrowRight, // Added ArrowRight
+  Loader2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
+  // SidebarTrigger, // SidebarTrigger is part of the Sidebar component itself if needed, but here we use a custom button
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Keep for unapproved message
@@ -204,7 +204,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <div className="flex items-center">
             {/* Updated SidebarTrigger */}
             <Button variant="outline" className="h-8 w-8 p-1.5 border" onClick={toggleSidebar}>
-              {sidebarState === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {sidebarState === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
             <h1
