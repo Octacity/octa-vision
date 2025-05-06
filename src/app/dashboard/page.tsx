@@ -224,8 +224,8 @@ const DashboardPageContent = () => {
             </h1>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="icon">
-              <Bell className="h-5 w-5" />
+            <Button variant="outline" size="icon" className="h-8 w-8 p-0">
+              <Bell className="h-4 w-4" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
