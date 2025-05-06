@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -7,19 +8,19 @@ import { db } from '@/firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation'; // Import usePathname
+import { usePathname } from 'next/navigation'; 
 import {
   Settings,
   Users,
   Activity,
   Film,
   Home,
-  Camera as CameraIcon, // Renamed to avoid conflict
+  Camera as CameraIcon, 
   CircleUserRound,
   Bell,
   Menu,
   ArrowLeft,
-  ArrowRight, // Added ArrowRight
+  ArrowRight, 
   Loader2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -39,10 +40,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  // SidebarTrigger, // SidebarTrigger is part of the Sidebar component itself if needed, but here we use a custom button
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Keep for unapproved message
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; 
+import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
+import NotificationDrawer from '@/components/NotificationDrawer';
+
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -62,25 +65,22 @@ const pageTitles: Record<string, string> = {
 const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // const [isAdmin, setIsAdmin] = useState(false); // Keep if admin-specific UI is needed later
-  // const [userEmail, setUserEmail] = useState<string | null>(null); // Keep if needed later
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname(); 
+  const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
+  const currentPageTitle = pageTitles[pathname] || 'OctaVision'; 
+  const { openNotificationDrawer } = useNotificationDrawer();
+
 
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // setUserEmail(user.email);
         const userDoc = await getDoc(doc(db, 'users', user.uid));
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
           const organizationId = userData?.organizationId;
-          // const role = userData?.role;
-          // if (role === 'system_admin') {
-          //   setIsAdmin(true);
-          // }
-
+          
           if (organizationId) {
             const orgDoc = await getDoc(doc(db, 'organizations', organizationId));
             if (orgDoc.exists()) {
@@ -99,9 +99,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           setIsApproved(false);
         }
       } else {
-        setIsApproved(false); // No user, treat as not approved
-        // Optionally redirect to sign-in page
-        // router.push('/signin');
+        setIsApproved(false); 
       }
       setIsLoading(false);
     });
@@ -109,8 +107,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     return () => unsubscribe();
   }, []);
 
-  const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
-  const currentPageTitle = pageTitles[pathname] || 'OctaVision'; 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center w-full">
@@ -202,7 +198,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       <div className="flex-1 flex flex-col">
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
-            {/* Updated SidebarTrigger */}
             <Button variant="outline" className="h-8 w-8 p-1.5 border" onClick={toggleSidebar}>
               {sidebarState === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
               <span className="sr-only">Toggle Sidebar</span>
@@ -215,7 +210,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </h1>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="icon" className="h-8 w-8 p-0">
+            <Button variant="outline" size="icon" className="h-8 w-8 p-0" onClick={() => openNotificationDrawer()}>
               <Bell className="h-4 w-4" />
             </Button>
             <DropdownMenu>
@@ -240,7 +235,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Link href="/logout">Logout</Link> {/* Implement logout functionality */}
+                  <Link href="/logout">Logout</Link> 
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -258,11 +253,10 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </Alert>
           </div>
         )}
-        {/* Ensure children are rendered within the main content area regardless of approval status for initial load/routing */}
         <main className="p-8 flex-1 overflow-y-auto">
           { (isLoading === false && isApproved === null) ? <div className="flex h-full items-center justify-center w-full"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div> : children }
         </main>
-
+         <NotificationDrawer />
       </div>
     </>
   );
@@ -270,11 +264,13 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen">
-        <MainLayoutContent>{children}</MainLayoutContent>
-      </div>
-    </SidebarProvider>
+    <NotificationDrawerProvider>
+      <SidebarProvider>
+        <div className="flex h-screen">
+          <MainLayoutContent>{children}</MainLayoutContent>
+        </div>
+      </SidebarProvider>
+    </NotificationDrawerProvider>
   );
 };
 

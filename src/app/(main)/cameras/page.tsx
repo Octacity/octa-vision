@@ -22,12 +22,14 @@ import {
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond, Bot, Send } from 'lucide-react'; // Renamed AlertCircle to AlertCircleIcon, Added Diamond, Bot, Send
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond, Bot, Send } from 'lucide-react'; 
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 
-interface Camera {
+
+export interface Camera { // Exporting Camera interface
   id: string;
   name: string;
   imageUrl: string;
@@ -158,6 +160,7 @@ const CamerasPage: NextPage = () => {
   const [currentChatMessage, setCurrentChatMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const { openNotificationDrawer } = useNotificationDrawer();
 
 
   const formStep1 = useForm<AddCameraStep1Values>({
@@ -216,11 +219,15 @@ const CamerasPage: NextPage = () => {
         sender: 'ai',
         text: `You can now chat with ${camera.name}. Do you want to know about the alerts for the day?`,
         timestamp: new Date(),
-        avatar: undefined, // AI will use Bot icon
+        avatar: undefined, 
       }
     ]);
     setCurrentChatMessage('');
     setIsDrawerOpen(true);
+  };
+
+  const handleNotificationIconClick = (cameraId: string) => {
+    openNotificationDrawer(cameraId);
   };
 
   const handleDrawerClose = () => {
@@ -249,7 +256,6 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data:", data);
     setIsProcessingStep2(true);
     setDrawerStep(2);
-    // Simulate API calls for step 2
     await new Promise(resolve => setTimeout(resolve, 1500));
     setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -309,14 +315,13 @@ const CamerasPage: NextPage = () => {
       sender: 'user',
       text: currentChatMessage,
       timestamp: new Date(),
-      avatar: 'https://picsum.photos/id/1005/50/50', // Placeholder user avatar
+      avatar: 'https://picsum.photos/id/1005/50/50', 
     };
 
     setChatMessages(prev => [...prev, userMessage]);
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
-    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
@@ -918,7 +923,7 @@ const CamerasPage: NextPage = () => {
                     </TooltipProvider>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleNotificationIconClick(camera.id)}>
                       <Bell className="w-3.5 h-3.5" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleChatIconClick(camera)}>
@@ -946,4 +951,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
