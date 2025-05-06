@@ -19,6 +19,7 @@ interface RightDrawerProps {
   title: string;
   children: ReactNode;
   footerContent?: ReactNode;
+  noPadding?: boolean; // Added noPadding prop
 }
 
 const RightDrawer = ({
@@ -27,6 +28,7 @@ const RightDrawer = ({
   title,
   children,
   footerContent,
+  noPadding = false, // Default to false
 }: RightDrawerProps) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -34,13 +36,14 @@ const RightDrawer = ({
         <SheetHeader className="p-6 border-b">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
-        <ScrollArea className="flex-grow p-6">
+        <ScrollArea className={`flex-grow ${noPadding ? '' : 'p-6'}`}>
             {children}
         </ScrollArea>
         {footerContent && (
-          <SheetFooter className="p-6 border-t">
+          // Ensure footer still has padding if it's a separate component from the chat input
+          <div className={`p-0 ${noPadding && footerContent ? '' : 'border-t'}`}> 
             {footerContent}
-          </SheetFooter>
+          </div>
         )}
       </SheetContent>
     </Sheet>
