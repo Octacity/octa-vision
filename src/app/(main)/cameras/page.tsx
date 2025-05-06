@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2 } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle } from 'lucide-react';
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -108,6 +108,21 @@ const addCameraStep1Schema = z.object({
 
 type AddCameraStep1Values = z.infer<typeof addCameraStep1Schema>;
 
+const addCameraStep2Schema = z.object({
+    sceneDescription: z.string().min(1, "Scene description is required."),
+    // Add other step 2 fields if any
+});
+type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
+
+const addCameraStep3Schema = z.object({
+    videoChunks: z.string().optional(),
+    numFrames: z.string().optional(),
+    videoOverlap: z.string().optional(),
+    totalFramesPerDay: z.string().optional(),
+});
+type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
+
+
 const CamerasPage: NextPage = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerStep, setDrawerStep] = useState(1);
@@ -115,10 +130,8 @@ const CamerasPage: NextPage = () => {
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
   const [isProcessingStep2, setIsProcessingStep2] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
-  const [sceneDescription, setSceneDescription] = useState<string | null>(null);
-
-
-  const form = useForm<AddCameraStep1Values>({
+  // Step 1 form
+  const formStep1 = useForm<AddCameraStep1Values>({
     resolver: zodResolver(addCameraStep1Schema),
     defaultValues: {
       rtspUrl: '',
@@ -131,24 +144,50 @@ const CamerasPage: NextPage = () => {
     },
   });
 
+  // Step 2 form
+  const formStep2 = useForm<AddCameraStep2Values>({
+    resolver: zodResolver(addCameraStep2Schema),
+    defaultValues: {
+        sceneDescription: '',
+    },
+  });
+
+  // Step 3 form
+  const formStep3 = useForm<AddCameraStep3Values>({
+    resolver: zodResolver(addCameraStep3Schema),
+    defaultValues: {
+        videoChunks: '',
+        numFrames: '',
+        videoOverlap: '',
+        totalFramesPerDay: '',
+    }
+  });
+
+
   const handleAddCameraClick = () => {
-    form.reset();
+    formStep1.reset();
+    formStep2.reset();
+    formStep3.reset();
     setDrawerStep(1);
     setIsDrawerOpen(true);
     setShowNewGroupForm(false);
     setSelectedGroup(undefined);
+    setSnapshotUrl(null);
+    // setSceneDescription(null); // sceneDescription is part of formStep2 now
   };
 
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
     setShowNewGroupForm(false);
     setDrawerStep(1); // Reset step on close
-    form.reset();
+    formStep1.reset();
+    formStep2.reset();
+    formStep3.reset();
   };
   
   const handleGroupChange = (value: string) => {
     setSelectedGroup(value);
-    form.setValue('group', value);
+    formStep1.setValue('group', value);
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
     } else {
@@ -161,36 +200,45 @@ const CamerasPage: NextPage = () => {
     setIsProcessingStep2(true);
     setDrawerStep(2);
     // Simulate API calls for step 2
-    // 1. Testing connection (dummy delay)
     await new Promise(resolve => setTimeout(resolve, 1500));
-    // 2. Getting snapshot (dummy delay and set image)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); // Placeholder snapshot
-    // 3. Generating scene description (dummy delay and set description)
+    setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
     await new Promise(resolve => setTimeout(resolve, 2000));
-    setSceneDescription('This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
+    formStep2.setValue('sceneDescription', 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
     setIsProcessingStep2(false);
   };
 
   const handleStep2Back = () => {
     setDrawerStep(1);
     setSnapshotUrl(null);
-    setSceneDescription(null);
+    formStep2.reset();
   };
 
-  const handleStep2Save = () => {
+  const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
+    console.log("Step 2 Data:", data);
+    setDrawerStep(3);
+  };
+  
+  const handleStep3Back = () => {
+      setDrawerStep(2);
+  };
+
+  const onSubmitStep3: SubmitHandler<AddCameraStep3Values> = async (data) => {
     console.log("Saving camera...");
-    // Actual save logic here
+    console.log("Step 1 Data (final):", formStep1.getValues());
+    console.log("Step 2 Data (final):", formStep2.getValues());
+    console.log("Step 3 Data (final):", data);
+    // Actual save logic here, combine data from all steps
     handleDrawerClose();
   };
+
 
   const renderDrawerContent = () => {
     if (drawerStep === 1) {
       return (
-        <Form {...form}>
-          <form id="add-camera-form-step1" onSubmit={form.handleSubmit(onSubmitStep1)} className="space-y-8">
+        <Form {...formStep1}>
+          <form id="add-camera-form-step1" onSubmit={formStep1.handleSubmit(onSubmitStep1)} className="space-y-8">
             <FormField
-              control={form.control}
+              control={formStep1.control}
               name="rtspUrl"
               render={({ field }) => (
                 <FormItem className="px-[5px]">
@@ -205,7 +253,7 @@ const CamerasPage: NextPage = () => {
               )}
             />
             <FormField
-              control={form.control}
+              control={formStep1.control}
               name="cameraName"
               render={({ field }) => (
                 <FormItem className="px-[5px]">
@@ -220,7 +268,7 @@ const CamerasPage: NextPage = () => {
               )}
             />
             <FormField
-              control={form.control}
+              control={formStep1.control}
               name="group"
               render={({ field }) => (
                 <FormItem className="px-[5px]">
@@ -256,7 +304,7 @@ const CamerasPage: NextPage = () => {
                           <Plus className="w-4 h-4 mr-2"/> Add a new group for your cameras
                       </h4>
                       <FormField
-                        control={form.control}
+                        control={formStep1.control}
                         name="newGroupName"
                         render={({ field }) => (
                             <FormItem>
@@ -271,7 +319,7 @@ const CamerasPage: NextPage = () => {
                         )}
                       />
                       <FormField
-                        control={form.control}
+                        control={formStep1.control}
                         name="groupDescription"
                         render={({ field }) => (
                             <FormItem>
@@ -286,7 +334,7 @@ const CamerasPage: NextPage = () => {
                         )}
                       />
                       <FormField
-                        control={form.control}
+                        control={formStep1.control}
                         name="groupAIDetection"
                         render={({ field }) => (
                             <FormItem>
@@ -301,7 +349,7 @@ const CamerasPage: NextPage = () => {
                         )}
                         />
                       <FormField
-                        control={form.control}
+                        control={formStep1.control}
                         name="alertClasses"
                         render={({ field }) => (
                             <FormItem>
@@ -324,67 +372,148 @@ const CamerasPage: NextPage = () => {
       );
     } else if (drawerStep === 2) {
       return (
-        <div className="space-y-6 px-[5px] text-center">
-          <div className="flex flex-col items-center space-y-2">
-            <p className="text-sm text-muted-foreground">Testing connection...</p>
-            {!snapshotUrl && !isProcessingStep2 && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-            {snapshotUrl && <CheckCircle className="h-5 w-5 text-green-500" />}
-          </div>
-          <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
-          
-          <div className="flex flex-col items-center space-y-2">
-            <p className="text-sm text-muted-foreground">Getting Snapshot...</p>
-            {!snapshotUrl && isProcessingStep2 && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-             {snapshotUrl && <CheckCircle className="h-5 w-5 text-green-500" />}
-          </div>
+        <Form {...formStep2}>
+            <form id="add-camera-form-step2" onSubmit={formStep2.handleSubmit(onSubmitStep2)} className="space-y-6 px-[5px] text-center">
+            <div className="flex flex-col items-center space-y-2">
+                <p className="text-sm text-muted-foreground">Testing connection...</p>
+                {!snapshotUrl && !isProcessingStep2 && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+                {snapshotUrl && <CheckCircle className="h-5 w-5 text-green-500" />}
+            </div>
+            <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
+            
+            <div className="flex flex-col items-center space-y-2">
+                <p className="text-sm text-muted-foreground">Getting Snapshot...</p>
+                {!snapshotUrl && isProcessingStep2 && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+                {snapshotUrl && <CheckCircle className="h-5 w-5 text-green-500" />}
+            </div>
 
-          {snapshotUrl && (
-            <Image
-              src={snapshotUrl}
-              alt="Camera Snapshot"
-              width={400}
-              height={300}
-              className="rounded-md border object-cover aspect-video w-full"
-              data-ai-hint="art gallery exhibition"
+            {snapshotUrl && (
+                <Image
+                src={snapshotUrl}
+                alt="Camera Snapshot"
+                width={400}
+                height={300}
+                className="rounded-md border object-cover aspect-video w-full"
+                data-ai-hint="art gallery exhibition"
+                />
+            )}
+            {!snapshotUrl && isProcessingStep2 && (
+                <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            )}
+
+
+            <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
+            
+            <div className="flex flex-col items-center space-y-2">
+                <p className="text-sm text-muted-foreground">Generating Scene Dense Description (for prompt)</p>
+                {isProcessingStep2 && !formStep2.getValues('sceneDescription') && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+                {formStep2.getValues('sceneDescription') && <CheckCircle className="h-5 w-5 text-green-500" />}
+            </div>
+
+            <FormField
+                control={formStep2.control}
+                name="sceneDescription"
+                render={({ field }) => (
+                    <FormItem className="text-left">
+                        <FormLabel className="flex items-center">
+                            <Wand2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                            Explain the scene?
+                        </FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                            <Textarea
+                                placeholder={isProcessingStep2 && !field.value ? "AI is generating description..." : "Generated Dense Description of scene"}
+                                {...field}
+                                rows={3}
+                                readOnly={isProcessingStep2 && !field.value}
+                                className="pr-10"
+                            />
+                            <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7">
+                                <Mic className="w-4 h-4" />
+                            </Button>
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
             />
-          )}
-          {!snapshotUrl && isProcessingStep2 && (
-             <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          )}
-
-
-          <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
-          
-          <div className="flex flex-col items-center space-y-2">
-            <p className="text-sm text-muted-foreground">Generating Scene Dense Description (for prompt)</p>
-            {isProcessingStep2 && !sceneDescription && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-            {sceneDescription && <CheckCircle className="h-5 w-5 text-green-500" />}
-          </div>
-
-          <div className="space-y-2 text-left">
-            <Label htmlFor="scene-explanation" className="flex items-center">
-              <Wand2 className="w-4 h-4 mr-2 text-muted-foreground" />
-              Explain the scene?
-            </Label>
-            <div className="relative">
-              <Textarea
-                id="scene-explanation"
-                placeholder={isProcessingStep2 && !sceneDescription ? "AI is generating description..." : "Generated Dense Description of scene"}
-                value={sceneDescription || ""}
-                onChange={(e) => setSceneDescription(e.target.value)}
-                rows={3}
-                readOnly={isProcessingStep2 && !sceneDescription}
-                className="pr-10"
-              />
-              <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7">
-                <Mic className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+            </form>
+        </Form>
       );
+    } else if (drawerStep === 3) {
+        return (
+            <Form {...formStep3}>
+                <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6 px-[5px]">
+                    <h3 className="text-lg font-semibold text-foreground">Video Processing Settings</h3>
+                    <FormField
+                        control={formStep3.control}
+                        name="videoChunks"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center">
+                                    <Film className="w-4 h-4 mr-2 text-muted-foreground" />
+                                    Video Chunks (seconds)
+                                </FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 10" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={formStep3.control}
+                        name="numFrames"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center">
+                                    <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
+                                    No. of Frames (per chunk)
+                                </FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 5" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={formStep3.control}
+                        name="videoOverlap"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center">
+                                    <AlertCircle className="w-4 h-4 mr-2 text-muted-foreground" /> {/* Using AlertCircle as placeholder */}
+                                    Video Overlap (seconds)
+                                </FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 2" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={formStep3.control}
+                        name="totalFramesPerDay"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center">
+                                    <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
+                                    Total no. of frames processed in a day
+                                </FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 10000" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </form>
+            </Form>
+        );
     }
     return null;
   };
@@ -394,19 +523,32 @@ const CamerasPage: NextPage = () => {
       return (
         <>
           <Button variant="outline" onClick={handleDrawerClose}>Cancel</Button>
-          <Button type="submit" form="add-camera-form-step1">Next</Button>
+          <Button type="submit" form="add-camera-form-step1" disabled={formStep1.formState.isSubmitting}>
+            {formStep1.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Next
+          </Button>
         </>
       );
     } else if (drawerStep === 2) {
       return (
         <>
           <Button variant="outline" onClick={handleStep2Back}>Back</Button>
-          <Button onClick={handleStep2Save} disabled={isProcessingStep2}>
-            {isProcessingStep2 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Save Camera
+          <Button type="submit" form="add-camera-form-step2" disabled={isProcessingStep2 || formStep2.formState.isSubmitting}>
+            {(isProcessingStep2 || formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Next
           </Button>
         </>
       );
+    } else if (drawerStep === 3) {
+        return (
+            <>
+            <Button variant="outline" onClick={handleStep3Back}>Back</Button>
+            <Button type="submit" form="add-camera-form-step3" disabled={formStep3.formState.isSubmitting}>
+                {formStep3.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Camera
+            </Button>
+            </>
+        );
     }
     return null;
   };
@@ -497,7 +639,11 @@ const CamerasPage: NextPage = () => {
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={handleDrawerClose}
-        title={drawerStep === 1 ? "Add New Camera - Step 1" : "Add New Camera - Step 2"}
+        title={
+            drawerStep === 1 ? "Add New Camera - Step 1" :
+            drawerStep === 2 ? "Add New Camera - Step 2" :
+            "Add New Camera - Step 3"
+        }
         footerContent={drawerFooter()}
       >
         {renderDrawerContent()}
@@ -507,3 +653,6 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
+
+    
