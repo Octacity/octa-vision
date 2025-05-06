@@ -204,22 +204,22 @@ const CamerasPage: NextPage = () => {
         title="Add New Camera"
         footerContent={drawerFooter}
       >
-        <form id="add-camera-form" className="space-y-8"> {/* Changed space-y-6 to space-y-8 */}
-          <div>
+        <form id="add-camera-form" className="space-y-8">
+          <div className="px-[5px]">
             <Label htmlFor="rtspUrl" className="flex items-center mb-1.5">
                 <Video className="w-4 h-4 mr-2 text-muted-foreground"/> RTSP URL
             </Label>
             <Input id="rtspUrl" name="rtspUrl" placeholder="rtsp://..." />
           </div>
 
-          <div>
+          <div className="px-[5px]">
             <Label htmlFor="cameraName" className="flex items-center mb-1.5">
                 <Edit3 className="w-4 h-4 mr-2 text-muted-foreground"/> Name
             </Label>
             <Input id="cameraName" name="cameraName" placeholder="e.g., Front Door Camera" />
           </div>
           
-          <div>
+          <div className="px-[5px]">
             <Label htmlFor="group" className="flex items-center mb-1.5">
                 <Folder className="w-4 h-4 mr-2 text-muted-foreground"/> Group
             </Label>
@@ -246,25 +246,25 @@ const CamerasPage: NextPage = () => {
                     <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center">
                         <Plus className="w-4 h-4 mr-2"/> Add a new group for your cameras
                     </h4>
-                    <div>
+                    <div className="px-[5px]">
                         <Label htmlFor="newGroupName" className="flex items-center mb-1.5">
                              <Edit3 className="w-4 h-4 mr-2 text-muted-foreground"/>Group Name
                         </Label>
                         <Input id="newGroupName" name="newGroupName" placeholder="e.g., Warehouse Zone 1" />
                     </div>
-                    <div>
+                    <div className="px-[5px]">
                         <Label htmlFor="groupDescription" className="flex items-center mb-1.5">
                             <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground"/>What does the cameras in this group do?
                         </Label>
                         <Textarea id="groupDescription" name="groupDescription" placeholder="e.g., Monitors the main entrance and exit points." />
                     </div>
-                     <div>
+                     <div className="px-[5px]">
                         <Label htmlFor="groupAIDetection" className="flex items-center mb-1.5">
                             <Settings2 className="w-4 h-4 mr-2 text-muted-foreground"/>What does the things you want the AI to detect from this group of cameras?
                         </Label>
                         <Textarea id="groupAIDetection" name="groupAIDetection" placeholder="e.g., Detect unauthorized personnel, loitering, package theft." />
                     </div>
-                     <div>
+                     <div className="px-[5px]">
                         <Label htmlFor="alertClasses" className="flex items-center mb-1.5">
                             <ShieldAlert className="w-4 h-4 mr-2 text-muted-foreground"/>Alert Classes
                         </Label>
