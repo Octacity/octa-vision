@@ -22,6 +22,7 @@ import {
   CheckCircle,
   Clock,
   Bell,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
@@ -181,26 +182,26 @@ const DashboardPageContent = () => {
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
                 <PanelLeft className="h-4 w-4" />
                 {state === 'expanded' && <span>Cameras</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
                 <BarChart4 className="h-4 w-4" />
                 {state === 'expanded' && <span>Report</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
                 <InboxIcon className="h-4 w-4" />
                 {state === 'expanded' && <span>Inbox</span>}
                 {state === 'expanded' && <SidebarMenuBadge>9</SidebarMenuBadge>}
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton size={state === 'collapsed' ? 'icon' : 'default'}>
+              <SidebarMenuButton size={state === 'collapsed' && !useSidebar().isMobile ? 'icon' : 'default'}>
                 <Settings className="h-4 w-4" />
                 {state === 'expanded' && <span>Settings</span>}
               </SidebarMenuButton>
@@ -272,15 +273,19 @@ const DashboardPageContent = () => {
                   </div>
                   <h3 className="text-sm font-semibold mt-2">{camera.name}</h3>
                   <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
-                    <span>15 min</span>
+                    <div className="flex items-center space-x-1">
+                      <span>15 min</span>
+                      <Clock className="w-3 h-3" />
+                    </div>
                     <div className="flex items-center space-x-2">
-                      <span>5</span>
-                      <Button variant="ghost" size="icon">
-                        <InboxIcon className="w-3 h-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Bookmark className="w-3 h-3" />
-                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <span>5</span>
+                        <Bell className="w-3 h-3" />
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span>5</span>
+                         <MessageSquare className="w-3 h-3" />
+                      </div>
                     </div>
                   </div>
                 </CardContent>
