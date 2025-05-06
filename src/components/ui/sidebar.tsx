@@ -23,7 +23,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "12rem" // Reduced from 14rem
+const SIDEBAR_WIDTH = "12rem"; // Reduced from 14rem
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -508,11 +508,16 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
+  const { state } = useSidebar();
   return (
     <li
       ref={ref}
       data-sidebar="menu-item"
-      className={cn("group/menu-item relative flex flex-col mx-3 my-1.5", className)}
+      className={cn(
+        "group/menu-item relative flex flex-col my-1.5",
+        state === 'expanded' ? 'mx-3' : 'mx-0 justify-center items-center',
+        className
+        )}
       {...props}
     />
   )
