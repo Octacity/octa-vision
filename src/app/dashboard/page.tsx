@@ -70,42 +70,51 @@ const cameras = [
   {
     name: 'Camera 1',
     imageUrl: 'https://picsum.photos/id/237/200/150',
+    dataAiHint: 'security camera',
   },
   {
     name: 'Camera 2',
     imageUrl: 'https://picsum.photos/id/238/200/150',
+    dataAiHint: 'office surveillance',
   },
   {
     name: 'Camera 3',
     imageUrl: 'https://picsum.photos/id/239/200/150',
+    dataAiHint: 'street view',
   },
   {
     name: 'Camera 4',
     imageUrl: 'https://picsum.photos/id/240/200/150',
+    dataAiHint: 'parking lot',
   },
   {
     name: 'Camera 5',
     imageUrl: 'https://picsum.photos/id/241/200/150',
+    dataAiHint: 'indoor retail',
   },
   {
     name: 'Camera 6',
     imageUrl: 'https://picsum.photos/id/242/200/150',
+    dataAiHint: 'warehouse aisle',
   },
   {
     name: 'Camera 7',
     imageUrl: 'https://picsum.photos/id/243/200/150',
+    dataAiHint: 'lobby entrance',
   },
   {
     name: 'Camera 8',
     imageUrl: 'https://picsum.photos/id/244/200/150',
+    dataAiHint: 'exterior building',
   },
   {
     name: 'Camera 9',
     imageUrl: 'https://picsum.photos/id/245/200/150',
+    dataAiHint: 'rooftop view',
   },
 ];
 
-const DashboardPage = () => {
+const DashboardPageContent = () => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -157,7 +166,7 @@ const DashboardPage = () => {
   const {state} = useSidebar();
 
   return (
-    <SidebarProvider>
+    <>
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <Link
@@ -170,26 +179,26 @@ const DashboardPage = () => {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="m-3">
               <SidebarMenuButton>
                 <PanelLeft className="h-4 w-4" />
                 <span>Cameras</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="m-3">
               <SidebarMenuButton>
                 <BarChart4 className="h-4 w-4" />
                 <span>Report</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="m-3">
               <SidebarMenuButton>
                 <InboxIcon className="h-4 w-4" />
                 <span>Inbox</span>
                 <SidebarMenuBadge>9</SidebarMenuBadge>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="m-3">
               <SidebarMenuButton>
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
@@ -201,9 +210,9 @@ const DashboardPage = () => {
           <div className="text-center text-xs">Version 3.0.0</div>
         </SidebarFooter>
       </Sidebar>
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         {/* App Bar */}
-        <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10">
+        <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
             <SidebarTrigger />
             <h1
@@ -220,11 +229,12 @@ const DashboardPage = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0 rounded-md">
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-8 w-8 rounded-md">
                     <AvatarImage
                       src="https://github.com/shadcn.png"
                       alt="@shadcn"
                       className="rounded-md"
+                      data-ai-hint="user avatar"
                     />
                     <AvatarFallback>CN</AvatarFallback>
                   </Avatar>
@@ -243,7 +253,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Main Content */}
-        <div className="p-8">
+        <div className="p-8 flex-1 overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {cameras.map((camera, index) => (
               <Card key={index}>
@@ -255,6 +265,7 @@ const DashboardPage = () => {
                       width={200}
                       height={150}
                       className="rounded-md aspect-video w-full"
+                      data-ai-hint={camera.dataAiHint}
                     />
                     <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500" />
                   </div>
@@ -276,6 +287,16 @@ const DashboardPage = () => {
             ))}
           </div>
         </div>
+      </div>
+    </>
+  );
+};
+
+const DashboardPage = () => {
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen">
+        <DashboardPageContent />
       </div>
     </SidebarProvider>
   );
