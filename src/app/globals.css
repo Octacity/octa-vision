@@ -33,14 +33,20 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    /* Global hover colors */
+    --hover-background: 172 61% 45%; /* Lighter teal for hover background */
+    --hover-foreground: 0 0% 100%; /* White for hover text/icon */
+
+    /* Sidebar specific colors */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 172 61% 38%; /* Teal for active background */
     --sidebar-accent-foreground: 0 0% 100%; /* White for active text/icon */
-    --sidebar-hover-background: 172 50% 45%; /* Slightly darker teal for hover background */
-    --sidebar-hover-foreground: 0 0% 100%; /* White for hover text/icon */
+    --sidebar-hover-background: var(--hover-background); /* Use global hover */
+    --sidebar-hover-foreground: var(--hover-foreground); /* Use global hover */
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
@@ -73,14 +79,20 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* Global hover colors */
+    --hover-background: 172 61% 30%; /* Darker teal for dark mode hover */
+    --hover-foreground: 0 0% 98%; /* Light text for dark mode hover */
+    
+    /* Sidebar specific colors */
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 172 61% 38%; /* Teal for active background */
     --sidebar-accent-foreground: 0 0% 100%; /* White for active text/icon */
-    --sidebar-hover-background: 172 50% 45%; /* Slightly darker teal for hover background */
-    --sidebar-hover-foreground: 0 0% 100%; /* White for hover text/icon */
+    --sidebar-hover-background: var(--hover-background); /* Use global hover */
+    --sidebar-hover-foreground: var(--hover-foreground); /* Use global hover */
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }

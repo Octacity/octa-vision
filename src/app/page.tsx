@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import Image from 'next/image';
-import bannerImage from '@/assets/banner.jpg';
+import bannerImage from '@/assets/banner.jpg'; // Corrected import path
 
 const LandingPage = () => {
   const router = useRouter();
@@ -36,12 +36,12 @@ const LandingPage = () => {
         </Link>
         <div className="flex items-center space-x-6">
           <Link href="/signin">
-            <Button variant="ghost" className="hover:bg-primary/10">
+            <Button variant="ghost" className="hover:bg-[hsl(var(--hover-background))] hover:text-[hsl(var(--hover-foreground))]">
               Sign In
             </Button>
           </Link>
           <Link href="/signup">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/80"> {/* Adjusted hover for primary button to be slightly darker primary */}
               Sign Up
             </Button>
           </Link>

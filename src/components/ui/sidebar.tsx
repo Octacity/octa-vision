@@ -5,7 +5,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import type { VariantProps} from "class-variance-authority";
 import { cva } from "class-variance-authority"
-import { PanelLeft, ArrowLeft, Menu } from "lucide-react"
+import { PanelLeft, ArrowLeft, Menu, ArrowRight } from "lucide-react" // Added ArrowRight
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -20,13 +20,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+// Renamed import to avoid conflict with the local useSidebar hook
+import { useSidebar as useSidebarContextHook } from "@/hooks/use-sidebar-provider"; 
 
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "12rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3.5rem"
+const SIDEBAR_WIDTH_ICON = "3.5rem" // Default collapsed width
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextType = {
@@ -50,7 +52,8 @@ export function useSidebar() {
   return context
 }
 
-const SidebarProvider = React.forwardRef<
+// This is the actual SidebarProvider component
+export const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
     defaultOpen?: boolean
@@ -148,6 +151,7 @@ const SidebarProvider = React.forwardRef<
 )
 SidebarProvider.displayName = "SidebarProvider"
 
+
 const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -167,7 +171,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebarContextHook() // Use the renamed hook
 
     if (collapsible === "none") {
       return (
@@ -273,7 +277,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar, state, isMobile } = useSidebar()
+  const { toggleSidebar, state, isMobile } = useSidebarContextHook() // Use the renamed hook
 
   return (
     <Button
@@ -281,13 +285,14 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="outline"
       size="icon"
-      className={cn("h-8 w-8 p-1.5 border", className)}
+      className={cn("h-8 w-8 p-1.5 border", className)} // Added border for consistency
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
+       {/* Updated icon logic */}
       {state === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
@@ -299,7 +304,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar } = useSidebarContextHook() // Use the renamed hook
 
   return (
     <button
@@ -509,14 +514,14 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
-  const { state } = useSidebar()
+  const { state } = useSidebarContextHook() // Use the renamed hook
   return (
     <li
       ref={ref}
       data-sidebar="menu-item"
       className={cn(
         "group/menu-item relative flex flex-col",
-        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5',
+        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', // Apply top margin when collapsed
         className
         )}
       {...props}
@@ -526,19 +531,19 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md text-left outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-hover-background hover:text-sidebar-hover-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-hover-background data-[state=open]:hover:text-sidebar-hover-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md text-left outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-[hsl(var(--sidebar-hover-background))] data-[state=open]:hover:text-[hsl(var(--sidebar-hover-foreground))] [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "hover:bg-sidebar-hover-background hover:text-sidebar-hover-foreground",
+        default: "hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))]",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-hover-background hover:text-sidebar-hover-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))] hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm py-3",
+        default: "h-10 text-sm py-3", // Default padding and height
         sm: "h-9 text-xs py-3",
         lg: "h-12 text-sm py-3",
-        icon: "h-8 w-8 p-1.5",
+        icon: "h-8 w-8 p-1.5 justify-center", // Ensure icon is centered, adjust padding as needed
       },
     },
     defaultVariants: {
@@ -570,20 +575,25 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state: sidebarState } = useSidebar();
+    const { isMobile, state: sidebarState } = useSidebarContextHook() // Use the renamed hook
 
+    // Determine size based on sidebar state and mobile view
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
+    
+    // Determine padding based on sidebar state and mobile view
+    // When collapsed and not mobile, use padding for 'icon' size. Otherwise, use 'px-3'.
     const paddingClass = sidebarState === 'collapsed' && !isMobile ? 'p-1.5' : 'px-3';
+
 
     const buttonContent = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
-        data-size={size}
+        data-size={size} // Use the dynamically determined size
         data-active={isActive}
         className={cn(
-          sidebarMenuButtonVariants({ variant, size }),
-          paddingClass,
+          sidebarMenuButtonVariants({ variant, size }), // Pass determined size to variants
+          paddingClass, // Apply dynamic padding
           className
         )}
         {...props}
@@ -762,11 +772,10 @@ export {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarProvider,
+  // SidebarProvider is exported above
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
   sidebarMenuButtonVariants,
   // useSidebar is already exported above
 }
-
