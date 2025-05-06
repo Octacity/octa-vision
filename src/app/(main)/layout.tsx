@@ -7,6 +7,7 @@ import { db } from '@/firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation'; // Import usePathname
 import {
   Settings,
   PanelLeft,
@@ -44,11 +45,23 @@ interface MainLayoutProps {
   children: ReactNode;
 }
 
+const pageTitles: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/cameras': 'Cameras',
+  '/groups': 'Groups',
+  '/monitor': 'Monitor',
+  '/videos': 'Videos',
+  '/settings': 'Settings',
+  '/account': 'My Account',
+};
+
+
 const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   // const [isAdmin, setIsAdmin] = useState(false); // Keep if admin-specific UI is needed later
   // const [userEmail, setUserEmail] = useState<string | null>(null); // Keep if needed later
+  const pathname = usePathname(); // Get current pathname
 
   useEffect(() => {
     const auth = getAuth();
@@ -94,6 +107,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }, []);
 
   const { state: sidebarState, isMobile } = useSidebar();
+  const currentPageTitle = pageTitles[pathname] || 'OctaVision'; // Get title based on path
 
   if (isLoading) {
     return (
@@ -191,8 +205,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               className="text-lg font-semibold ml-2"
               style={{ color: 'rgb(var(--octaview-primary))' }}
             >
-              {/* This title can be dynamic based on the current page */}
-              OctaVision
+              {currentPageTitle}
             </h1>
           </div>
           <div className="flex items-center space-x-4">
