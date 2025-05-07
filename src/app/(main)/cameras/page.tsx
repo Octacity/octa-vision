@@ -918,7 +918,7 @@ const CamerasPage: NextPage = () => {
   return (
     <div>
       <div className="flex justify-end items-center mb-6">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center space-x-2 sm:space-x-2 gap-y-2 justify-end">
           <Button onClick={handleAddCameraClick}>
             <Plus className="mr-2 h-4 w-4" /> Add Camera
           </Button>
