@@ -28,7 +28,7 @@ const SignUpPage = () => {
   const [organizationPhone, setOrganizationPhone] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [organizationDescription, setOrganizationDescription] = useState("");
-  const [needForOctaVision, setNeedForOctaVision] = useState(""); // New state for the new field
+  const [needForOctaVision, setNeedForOctaVision] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -63,8 +63,8 @@ const SignUpPage = () => {
         phone: organizationPhone,
         billingAddress: billingAddress,
         description: organizationDescription,
-        needForOctaVision: needForOctaVision, // Add the new field here
-        approved: false, // Default to not approved
+        needForOctaVision: needForOctaVision, 
+        approved: false, 
         createdAt: serverTimestamp(),
       });
 
@@ -103,8 +103,7 @@ const SignUpPage = () => {
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle className="text-2xl">Create Your Account</CardTitle>
-              <CardDescription>Enter your details to get started.</CardDescription>
+              {/* Removed CardTitle and CardDescription */}
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
@@ -133,7 +132,7 @@ const SignUpPage = () => {
                   <Input
                     type="password"
                     id="password"
-                    placeholder="Create a strong password"
+                    placeholder="Create a strong password (min. 6 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -183,7 +182,7 @@ const SignUpPage = () => {
                   <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-1">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
-                    placeholder="Describe your organization briefly"
+                    placeholder="Describe your organization and its primary activities"
                     value={organizationDescription}
                     onChange={(e) => setOrganizationDescription(e.target.value)}
                     required
@@ -197,7 +196,7 @@ const SignUpPage = () => {
                     value={needForOctaVision}
                     onChange={(e) => setNeedForOctaVision(e.target.value)}
                     required
-                    placeholder="Briefly describe your use case or the problems you're trying to solve."
+                    placeholder="Briefly describe your use case or the problems you're trying to solve (e.g., improve workplace safety, monitor inventory, enhance security)."
                   />
                 </div>
 
