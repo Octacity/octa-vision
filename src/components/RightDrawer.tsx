@@ -19,7 +19,7 @@ interface RightDrawerProps {
   title: string;
   children: ReactNode;
   footerContent?: ReactNode;
-  noPadding?: boolean; 
+  noPadding?: boolean;
 }
 
 const RightDrawer = ({
@@ -28,23 +28,19 @@ const RightDrawer = ({
   title,
   children,
   footerContent,
-  noPadding = false, 
+  noPadding = false,
 }: RightDrawerProps) => {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
-        <SheetHeader className="h-16 flex items-center justify-center px-6 border-b">
+        <SheetHeader className="h-16 flex flex-shrink-0 items-center justify-center px-4 border-b"> {/* Changed px-6 to px-4 and added flex-shrink-0 */}
           <SheetTitle className="font-normal text-primary truncate">{title}</SheetTitle>
         </SheetHeader>
         <ScrollArea className="flex-grow">
-            {/* Children are now fully responsible for their padding. 
-                If noPadding is false, the consumer should add padding to the children.
-                If noPadding is true, the consumer should ensure children have no padding or manage it.
-            */}
             {children}
         </ScrollArea>
         {footerContent && (
-          <div className={`p-0 ${noPadding && footerContent ? '' : 'border-t'}`}> 
+          <div className={`p-0 ${noPadding && footerContent ? '' : 'border-t'}`}>
             {footerContent}
           </div>
         )}
