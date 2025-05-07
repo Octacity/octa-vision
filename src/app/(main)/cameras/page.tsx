@@ -7,6 +7,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/firebase/firebase';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond, Bot, Send } from 'lucide-react'; 
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -161,6 +165,39 @@ const CamerasPage: NextPage = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
   const { openNotificationDrawer } = useNotificationDrawer();
+  const [isOrgApproved, setIsOrgApproved] = useState<boolean | null>(null);
+  const [isLoadingOrgStatus, setIsLoadingOrgStatus] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          const organizationId = userData?.organizationId;
+          if (organizationId) {
+            const orgDocRef = doc(db, 'organizations', organizationId);
+            const orgDocSnap = await getDoc(orgDocRef);
+            if (orgDocSnap.exists()) {
+              setIsOrgApproved(orgDocSnap.data()?.approved || false);
+            } else {
+              setIsOrgApproved(false);
+            }
+          } else {
+            setIsOrgApproved(false);
+          }
+        } else {
+          setIsOrgApproved(false);
+        }
+      } else {
+        setIsOrgApproved(false);
+      }
+      setIsLoadingOrgStatus(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
 
   const formStep1 = useForm<AddCameraStep1Values>({
@@ -341,8 +378,20 @@ const CamerasPage: NextPage = () => {
 
   const renderDrawerContent = () => {
     if (drawerType === 'addCamera') {
-        if (drawerStep === 1) {
+      const approvalAlert = !isLoadingOrgStatus && isOrgApproved === false && (
+        <Alert variant="destructive" className="mb-4 mx-[5px]">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Organization Approval Pending</AlertTitle>
+          <AlertDescription>
+            You can add cameras, but they will not start processing feeds or generating alerts until your organization's account is approved by an administrator.
+          </AlertDescription>
+        </Alert>
+      );
+
+      if (drawerStep === 1) {
         return (
+          <>
+            {approvalAlert}
             <Form {...formStep1}>
             <form id="add-camera-form-step1" onSubmit={formStep1.handleSubmit(onSubmitStep1)} className="space-y-8">
                 <FormField
@@ -477,9 +526,12 @@ const CamerasPage: NextPage = () => {
                 )}
             </form>
             </Form>
+          </>
         );
         } else if (drawerStep === 2) {
         return (
+          <>
+            {approvalAlert}
             <Form {...formStep2}>
                 <form id="add-camera-form-step2" onSubmit={formStep2.handleSubmit(onSubmitStep2)} className="space-y-6 px-[5px] text-center">
                 <div className="flex flex-col items-center space-y-2">
@@ -549,9 +601,12 @@ const CamerasPage: NextPage = () => {
                 />
                 </form>
             </Form>
+          </>
         );
         } else if (drawerStep === 3) {
             return (
+              <>
+                {approvalAlert}
                 <Form {...formStep3}>
                     <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6 px-[5px]">
                         <FormField
@@ -729,6 +784,7 @@ const CamerasPage: NextPage = () => {
                         </div>
                     </form>
                 </Form>
+              </>
             );
         }
     } else if (drawerType === 'chatCamera' && selectedCameraForChat) {
@@ -844,9 +900,13 @@ const CamerasPage: NextPage = () => {
 
   const getDrawerTitle = () => {
     if (drawerType === 'addCamera') {
-        return drawerStep === 1 ? "Add New Camera - Step 1" :
+        let title = drawerStep === 1 ? "Add New Camera - Step 1" :
                drawerStep === 2 ? "Add New Camera - Step 2" :
                "Add New Camera - Step 3";
+        if (!isLoadingOrgStatus && isOrgApproved === false) {
+            title += " (Approval Pending)";
+        }
+        return title;
     }
     if (drawerType === 'chatCamera' && selectedCameraForChat) {
         return `Chat with ${selectedCameraForChat.name}`;

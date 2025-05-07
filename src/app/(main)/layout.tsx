@@ -176,77 +176,74 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            {isApproved === true && (
-              <>
-                <SidebarMenuItem>
-                  <Link href="/cameras" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                      <CameraIcon className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Cameras</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/groups" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                      <Users className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Groups</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/monitor" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                      <Activity className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Monitor</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/videos" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                      <Film className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Videos</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/settings" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                      <Settings className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Settings</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/account" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                      <CircleUserRound className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Account</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                {userRole === 'user-admin' && (
-                  <SidebarMenuItem>
-                    <Link href="/organization-users" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                        <UserPlus className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>Org Users</span>}
-                      </SidebarMenuButton>
-                    </Link>
-                  </SidebarMenuItem>
-                )}
-                {userRole === 'system-admin' && (
-                  <SidebarMenuItem>
-                    <Link href="/system-admin" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname === '/system-admin'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                        <Shield className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>System Admin</span>}
-                      </SidebarMenuButton>
-                    </Link>
-                  </SidebarMenuItem>
-                )}
-              </>
+            {/* Menu items are now always visible, approval status is handled in content area */}
+            <SidebarMenuItem>
+              <Link href="/cameras" passHref legacyBehavior>
+                <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                  <CameraIcon className="h-4 w-4" />
+                  {sidebarState === 'expanded' && <span>Cameras</span>}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/groups" passHref legacyBehavior>
+                <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                  <Users className="h-4 w-4" />
+                  {sidebarState === 'expanded' && <span>Groups</span>}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/monitor" passHref legacyBehavior>
+                <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                  <Activity className="h-4 w-4" />
+                  {sidebarState === 'expanded' && <span>Monitor</span>}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/videos" passHref legacyBehavior>
+                <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                  <Film className="h-4 w-4" />
+                  {sidebarState === 'expanded' && <span>Videos</span>}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/settings" passHref legacyBehavior>
+                <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                  <Settings className="h-4 w-4" />
+                  {sidebarState === 'expanded' && <span>Settings</span>}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/account" passHref legacyBehavior>
+                <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                  <CircleUserRound className="h-4 w-4" />
+                  {sidebarState === 'expanded' && <span>Account</span>}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            {userRole === 'user-admin' && (
+              <SidebarMenuItem>
+                <Link href="/organization-users" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <UserPlus className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>Org Users</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            )}
+            {userRole === 'system-admin' && (
+              <SidebarMenuItem>
+                <Link href="/system-admin" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/system-admin'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <Shield className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>System Admin</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
             )}
           </SidebarMenu>
         </SidebarContent>
@@ -315,7 +312,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <AlertTitle>Account Not Approved</AlertTitle>
               <AlertDescription>
                 Your organization's account is awaiting approval from the
-                administrator. Please check back later or contact support.
+                administrator. Camera processing and other features may be limited until approved. Please check back later or contact support.
               </AlertDescription>
             </Alert>
           </div>
