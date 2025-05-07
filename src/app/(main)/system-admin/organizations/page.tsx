@@ -7,13 +7,13 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Users, Camera, Edit } from 'lucide-react';
+import { CheckCircle, Users as UsersIconLucide, Edit, Server } from 'lucide-react'; // Renamed Users to UsersIconLucide
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; 
+import Link from 'next/link';
 
 interface Organization {
   id: string;
@@ -96,6 +96,10 @@ const AdminOrganizationsPage: NextPage = () => {
     router.push(`/system-admin/organizations/${orgId}/ips`);
   };
 
+  const handleManageUsers = (orgId: string) => {
+    router.push(`/system-admin/organizations/${orgId}/users`);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8 h-full">
@@ -108,7 +112,7 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Manage Organizations</CardTitle>
+          <CardTitle>Organizations</CardTitle>
           <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,7 +153,10 @@ const AdminOrganizationsPage: NextPage = () => {
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={() => handleManageIPs(org.id)}>
-                         <Edit className="mr-2 h-4 w-4" /> Manage IPs
+                         <Server className="mr-2 h-4 w-4" /> Manage IPs
+                      </Button>
+                       <Button variant="ghost" size="sm" onClick={() => handleManageUsers(org.id)}>
+                         <UsersIconLucide className="mr-2 h-4 w-4" /> Manage Users
                       </Button>
                     </TableCell>
                   </TableRow>
