@@ -844,33 +844,33 @@ const CamerasPage: NextPage = () => {
     if (drawerType === 'addCamera') {
         if (drawerStep === 1) {
         return (
-            <>
-            <Button variant="outline" onClick={handleDrawerClose}>Cancel</Button>
-            <Button type="submit" form="add-camera-form-step1" disabled={formStep1.formState.isSubmitting}>
-                {formStep1.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Next
-            </Button>
-            </>
+            <div className="flex justify-between p-4">
+                <Button variant="outline" onClick={handleDrawerClose}>Cancel</Button>
+                <Button type="submit" form="add-camera-form-step1" disabled={formStep1.formState.isSubmitting}>
+                    {formStep1.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Next
+                </Button>
+            </div>
         );
         } else if (drawerStep === 2) {
         return (
-            <>
-            <Button variant="outline" onClick={handleStep2Back}>Back</Button>
-            <Button type="submit" form="add-camera-form-step2" disabled={isProcessingStep2 || formStep2.formState.isSubmitting}>
-                {(isProcessingStep2 || formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Next
-            </Button>
-            </>
+            <div className="flex justify-between p-4">
+                <Button variant="outline" onClick={handleStep2Back}>Back</Button>
+                <Button type="submit" form="add-camera-form-step2" disabled={isProcessingStep2 || formStep2.formState.isSubmitting}>
+                    {(isProcessingStep2 || formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Next
+                </Button>
+            </div>
         );
         } else if (drawerStep === 3) {
             return (
-                <>
-                <Button variant="outline" onClick={handleStep3Back}>Back</Button>
-                <Button type="submit" form="add-camera-form-step3" disabled={formStep3.formState.isSubmitting}>
-                    {formStep3.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Save Camera
-                </Button>
-                </>
+                <div className="flex justify-between p-4">
+                    <Button variant="outline" onClick={handleStep3Back}>Back</Button>
+                    <Button type="submit" form="add-camera-form-step3" disabled={formStep3.formState.isSubmitting}>
+                        {formStep3.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save Camera
+                    </Button>
+                </div>
             );
         }
     } else if (drawerType === 'chatCamera') {
