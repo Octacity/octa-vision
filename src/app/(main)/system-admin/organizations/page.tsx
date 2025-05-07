@@ -7,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Edit, Server } from 'lucide-react'; // Renamed Users to UsersIconLucide
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon } from 'lucide-react'; // Renamed Users to UsersIconLucide, Server to ServerIcon
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -120,80 +120,82 @@ const AdminOrganizationsPage: NextPage = () => {
         </CardHeader>
         <CardContent>
           {organizations.length > 0 ? (
-            <TooltipProvider>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>User Admin</TableHead>
-                  <TableHead className="text-center">Users</TableHead>
-                  <TableHead className="text-center">Cameras</TableHead>
-                  <TableHead>Requested</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {organizations.map((org) => (
-                  <TableRow key={org.id}>
-                    <TableCell className="font-medium">
-                      {org.name}
-                      {org.admin && (
-                        <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={org.approved ? 'default' : 'secondary'} className={org.approved ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'}>
-                        {org.approved ? 'Approved' : 'Pending'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{org.userAdminEmail}</TableCell>
-                    <TableCell className="text-center">
-                       <Link href={`/system-admin/organizations/${org.id}/users`} className="text-primary hover:underline">
-                        {org.userCount}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-center">{org.cameraCount}</TableCell>
-                    <TableCell>{org.createdAt}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      {!org.approved && (
+            <div className="overflow-x-auto">
+              <TooltipProvider>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>User Admin</TableHead>
+                    <TableHead className="text-center">Users</TableHead>
+                    <TableHead className="text-center">Cameras</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {organizations.map((org) => (
+                    <TableRow key={org.id}>
+                      <TableCell className="font-medium whitespace-nowrap">
+                        {org.name}
+                        {org.admin && (
+                          <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={org.approved ? 'default' : 'secondary'} className={`${org.approved ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white`}>
+                          {org.approved ? 'Approved' : 'Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{org.userAdminEmail}</TableCell>
+                      <TableCell className="text-center">
+                        <Link href={`/system-admin/organizations/${org.id}/users`} className="text-primary hover:underline">
+                          {org.userCount}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-center">{org.cameraCount}</TableCell>
+                      <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
+                      <TableCell className="text-right space-x-1">
+                        {!org.approved && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => handleApprove(org.id)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700 h-8 w-8">
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Approve Organization</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => handleApprove(org.id)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700">
-                              <CheckCircle className="h-4 w-4" />
+                            <Button variant="outline" size="icon" onClick={() => handleManageIPs(org.id)} className="h-8 w-8">
+                              <ServerIcon className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Approve Organization</p>
+                            <p>Manage IPs</p>
                           </TooltipContent>
                         </Tooltip>
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => handleManageIPs(org.id)}>
-                            <Server className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Manage IPs</p>
-                        </TooltipContent>
-                      </Tooltip>
-                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => handleManageUsers(org.id)}>
-                            <UsersIconLucide className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Manage Users</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" onClick={() => handleManageUsers(org.id)} className="h-8 w-8">
+                              <UsersIconLucide className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Manage Users</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              </TooltipProvider>
+            </div>
           ) : (
             <div className="mt-4 p-4 border rounded-md bg-muted text-center">
               <p className="text-sm text-muted-foreground">No organizations found.</p>
@@ -206,4 +208,3 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
-
