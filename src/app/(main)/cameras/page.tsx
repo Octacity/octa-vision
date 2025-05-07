@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -25,7 +26,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond, Bot, Send } from 'lucide-react'; 
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond, Bot, Send, Camera as CameraIconLucide } from 'lucide-react'; 
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -47,69 +48,18 @@ interface ChatMessage {
   avatar?: string;
 }
 
+// Removed placeholder cameras array
+// const cameras: Camera[] = [...];
 
-const cameras: Camera[] = [
-  {
-    id: '1',
-    name: 'Camera 1',
-    imageUrl: 'https://picsum.photos/id/237/200/150',
-    dataAiHint: 'security camera',
-  },
-  {
-    id: '2',
-    name: 'Camera 2',
-    imageUrl: 'https://picsum.photos/id/238/200/150',
-    dataAiHint: 'office surveillance',
-  },
-  {
-    id: '3',
-    name: 'Camera 3',
-    imageUrl: 'https://picsum.photos/id/239/200/150',
-    dataAiHint: 'street view',
-  },
-  {
-    id: '4',
-    name: 'Camera 4',
-    imageUrl: 'https://picsum.photos/id/240/200/150',
-    dataAiHint: 'parking lot',
-  },
-  {
-    id: '5',
-    name: 'Camera 5',
-    imageUrl: 'https://picsum.photos/id/241/200/150',
-    dataAiHint: 'indoor retail',
-  },
-  {
-    id: '6',
-    name: 'Camera 6',
-    imageUrl: 'https://picsum.photos/id/242/200/150',
-    dataAiHint: 'warehouse aisle',
-  },
-  {
-    id: '7',
-    name: 'Camera 7',
-    imageUrl: 'https://picsum.photos/id/243/200/150',
-    dataAiHint: 'lobby entrance',
-  },
-  {
-    id: '8',
-    name: 'Camera 8',
-    imageUrl: 'https://picsum.photos/id/244/200/150',
-    dataAiHint: 'exterior building',
-  },
-  {
-    id: '9',
-    name: 'Camera 9',
-    imageUrl: 'https://picsum.photos/id/245/200/150',
-    dataAiHint: 'rooftop view',
-  },
+// Placeholder groups - in a real app, these would come from a backend
+// For now, we keep this to allow adding new groups functionality in the form.
+// This will be replaced by dynamic data fetching later.
+const initialGroups: {id: string, name: string}[] = [
+    // { id: 'group1', name: 'Warehouse Section A' },
+    // { id: 'group2', name: 'Office Entrance' },
+    // { id: 'group3', name: 'Retail Floor - Aisles' },
 ];
 
-const groups = [
-    { id: 'group1', name: 'Warehouse Section A' },
-    { id: 'group2', name: 'Office Entrance' },
-    { id: 'group3', name: 'Retail Floor - Aisles' },
-];
 
 const addCameraStep1Schema = z.object({
   rtspUrl: z.string().url({ message: "Invalid RTSP URL format." }).min(1, "RTSP URL is required."),
@@ -162,12 +112,21 @@ const CamerasPage: NextPage = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentChatMessage, setCurrentChatMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const chatScrollAreaRef = useRef<HTMLDivElement>(null); // This might still be useful for manual scroll if needed
+  const chatScrollAreaRef = useRef<HTMLDivElement>(null);
   const { openNotificationDrawer } = useNotificationDrawer();
   const [isOrgApproved, setIsOrgApproved] = useState<boolean | null>(null);
   const [isLoadingOrgStatus, setIsLoadingOrgStatus] = useState(true);
 
+  // State for cameras and groups, would be fetched in a real app
+  const [cameras, setCameras] = useState<Camera[]>([]); // Initialize with empty array
+  const [groups, setGroups] = useState<{id: string, name: string}[]>(initialGroups); // Initialize with initialGroups or empty
+
   useEffect(() => {
+    // TODO: Fetch actual cameras and groups data from Firestore here
+    // For now, using empty or initial placeholder values.
+    // setCameras(fetchedCameras);
+    // setGroups(fetchedGroups);
+
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -350,6 +309,7 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data (final):", formStep1.getValues());
     console.log("Step 2 Data (final):", formStep2.getValues());
     console.log("Step 3 Data (final):", data);
+    // TODO: Add logic to save camera to Firestore and update the `cameras` state
     handleDrawerClose();
   };
 
@@ -380,11 +340,7 @@ const CamerasPage: NextPage = () => {
   };
 
   useEffect(() => {
-    // This ensures chat scrolls to bottom when new messages are added.
-    // RightDrawer now handles ScrollArea, so direct manipulation may not be needed
-    // if RightDrawer's ScrollArea works as expected.
-    // If manual scroll is still needed, the ref could be passed to RightDrawer's ScrollArea.
-    const scrollElement = chatScrollAreaRef.current; // This ref needs to be on the scrollable container
+    const scrollElement = chatScrollAreaRef.current; 
     if (scrollElement) {
       scrollElement.scrollTop = scrollElement.scrollHeight;
     }
@@ -453,11 +409,13 @@ const CamerasPage: NextPage = () => {
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        {groups.map((group) => (
+                        {groups.length > 0 ? groups.map((group) => (
                             <SelectItem key={group.id} value={group.id}>
                             {group.name}
                             </SelectItem>
-                        ))}
+                        )) : (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">No groups yet.</div>
+                        )}
                         <SelectItem value="add_new_group">
                             <span className="text-primary font-medium">Add new group...</span>
                         </SelectItem>
@@ -802,7 +760,7 @@ const CamerasPage: NextPage = () => {
         }
     } else if (drawerType === 'chatCamera' && selectedCameraForChat) {
         return (
-            <div className="flex flex-col h-full p-4 space-y-4" ref={chatScrollAreaRef}> {/* Added padding here */}
+            <div className="flex flex-col h-full p-4 space-y-4" ref={chatScrollAreaRef}> 
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
                     <div className="flex items-end space-x-2 max-w-[80%]">
@@ -959,66 +917,78 @@ const CamerasPage: NextPage = () => {
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {cameras.map((camera) => (
-          <Card key={camera.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg">
-            <CardContent className="p-0">
-              <div className="relative">
-                <Image
-                  src={camera.imageUrl}
-                  alt={camera.name}
-                  width={200}
-                  height={150}
-                  className="rounded-t-lg aspect-video w-full object-cover"
-                  data-ai-hint={camera.dataAiHint}
-                />
-                <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
-              </div>
-              <div className="p-3">
-                <h3 className="text-sm font-semibold mb-2 truncate">{camera.name}</h3>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center space-x-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center space-x-1 cursor-pointer hover:text-primary">
-                            <Clock className="w-3 h-3" />
-                            <span>15 min</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Recording Schedule</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                     <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className="flex items-center space-x-1 cursor-pointer hover:text-destructive">
-                                <ShieldAlert className="w-3 h-3 text-destructive" />
-                                <span>2</span>
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Active Alerts</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleNotificationIconClick(camera.id)}>
-                      <Bell className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleChatIconClick(camera)}>
-                      <MessageSquare className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+      {cameras.length === 0 ? (
+         <div className="flex flex-col items-center justify-center text-center py-12">
+            <CameraIconLucide className="w-16 h-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">No Cameras Yet</h3>
+            <p className="text-muted-foreground mb-6">Get started by adding your first camera to OctaVision.</p>
+            <Button onClick={handleAddCameraClick}>
+                <Plus className="mr-2 h-4 w-4" /> Add Your First Camera
+            </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {cameras.map((camera) => (
+            <Card key={camera.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg">
+                <CardContent className="p-0">
+                <div className="relative">
+                    <Image
+                    src={camera.imageUrl}
+                    alt={camera.name}
+                    width={200}
+                    height={150}
+                    className="rounded-t-lg aspect-video w-full object-cover"
+                    data-ai-hint={camera.dataAiHint}
+                    />
+                    <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="p-3">
+                    <h3 className="text-sm font-semibold mb-2 truncate">{camera.name}</h3>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center space-x-2">
+                        <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                            <div className="flex items-center space-x-1 cursor-pointer hover:text-primary">
+                                <Clock className="w-3 h-3" />
+                                <span>15 min</span>
+                            </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                            <p>Recording Schedule</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="flex items-center space-x-1 cursor-pointer hover:text-destructive">
+                                    <ShieldAlert className="w-3 h-3 text-destructive" />
+                                    <span>2</span>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Active Alerts</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleNotificationIconClick(camera.id)}>
+                        <Bell className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleChatIconClick(camera)}>
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
+                    </div>
+                </div>
+                </CardContent>
+            </Card>
+            ))}
+        </div>
+      )}
+
 
       <RightDrawer
         isOpen={isDrawerOpen}
@@ -1034,3 +1004,6 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
+
+    
