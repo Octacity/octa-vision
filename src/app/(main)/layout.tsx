@@ -123,15 +123,15 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     return () => unsubscribe();
   }, [router, pathname]);
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     const auth = getAuth();
     try {
       await signOut(auth);
-      toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+      toast({ title: 'Signed Out', description: 'You have been successfully signed out.' });
       router.push('/signin');
     } catch (error) {
       console.error("Error signing out: ", error);
-      toast({ variant: 'destructive', title: 'Logout Failed', description: 'Could not log you out. Please try again.' });
+      toast({ variant: 'destructive', title: 'Sign Out Failed', description: 'Could not sign you out. Please try again.' });
     }
   };
 
@@ -300,9 +300,9 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
