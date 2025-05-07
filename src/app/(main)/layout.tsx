@@ -77,7 +77,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const router = useRouter();
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
-  const currentPageTitle = pageTitles[pathname] || 'Visionary Sentinel';
+  const currentPageTitle = pageTitles[pathname] || 'OctaVision';
   const { openNotificationDrawer } = useNotificationDrawer();
 
 
@@ -164,7 +164,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             className="text-lg font-semibold"
             style={{ color: 'rgb(var(--octaview-primary))' }}
           >
-            {sidebarState === 'collapsed' && !isMobile ? 'VS' : 'Visionary Sentinel'}
+            {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'}
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -313,8 +313,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <ShieldAlert className="h-4 w-4" />
               <AlertTitle>Organization Approval Pending</AlertTitle>
               <AlertDescription>
-                Your organization&apos;s account is currently awaiting approval. 
-                You can add cameras and set up configurations. However, camera processing will only begin after your organization&apos;s account is approved by an administrator and based on server space availability.
+                Your organization's account is currently awaiting approval. You can add cameras and set up configurations. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.
               </AlertDescription>
             </Alert>
           </div>
@@ -341,5 +340,3 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
-
-    
