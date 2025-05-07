@@ -72,7 +72,7 @@ const pageTitles: Record<string, string> = {
   '/organization-users': 'Organization Users',
   '/system-admin': 'System Administration',
   '/system-admin/organizations': 'Manage Organizations',
-  '/system-admin/users': 'Manage System Users', // General system users page
+  // Removed '/system-admin/users' as it's now nested
   '/system-admin/servers': 'Manage Servers',
 };
 
@@ -272,14 +272,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <Link href="/system-admin/users" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/users')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                        <UsersIcon className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>System Users</span>}
-                      </SidebarMenuButton>
-                    </Link>
-                  </SidebarMenuItem>
+                  {/* Removed System Users direct link from here */}
                    <SidebarMenuItem>
                     <Link href="/system-admin/servers" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>

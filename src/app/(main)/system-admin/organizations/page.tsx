@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // Added Link import
+import Link from 'next/link'; 
 
 interface Organization {
   id: string;
@@ -108,6 +108,7 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
+          <CardTitle>Manage Organizations</CardTitle>
           <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
         </CardHeader>
         <CardContent>
