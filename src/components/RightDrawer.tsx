@@ -34,7 +34,7 @@ const RightDrawer = ({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
         <SheetHeader className="h-16 flex items-center justify-center px-6 border-b">
-          <SheetTitle className="font-normal text-primary">{title}</SheetTitle>
+          <SheetTitle className="font-normal text-primary truncate">{title}</SheetTitle>
         </SheetHeader>
         <ScrollArea className="flex-grow">
             {/* Children are now fully responsible for their padding. 
@@ -54,4 +54,3 @@ const RightDrawer = ({
 };
 
 export default RightDrawer;
-

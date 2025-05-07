@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { NextPage } from 'next';
@@ -163,7 +162,7 @@ const CamerasPage: NextPage = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentChatMessage, setCurrentChatMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const chatScrollAreaRef = useRef<HTMLDivElement>(null); // This might still be useful for manual scroll if needed
   const { openNotificationDrawer } = useNotificationDrawer();
   const [isOrgApproved, setIsOrgApproved] = useState<boolean | null>(null);
   const [isLoadingOrgStatus, setIsLoadingOrgStatus] = useState(true);
@@ -202,7 +201,7 @@ const CamerasPage: NextPage = () => {
 
   const formStep1 = useForm<AddCameraStep1Values>({
     resolver: zodResolver(addCameraStep1Schema),
-    mode: "onChange", // Validate on change to update isValid
+    mode: "onChange", 
     defaultValues: {
       rtspUrl: '',
       cameraName: '',
@@ -289,7 +288,7 @@ const CamerasPage: NextPage = () => {
       setShowNewGroupForm(true);
     } else {
       setShowNewGroupForm(false);
-      formStep1.setValue('newGroupName', ''); // Clear new group name if not adding new
+      formStep1.setValue('newGroupName', ''); 
       formStep1.setValue('groupDescription', '');
       formStep1.setValue('groupAIDetection', '');
       formStep1.setValue('alertClasses', '');
@@ -298,13 +297,12 @@ const CamerasPage: NextPage = () => {
 
   const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data) => {
     console.log("Step 1 Data:", data);
+    if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
     setDrawerStep(2);
-    // Simulate API call for snapshot
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
     setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
-    // Simulate AI generating description
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate AI processing
+    await new Promise(resolve => setTimeout(resolve, 2000)); 
     formStep2.setValue('sceneDescription', 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
     setIsProcessingStep2(false);
   };
@@ -317,6 +315,7 @@ const CamerasPage: NextPage = () => {
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
     console.log("Step 2 Data:", data);
+    if (!formStep2.formState.isValid) return;
     const groupDesc = formStep1.getValues('groupDescription');
     const groupAIDetection = formStep1.getValues('groupAIDetection');
     const sceneDesc = data.sceneDescription;
@@ -347,11 +346,10 @@ const CamerasPage: NextPage = () => {
 
   const onSubmitStep3: SubmitHandler<AddCameraStep3Values> = async (data) => {
     console.log("Saving camera...");
+    if (!formStep3.formState.isValid) return;
     console.log("Step 1 Data (final):", formStep1.getValues());
     console.log("Step 2 Data (final):", formStep2.getValues());
     console.log("Step 3 Data (final):", data);
-    // Here you would typically make an API call to save the camera data
-    // For now, just close the drawer
     handleDrawerClose();
   };
 
@@ -370,7 +368,6 @@ const CamerasPage: NextPage = () => {
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
-    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
@@ -383,8 +380,13 @@ const CamerasPage: NextPage = () => {
   };
 
   useEffect(() => {
-    if (chatScrollAreaRef.current) {
-      chatScrollAreaRef.current.scrollTop = chatScrollAreaRef.current.scrollHeight;
+    // This ensures chat scrolls to bottom when new messages are added.
+    // RightDrawer now handles ScrollArea, so direct manipulation may not be needed
+    // if RightDrawer's ScrollArea works as expected.
+    // If manual scroll is still needed, the ref could be passed to RightDrawer's ScrollArea.
+    const scrollElement = chatScrollAreaRef.current; // This ref needs to be on the scrollable container
+    if (scrollElement) {
+      scrollElement.scrollTop = scrollElement.scrollHeight;
     }
   }, [chatMessages]);
 
@@ -800,8 +802,7 @@ const CamerasPage: NextPage = () => {
         }
     } else if (drawerType === 'chatCamera' && selectedCameraForChat) {
         return (
-            <div className="flex flex-col h-full">
-              <ScrollArea className="flex-grow p-4 space-y-4" ref={chatScrollAreaRef}>
+            <div className="flex flex-col h-full p-4 space-y-4" ref={chatScrollAreaRef}> {/* Added padding here */}
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
                     <div className="flex items-end space-x-2 max-w-[80%]">
@@ -844,7 +845,6 @@ const CamerasPage: NextPage = () => {
                         </div>
                     </div>
                 )}
-              </ScrollArea>
             </div>
           );
     }
@@ -1034,5 +1034,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
-    
