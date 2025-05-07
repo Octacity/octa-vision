@@ -20,7 +20,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-// Removed problematic import: import { useSidebar as useSidebarContextHook } from "@/hooks/use-sidebar"; 
 
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -512,14 +511,14 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
-  const { state } = useSidebar() 
+  const { state, isMobile } = useSidebar() 
   return (
     <li
       ref={ref}
       data-sidebar="menu-item"
       className={cn(
         "group/menu-item relative flex flex-col",
-        state === 'expanded' ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', 
+        state === 'expanded' || isMobile ? 'mx-3 my-0.5' : 'mx-0 justify-center items-center mt-1 mb-0.5', 
         className
         )}
       {...props}
@@ -568,18 +567,28 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       children,
+      onClick: propOnClick, // Capture the onClick prop from the parent (e.g., Link)
       ...props
     },
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state: sidebarState } = useSidebar() 
+    const { isMobile, state: sidebarState, setOpenMobile } = useSidebar() 
 
     
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
     
     
     const paddingClass = sidebarState === 'collapsed' && !isMobile ? 'p-1.5' : 'px-3';
+
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (propOnClick) {
+        propOnClick(event); // Call original onClick if it exists
+      }
+      if (isMobile) {
+        setOpenMobile(false); // Close mobile sidebar on click
+      }
+    };
 
 
     const buttonContent = (
@@ -593,6 +602,7 @@ const SidebarMenuButton = React.forwardRef<
           paddingClass, 
           className
         )}
+        onClick={handleClick} // Use the new handleClick
         {...props}
       >
         {children}
@@ -776,3 +786,4 @@ export {
   sidebarMenuButtonVariants,
   // useSidebar is already exported above
 }
+
