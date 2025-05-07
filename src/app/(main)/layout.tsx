@@ -25,7 +25,8 @@ import {
   UserPlus,
   LogOut,
   ShieldAlert,
-  Briefcase, // Added for Organizations
+  Briefcase, 
+  Server, // Added for Our Servers
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -72,6 +73,7 @@ const pageTitles: Record<string, string> = {
   '/system-admin': 'System Administration',
   '/system-admin/organizations': 'Manage Organizations',
   '/system-admin/users': 'Manage System Users',
+  '/system-admin/servers': 'Manage Servers', // Added title for servers
 };
 // Add a more generic way to handle dynamic routes for titles or handle it within the page component
 const getPageTitle = (pathname: string): string => {
@@ -272,6 +274,14 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/users')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
                         <UsersIcon className="h-4 w-4" />
                         {sidebarState === 'expanded' && <span>System Users</span>}
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                   <SidebarMenuItem>
+                    <Link href="/system-admin/servers" passHref legacyBehavior>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                        <Server className="h-4 w-4" />
+                        {sidebarState === 'expanded' && <span>Our Servers</span>}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
