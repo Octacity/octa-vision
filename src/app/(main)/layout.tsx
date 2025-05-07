@@ -305,7 +305,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
             <h1
-              className="text-lg font-semibold ml-2"
+              className="text-lg ml-2"
               style={{ color: 'rgb(var(--octaview-primary))' }}
             >
               {currentPageTitle}
