@@ -301,11 +301,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
             <Button variant="outline" className="h-8 w-8 p-1.5 border" onClick={toggleSidebar}>
-              {sidebarState === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              <Menu className="h-4 w-4" />
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
             <h1
-              className="text-lg ml-2"
+              className="text-lg ml-2 font-normal"
               style={{ color: 'rgb(var(--octaview-primary))' }}
             >
               {currentPageTitle}
