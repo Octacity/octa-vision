@@ -26,7 +26,7 @@ import {
   LogOut,
   ShieldAlert,
   Briefcase, 
-  Server, // Added for Our Servers
+  Server, 
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -73,7 +73,7 @@ const pageTitles: Record<string, string> = {
   '/system-admin': 'System Administration',
   '/system-admin/organizations': 'Manage Organizations',
   '/system-admin/users': 'Manage System Users',
-  '/system-admin/servers': 'Manage Servers', // Added title for servers
+  '/system-admin/servers': 'Manage Servers',
 };
 // Add a more generic way to handle dynamic routes for titles or handle it within the page component
 const getPageTitle = (pathname: string): string => {

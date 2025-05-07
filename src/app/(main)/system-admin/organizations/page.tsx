@@ -105,7 +105,7 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Manage Organizations</CardTitle>
+          {/* <CardTitle>Manage Organizations</CardTitle> */} {/* Title removed as it's in the app bar */}
           <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
         </CardHeader>
         <CardContent>
