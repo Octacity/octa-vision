@@ -12,12 +12,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth"; // Added signOut
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import Link from "next/link"; // Added Link import
 
 const SignInPage = () => {
   const [email, setEmail] = useState("");
