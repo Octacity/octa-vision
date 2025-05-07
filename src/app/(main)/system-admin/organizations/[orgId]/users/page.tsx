@@ -109,7 +109,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
       <Card>
         <CardHeader className="flex flex-row justify-between items-center">
           <div>
-            <CardTitle>Manage Users for {organization.name}</CardTitle>
+            {/* <CardTitle>Manage Users for {organization.name}</CardTitle> Removed CardTitle */}
             <CardDescription>View, add, or modify users for {organization.name}.</CardDescription>
           </div>
            <Button onClick={handleAddUser}>
