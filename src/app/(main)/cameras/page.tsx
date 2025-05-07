@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { NextPage } from 'next';
@@ -48,17 +47,8 @@ interface ChatMessage {
   avatar?: string;
 }
 
-// Removed placeholder cameras array
-// const cameras: Camera[] = [...];
 
-// Placeholder groups - in a real app, these would come from a backend
-// For now, we keep this to allow adding new groups functionality in the form.
-// This will be replaced by dynamic data fetching later.
-const initialGroups: {id: string, name: string}[] = [
-    // { id: 'group1', name: 'Warehouse Section A' },
-    // { id: 'group2', name: 'Office Entrance' },
-    // { id: 'group3', name: 'Retail Floor - Aisles' },
-];
+const initialGroups: {id: string, name: string}[] = [];
 
 
 const addCameraStep1Schema = z.object({
@@ -66,8 +56,8 @@ const addCameraStep1Schema = z.object({
   cameraName: z.string().min(1, "Camera name is required."),
   group: z.string().optional(),
   newGroupName: z.string().optional(),
-  groupDescription: z.string().optional(),
-  groupAIDetection: z.string().optional(), 
+  groupSceneContext: z.string().optional(), // Renamed from groupDescription
+  groupAIDetectionTarget: z.string().optional(), // Renamed from groupAIDetection
   alertClasses: z.string().optional(),
 }).refine(data => {
   if (data.group === 'add_new_group' && !data.newGroupName) {
@@ -82,14 +72,14 @@ const addCameraStep1Schema = z.object({
 type AddCameraStep1Values = z.infer<typeof addCameraStep1Schema>;
 
 const addCameraStep2Schema = z.object({
-    sceneDescription: z.string().min(1, "Scene description is required."),
+    sceneDescription: z.string().min(1, "Scene description is required."), // Was detailedSceneDescription
 });
 type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 
 const addCameraStep3Schema = z.object({
-    cameraPurposeDescription: z.string().min(1, "This field is required."),
-    aiDetectionPrompt: z.string().min(1, "AI detection prompt is required."),
-    cameraAlertClasses: z.string().min(1, "Alert classes are required."), 
+    cameraPurposeDescription: z.string().min(1, "This field is required."), // This field might be better named as sceneContext or similar
+    aiDetectionTarget: z.string().min(1, "AI detection target is required."), // Renamed from aiDetectionPrompt
+    cameraAlertEvents: z.string().min(1, "Alert events are required."), // Renamed from cameraAlertClasses
     videoChunksValue: z.string().min(1, "Video chunks value is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoChunksUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
     numFrames: z.string().min(1, "Number of frames is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
@@ -117,16 +107,10 @@ const CamerasPage: NextPage = () => {
   const [isOrgApproved, setIsOrgApproved] = useState<boolean | null>(null);
   const [isLoadingOrgStatus, setIsLoadingOrgStatus] = useState(true);
 
-  // State for cameras and groups, would be fetched in a real app
-  const [cameras, setCameras] = useState<Camera[]>([]); // Initialize with empty array
-  const [groups, setGroups] = useState<{id: string, name: string}[]>(initialGroups); // Initialize with initialGroups or empty
+  const [cameras, setCameras] = useState<Camera[]>([]);
+  const [groups, setGroups] = useState<{id: string, name: string}[]>(initialGroups);
 
   useEffect(() => {
-    // TODO: Fetch actual cameras and groups data from Firestore here
-    // For now, using empty or initial placeholder values.
-    // setCameras(fetchedCameras);
-    // setGroups(fetchedGroups);
-
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -166,8 +150,8 @@ const CamerasPage: NextPage = () => {
       cameraName: '',
       group: undefined,
       newGroupName: '',
-      groupDescription: '',
-      groupAIDetection: '',
+      groupSceneContext: '',
+      groupAIDetectionTarget: '',
       alertClasses: '',
     },
   });
@@ -185,8 +169,8 @@ const CamerasPage: NextPage = () => {
     mode: "onChange",
     defaultValues: {
         cameraPurposeDescription: '',
-        aiDetectionPrompt: '',
-        cameraAlertClasses: '',
+        aiDetectionTarget: '',
+        cameraAlertEvents: '',
         videoChunksValue: '',
         videoChunksUnit: 'seconds',
         numFrames: '',
@@ -248,8 +232,8 @@ const CamerasPage: NextPage = () => {
     } else {
       setShowNewGroupForm(false);
       formStep1.setValue('newGroupName', ''); 
-      formStep1.setValue('groupDescription', '');
-      formStep1.setValue('groupAIDetection', '');
+      formStep1.setValue('groupSceneContext', '');
+      formStep1.setValue('groupAIDetectionTarget', '');
       formStep1.setValue('alertClasses', '');
     }
   };
@@ -275,26 +259,26 @@ const CamerasPage: NextPage = () => {
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
     console.log("Step 2 Data:", data);
     if (!formStep2.formState.isValid) return;
-    const groupDesc = formStep1.getValues('groupDescription');
-    const groupAIDetection = formStep1.getValues('groupAIDetection');
-    const sceneDesc = data.sceneDescription;
+    const groupSceneCtx = formStep1.getValues('groupSceneContext');
+    const groupAIDetectionTarget = formStep1.getValues('groupAIDetectionTarget');
+    const currentSceneDesc = data.sceneDescription; // Renamed from sceneDesc
 
-    let cameraPurpose = `Based on the dense scene description: "${sceneDesc}"`;
-    if (groupDesc) {
-        cameraPurpose += ` and the group's description: "${groupDesc}", this camera's role is to...`;
+    let cameraPurpose = `Based on the scene description: "${currentSceneDesc}"`;
+    if (groupSceneCtx) {
+        cameraPurpose += ` and the group's context: "${groupSceneCtx}", this camera's role is to...`;
     }
-    formStep3.setValue('cameraPurposeDescription', cameraPurpose);
+    formStep3.setValue('cameraPurposeDescription', cameraPurpose); // This field is essentially 'sceneContext' for the camera
 
-    let aiPrompt = '';
-    if (groupAIDetection) {
-        aiPrompt += `Inherited from group: "${groupAIDetection}". `;
+    let aiTarget = '';
+    if (groupAIDetectionTarget) {
+        aiTarget += `Inherited from group: "${groupAIDetectionTarget}". `;
     }
-    aiPrompt += 'Additionally, for this specific camera detect...';
-    formStep3.setValue('aiDetectionPrompt', aiPrompt);
+    aiTarget += 'Additionally, for this specific camera detect...';
+    formStep3.setValue('aiDetectionTarget', aiTarget);
 
     const groupAlertClasses = formStep1.getValues('alertClasses');
     if (groupAlertClasses) {
-        formStep3.setValue('cameraAlertClasses', groupAlertClasses);
+        formStep3.setValue('cameraAlertEvents', groupAlertClasses); // Renamed from cameraAlertClasses
     }
     setDrawerStep(3);
   };
@@ -449,7 +433,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep1.control}
-                            name="groupDescription"
+                            name="groupSceneContext" // Renamed from groupDescription
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -464,7 +448,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep1.control}
-                            name="groupAIDetection"
+                            name="groupAIDetectionTarget" // Renamed from groupAIDetection
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -546,7 +530,7 @@ const CamerasPage: NextPage = () => {
 
                 <FormField
                     control={formStep2.control}
-                    name="sceneDescription"
+                    name="sceneDescription" // Was detailedSceneDescription
                     render={({ field }) => (
                         <FormItem className="text-left">
                             <FormLabel className="flex items-center">
@@ -583,12 +567,12 @@ const CamerasPage: NextPage = () => {
                     <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
                         <FormField
                             control={formStep3.control}
-                            name="cameraPurposeDescription"
+                            name="cameraPurposeDescription" // This is effectively the camera's sceneContext
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
                                         <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground" />
-                                        What does this camera do?
+                                        What does this camera do? (Scene Context)
                                     </FormLabel>
                                     <FormControl>
                                         <div className="relative">
@@ -609,12 +593,12 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep3.control}
-                            name="aiDetectionPrompt"
+                            name="aiDetectionTarget" // Renamed from aiDetectionPrompt
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
                                         <Wand2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                                        What does the things you want the AI to detect from this camera?
+                                        What does the things you want the AI to detect from this camera? (AI Detection Target)
                                     </FormLabel>
                                     <FormControl>
                                         <div className="relative">
@@ -635,12 +619,12 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep3.control}
-                            name="cameraAlertClasses"
+                            name="cameraAlertEvents" // Renamed from cameraAlertClasses
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
                                         <Diamond className="w-4 h-4 mr-2 text-muted-foreground" /> 
-                                        Alert Classes
+                                        Alert Events
                                     </FormLabel>
                                     <FormControl>
                                         <Input 
@@ -648,7 +632,7 @@ const CamerasPage: NextPage = () => {
                                             {...field} 
                                         />
                                     </FormControl>
-                                    <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert classes for this camera.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert events for this camera.</p>
                                     <FormMessage />
                                 </FormItem>
                             )}
