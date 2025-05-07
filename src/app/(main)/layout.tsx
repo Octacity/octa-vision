@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Settings,
-  Users as UsersIcon, // Renamed to avoid conflict
+  Users as UsersIcon, 
   Activity,
   Film,
   Home,
@@ -72,13 +72,16 @@ const pageTitles: Record<string, string> = {
   '/organization-users': 'Organization Users',
   '/system-admin': 'System Administration',
   '/system-admin/organizations': 'Manage Organizations',
-  '/system-admin/users': 'Manage System Users',
+  '/system-admin/users': 'Manage System Users', // General system users page
   '/system-admin/servers': 'Manage Servers',
 };
-// Add a more generic way to handle dynamic routes for titles or handle it within the page component
+
 const getPageTitle = (pathname: string): string => {
   if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/ips')) {
     return 'Manage Camera IPs';
+  }
+  if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/users')) {
+    return 'Manage Organization Users';
   }
   return pageTitles[pathname] || 'OctaVision';
 };
@@ -117,12 +120,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               setIsApproved(false);
             }
           } else {
-             // If user is system-admin, they might not have an organizationId
              if (userData?.role !== 'system-admin') {
                 console.error('Organization ID not found for user.');
                 setIsApproved(false);
              } else {
-                setIsApproved(true); // System admins are implicitly "approved" for access
+                setIsApproved(true); 
              }
           }
         } else {
@@ -131,7 +133,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           setUserRole(null);
         }
       } else {
-        // User is not logged in, or session expired
         setIsApproved(false); 
         setUserRole(null);   
         if (pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
@@ -165,6 +166,8 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }
   
   if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
+     // This check is to prevent brief flash of content if auth state resolves quickly
+     // but routing hasn't happened yet.
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

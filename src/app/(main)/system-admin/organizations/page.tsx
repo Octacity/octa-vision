@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // Added Link import
 
 interface Organization {
   id: string;
@@ -31,7 +32,7 @@ const AdminOrganizationsPage: NextPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
   const fetchOrganizations = async () => {
     setLoading(true);
@@ -41,15 +42,17 @@ const AdminOrganizationsPage: NextPage = () => {
         const data = orgDoc.data();
         // Fetch user-admin email (assuming first user-admin found)
         let userAdminEmail = 'N/A';
-        const usersQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id), where('role', '==', 'user-admin'));
-        const usersSnapshot = await getDocs(usersQuery);
-        if (!usersSnapshot.empty) {
-          userAdminEmail = usersSnapshot.docs[0].data().email;
+        const usersAdminQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id), where('role', '==', 'user-admin'));
+        const usersAdminSnapshot = await getDocs(usersAdminQuery);
+        if (!usersAdminSnapshot.empty) {
+          userAdminEmail = usersAdminSnapshot.docs[0].data().email;
         }
         
-        const userCount = usersSnapshot.size; 
-        // Placeholder for camera count - this would ideally query a 'cameras' collection
-        // For now, let's assume it's 0 or fetched from another source if available in org document
+        // Fetch total user count for the organization
+        const allUsersQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id));
+        const allUsersSnapshot = await getDocs(allUsersQuery);
+        const userCount = allUsersSnapshot.size; 
+
         const camerasQuery = query(collection(db, 'cameras'), where('organizationId', '==', orgDoc.id));
         const camerasSnapshot = await getDocs(camerasQuery);
         const cameraCount = camerasSnapshot.size;
@@ -66,7 +69,7 @@ const AdminOrganizationsPage: NextPage = () => {
           cameraCount,
         } as Organization;
       }));
-      setOrganizations(orgsData); // Display all organizations
+      setOrganizations(orgsData);
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -105,7 +108,6 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
-          {/* <CardTitle>Manage Organizations</CardTitle> */} {/* Title removed as it's in the app bar */}
           <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -132,7 +134,11 @@ const AdminOrganizationsPage: NextPage = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>{org.userAdminEmail}</TableCell>
-                    <TableCell className="text-center">{org.userCount}</TableCell>
+                    <TableCell className="text-center">
+                       <Link href={`/system-admin/organizations/${org.id}/users`} className="text-primary hover:underline">
+                        {org.userCount}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-center">{org.cameraCount}</TableCell>
                     <TableCell>{org.createdAt}</TableCell>
                     <TableCell className="text-right space-x-2">
