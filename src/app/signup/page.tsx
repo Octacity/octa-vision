@@ -28,6 +28,7 @@ const SignUpPage = () => {
   const [organizationPhone, setOrganizationPhone] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [organizationDescription, setOrganizationDescription] = useState("");
+  const [needForOctaVision, setNeedForOctaVision] = useState(""); // New state for the new field
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); 
   const router = useRouter();
@@ -62,6 +63,7 @@ const SignUpPage = () => {
         phone: organizationPhone,
         billingAddress: billingAddress,
         description: organizationDescription,
+        needForOctaVision: needForOctaVision, // Add the new field here
         approved: false, // Default to not approved
         createdAt: serverTimestamp(),
       });
@@ -181,6 +183,18 @@ const SignUpPage = () => {
                     required
                   />
                 </div>
+                
+                <div>
+                  <Label htmlFor="needForOctaVision" className="block text-left text-muted-foreground mb-1">How do you plan to use OctaVision?</Label>
+                  <Textarea
+                    id="needForOctaVision"
+                    value={needForOctaVision}
+                    onChange={(e) => setNeedForOctaVision(e.target.value)}
+                    required
+                    placeholder="Briefly describe your use case or the problems you're trying to solve."
+                  />
+                </div>
+
 
                 <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/80">
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -205,3 +219,4 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
+
