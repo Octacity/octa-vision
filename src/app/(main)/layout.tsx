@@ -94,7 +94,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
+  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar();
   const currentPageTitle = getPageTitle(pathname);
   const { openNotificationDrawer } = useNotificationDrawer();
 
@@ -156,6 +156,12 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       toast({ variant: 'destructive', title: 'Sign Out Failed', description: 'Could not sign you out. Please try again.' });
     }
   };
+  
+  const handleMenuItemClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -184,6 +190,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             href="/dashboard"
             className="text-lg font-semibold"
             style={{ color: 'rgb(var(--octaview-primary))' }}
+            onClick={handleMenuItemClick}
           >
             {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'}
           </Link>
@@ -192,7 +199,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <SidebarMenu>
             <SidebarMenuItem>
               <Link href="/dashboard" passHref legacyBehavior>
-                <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                   <Home className="h-4 w-4" />
                   {sidebarState === 'expanded' && <span>Dashboard</span>}
                 </SidebarMenuButton>
@@ -202,7 +209,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <>
                 <SidebarMenuItem>
                   <Link href="/cameras" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <CameraIcon className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Cameras</span>}
                     </SidebarMenuButton>
@@ -210,7 +217,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/groups" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <UsersIcon className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Groups</span>}
                     </SidebarMenuButton>
@@ -218,7 +225,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/monitor" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <Activity className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Monitor</span>}
                     </SidebarMenuButton>
@@ -226,7 +233,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/videos" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <Film className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Videos</span>}
                     </SidebarMenuButton>
@@ -234,7 +241,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/settings" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <Settings className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Settings</span>}
                     </SidebarMenuButton>
@@ -242,7 +249,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <Link href="/account" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                    <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <CircleUserRound className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>Account</span>}
                     </SidebarMenuButton>
@@ -251,7 +258,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 {userRole === 'user-admin' && (
                   <SidebarMenuItem>
                     <Link href="/organization-users" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <UserPlus className="h-4 w-4" />
                         {sidebarState === 'expanded' && <span>Org Users</span>}
                       </SidebarMenuButton>
@@ -266,7 +273,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 <SidebarGroupContent>
                   <SidebarMenuItem>
                     <Link href="/system-admin/organizations" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Briefcase className="h-4 w-4" />
                         {sidebarState === 'expanded' && <span>Organizations</span>}
                       </SidebarMenuButton>
@@ -275,7 +282,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   {/* Removed System Users direct link from here */}
                    <SidebarMenuItem>
                     <Link href="/system-admin/servers" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Server className="h-4 w-4" />
                         {sidebarState === 'expanded' && <span>Our Servers</span>}
                       </SidebarMenuButton>
@@ -290,7 +297,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <div className="text-center text-xs">Version 3.0.0</div>
         </SidebarFooter>
       </Sidebar>
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-x-hidden">
         <div className="bg-background border-b px-4 py-2 flex items-center justify-between sticky top-0 z-10 h-16">
           <div className="flex items-center">
             <Button variant="outline" className="h-8 w-8 p-1.5 border" onClick={toggleSidebar}>
@@ -378,3 +385,4 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
+
