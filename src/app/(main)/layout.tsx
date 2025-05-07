@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Settings,
-  Users,
+  Users as UsersIcon, // Renamed to avoid conflict
   Activity,
   Film,
   Home,
@@ -25,6 +25,7 @@ import {
   UserPlus,
   LogOut,
   ShieldAlert,
+  Briefcase, // Added for Organizations
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,9 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   useSidebar,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
 } from '@/components/ui/sidebar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
@@ -66,6 +70,8 @@ const pageTitles: Record<string, string> = {
   '/account': 'My Account',
   '/organization-users': 'Organization Users',
   '/system-admin': 'System Administration',
+  '/system-admin/organizations': 'Manage Organizations',
+  '/system-admin/users': 'Manage System Users',
 };
 
 
@@ -177,7 +183,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            {/* Menu items are now always visible, approval status is handled in content area */}
             <SidebarMenuItem>
               <Link href="/cameras" passHref legacyBehavior>
                 <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
@@ -189,7 +194,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             <SidebarMenuItem>
               <Link href="/groups" passHref legacyBehavior>
                 <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                  <Users className="h-4 w-4" />
+                  <UsersIcon className="h-4 w-4" />
                   {sidebarState === 'expanded' && <span>Groups</span>}
                 </SidebarMenuButton>
               </Link>
@@ -237,14 +242,27 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </SidebarMenuItem>
             )}
             {userRole === 'system-admin' && (
-              <SidebarMenuItem>
-                <Link href="/system-admin" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/system-admin'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
-                    <Shield className="h-4 w-4" />
-                    {sidebarState === 'expanded' && <span>System Admin</span>}
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
+              <SidebarGroup>
+                <SidebarGroupLabel>System Admin</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenuItem>
+                    <Link href="/system-admin/organizations" passHref legacyBehavior>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                        <Briefcase className="h-4 w-4" />
+                        {sidebarState === 'expanded' && <span>Organizations</span>}
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <Link href="/system-admin/users" passHref legacyBehavior>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/users')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'}>
+                        <UsersIcon className="h-4 w-4" />
+                        {sidebarState === 'expanded' && <span>System Users</span>}
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
           </SidebarMenu>
         </SidebarContent>
