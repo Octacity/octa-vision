@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -657,7 +658,7 @@ const CamerasPage: NextPage = () => {
                 <Card className="p-4 bg-muted/50">
                     <div className="space-y-4">
                         <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center">
-                            <Plus className="w-4 h-4 mr-2"/> Add a new group for your cameras
+                            <Plus className="w-4 h-4 mr-2"/> Add a new group for your cameras or videos
                         </h4>
                         <FormField
                             control={formStep1.control}
@@ -1279,3 +1280,4 @@ const CamerasPage: NextPage = () => {
 export default CamerasPage;
 
     
+
