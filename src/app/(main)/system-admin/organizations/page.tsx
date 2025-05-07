@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 interface Organization {
   id: string;
@@ -30,6 +31,7 @@ const AdminOrganizationsPage: NextPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const router = useRouter(); // Initialize useRouter
 
   const fetchOrganizations = async () => {
     setLoading(true);
@@ -38,7 +40,6 @@ const AdminOrganizationsPage: NextPage = () => {
       const orgsData = await Promise.all(orgsSnapshot.docs.map(async (orgDoc) => {
         const data = orgDoc.data();
         // Fetch user-admin email (assuming first user-admin found)
-        // This is a simplified approach; a more robust solution might be needed
         let userAdminEmail = 'N/A';
         const usersQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id), where('role', '==', 'user-admin'));
         const usersSnapshot = await getDocs(usersQuery);
@@ -46,9 +47,13 @@ const AdminOrganizationsPage: NextPage = () => {
           userAdminEmail = usersSnapshot.docs[0].data().email;
         }
         
-        // Placeholder for user count and camera count
-        const userCount = usersSnapshot.size; // Counts all users in org for now
-        const cameraCount = 0; // Placeholder
+        const userCount = usersSnapshot.size; 
+        // Placeholder for camera count - this would ideally query a 'cameras' collection
+        // For now, let's assume it's 0 or fetched from another source if available in org document
+        const camerasQuery = query(collection(db, 'cameras'), where('organizationId', '==', orgDoc.id));
+        const camerasSnapshot = await getDocs(camerasQuery);
+        const cameraCount = camerasSnapshot.size;
+
 
         return {
           id: orgDoc.id,
@@ -61,7 +66,7 @@ const AdminOrganizationsPage: NextPage = () => {
           cameraCount,
         } as Organization;
       }));
-      setOrganizations(orgsData);
+      setOrganizations(orgsData.filter(org => !org.approved)); // Filter to show only non-approved organizations
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -83,15 +88,9 @@ const AdminOrganizationsPage: NextPage = () => {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not approve organization.' });
     }
   };
-
-  const handleReject = async (orgId: string) => {
-    // For now, just shows a toast. Implement actual rejection logic if needed (e.g., mark as rejected, delete)
-    console.log(`Rejecting organization: ${orgId}`);
-    toast({ title: 'Action Required', description: 'Reject functionality to be implemented.' });
-  };
   
   const handleManageIPs = (orgId: string) => {
-    toast({ title: 'Feature Coming Soon', description: `Manage IPs for ${orgId} will be available soon.`});
+    router.push(`/system-admin/organizations/${orgId}/ips`);
   };
 
   if (loading) {
@@ -106,8 +105,8 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Manage Organizations</CardTitle>
-          <CardDescription>Approve, view, and manage registered organizations.</CardDescription>
+          <CardTitle>Manage Organization Approvals</CardTitle>
+          <CardDescription>Approve new organizations and manage their initial setup.</CardDescription>
         </CardHeader>
         <CardContent>
           {organizations.length > 0 ? (
@@ -145,7 +144,6 @@ const AdminOrganizationsPage: NextPage = () => {
                       <Button variant="ghost" size="sm" onClick={() => handleManageIPs(org.id)}>
                          <Edit className="mr-2 h-4 w-4" /> Manage IPs
                       </Button>
-                      {/* Add Reject button or other actions if needed */}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -153,7 +151,7 @@ const AdminOrganizationsPage: NextPage = () => {
             </Table>
           ) : (
             <div className="mt-4 p-4 border rounded-md bg-muted text-center">
-              <p className="text-sm text-muted-foreground">No organizations found.</p>
+              <p className="text-sm text-muted-foreground">No organizations pending approval.</p>
             </div>
           )}
         </CardContent>
