@@ -66,7 +66,7 @@ const AdminOrganizationsPage: NextPage = () => {
           cameraCount,
         } as Organization;
       }));
-      setOrganizations(orgsData.filter(org => !org.approved)); // Filter to show only non-approved organizations
+      setOrganizations(orgsData); // Display all organizations
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -95,7 +95,7 @@ const AdminOrganizationsPage: NextPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center p-8">
+      <div className="flex justify-center items-center p-8 h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -105,8 +105,8 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Manage Organization Approvals</CardTitle>
-          <CardDescription>Approve new organizations and manage their initial setup.</CardDescription>
+          <CardTitle>Manage Organizations</CardTitle>
+          <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
         </CardHeader>
         <CardContent>
           {organizations.length > 0 ? (
@@ -127,7 +127,7 @@ const AdminOrganizationsPage: NextPage = () => {
                   <TableRow key={org.id}>
                     <TableCell className="font-medium">{org.name}</TableCell>
                     <TableCell>
-                      <Badge variant={org.approved ? 'default' : 'secondary'} className={org.approved ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}>
+                      <Badge variant={org.approved ? 'default' : 'secondary'} className={org.approved ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'}>
                         {org.approved ? 'Approved' : 'Pending'}
                       </Badge>
                     </TableCell>
@@ -151,7 +151,7 @@ const AdminOrganizationsPage: NextPage = () => {
             </Table>
           ) : (
             <div className="mt-4 p-4 border rounded-md bg-muted text-center">
-              <p className="text-sm text-muted-foreground">No organizations pending approval.</p>
+              <p className="text-sm text-muted-foreground">No organizations found.</p>
             </div>
           )}
         </CardContent>
