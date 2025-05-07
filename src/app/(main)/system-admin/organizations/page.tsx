@@ -82,7 +82,7 @@ const AdminOrganizationsPage: NextPage = () => {
 
   useEffect(() => {
     fetchOrganizations();
-  }, [toast]); // Removed fetchOrganizations from dependency array as it causes infinite loop with toast
+  }, []); // Removed toast from dependency array to prevent potential re-fetches if toast instance changes
 
   const handleApprove = async (orgId: string) => {
     try {
@@ -115,7 +115,7 @@ const AdminOrganizationsPage: NextPage = () => {
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Organizations</CardTitle>
+          {/* <CardTitle>Organizations</CardTitle> Removed CardTitle */}
           <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
         </CardHeader>
         <CardContent>
