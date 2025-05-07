@@ -125,19 +125,19 @@ const AdminOrganizationsPage: NextPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="sticky left-0 bg-card z-10 w-[200px] min-w-[200px] sm:w-[250px] sm:min-w-[250px]">Name</TableHead>
+                    <TableHead className="bg-card w-[200px] min-w-[200px] sm:w-[250px] sm:min-w-[250px]">Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>User Admin</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] sm:w-[150px] sm:min-w-[150px]">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px] sm:w-[130px] sm:min-w-[130px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {organizations.map((org) => (
                     <TableRow key={org.id}>
-                      <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                      <TableCell className="bg-card font-medium">
                         <div className="max-w-[180px] sm:max-w-[230px] overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
                           {org.name}
                           {org.admin && (
@@ -158,7 +158,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] sm:w-[150px] sm:min-w-[150px]">
+                      <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px] sm:w-[130px] sm:min-w-[130px]">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
