@@ -82,7 +82,7 @@ const AdminOrganizationsPage: NextPage = () => {
 
   useEffect(() => {
     fetchOrganizations();
-  }, []); // Removed toast from dependency array to prevent potential re-fetches if toast instance changes
+  }, []); 
 
   const handleApprove = async (orgId: string) => {
     try {
@@ -125,20 +125,20 @@ const AdminOrganizationsPage: NextPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="bg-card w-[200px] min-w-[200px] sm:w-[250px] sm:min-w-[250px]">Name</TableHead>
+                    <TableHead className="bg-card">Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>User Admin</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px] sm:w-[130px] sm:min-w-[130px]">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {organizations.map((org) => (
                     <TableRow key={org.id}>
                       <TableCell className="bg-card font-medium">
-                        <div className="max-w-[180px] sm:max-w-[230px] overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
+                        <div className="overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
                           {org.name}
                           {org.admin && (
                             <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
@@ -158,7 +158,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px] sm:w-[130px] sm:min-w-[130px]">
+                      <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px]">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
