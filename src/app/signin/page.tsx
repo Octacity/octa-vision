@@ -12,11 +12,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { doc, getDoc } from "firebase/firestore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 const SignInPage = () => {
   const [email, setEmail] = useState("");
@@ -24,6 +25,16 @@ const SignInPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); 
   const router = useRouter();
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push('/dashboard');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,48 +50,36 @@ const SignInPage = () => {
       );
       const user = userCredential.user;
 
-      // Fetch user data from Firestore to get organizationId
       const userDoc = await getDoc(doc(db, "users", user.uid));
 
       if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const organizationId = userData?.organizationId;
-
-        // Fetch organization data to check approval status
-        const orgDoc = await getDoc(doc(db, "organizations", organizationId));
-
-        if (orgDoc.exists()) {
-          const orgData = orgDoc.data();
-          const isApproved = orgData?.approved;
-
-          if (isApproved) {
-            router.push("/dashboard");
-          } else {
-            router.push("/dashboard"); // User should still go to dashboard to see "not approved" message
-          }
-        } else {
-          setErrorMessage("Organization not found.");
-        }
+        router.push("/dashboard");
       } else {
-        setErrorMessage("User data not found.");
+        setErrorMessage("User data not found. Please contact support.");
+         // Sign out the user if their Firestore record is missing, to prevent partial login state
+        await signOut(auth);
       }
     } catch (error: any) {
       console.error("Error signing in:", error);
-      setErrorMessage(error.message);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        setErrorMessage("Invalid email or password.");
+      } else {
+        setErrorMessage("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsLoading(false); 
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Sign In to <span className="text-accent">OctaVision</span>
+    <div className="flex flex-col items-center justify-center min-h-screen py-2 bg-octaview-secondary">
+      <main className="flex flex-col items-center justify-center w-full flex-1 px-4 sm:px-20 text-center">
+        <h1 className="text-3xl font-bold" style={{ color: 'rgb(var(--octaview-primary))' }}>
+          Sign In to <span style={{ color: 'rgb(var(--octaview-accent))' }}>OctaVision</span>
         </h1>
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
-          <Card className="w-96">
+          <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle className="text-2xl">Sign In</CardTitle>
               <CardDescription>Enter your credentials to access your account.</CardDescription>
@@ -102,6 +101,7 @@ const SignInPage = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                   />
                 </div>
 
@@ -113,10 +113,12 @@ const SignInPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    autoComplete="current-password"
                   />
                 </div>
 
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/80">
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {isLoading ? "Signing In..." : "Sign In"}
                 </Button>
               </form>
@@ -125,10 +127,16 @@ const SignInPage = () => {
         </div>
       </main>
 
-      <footer className="flex items-center justify-center w-full border-t"></footer>
+      <footer className="flex items-center justify-center w-full h-20 border-t border-border mt-8">
+         <p className="text-muted-foreground text-sm">
+            Don't have an account?{" "}
+            <Link href="/signup" className="font-medium hover:text-accent">
+              Sign Up
+            </Link>
+          </p>
+      </footer>
     </div>
   );
 };
 
 export default SignInPage;
-

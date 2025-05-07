@@ -13,11 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
-import { doc, setDoc, collection, addDoc, Timestamp, serverTimestamp } from "firebase/firestore";
-import { useState } from "react";
+import { doc, setDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 const SignUpPage = () => {
   const [email, setEmail] = useState("");
@@ -29,6 +31,16 @@ const SignUpPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false); 
   const router = useRouter();
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push('/dashboard');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +62,7 @@ const SignUpPage = () => {
         phone: organizationPhone,
         billingAddress: billingAddress,
         description: organizationDescription,
-        approved: false,
+        approved: false, // Default to not approved
         createdAt: serverTimestamp(),
       });
 
@@ -58,28 +70,36 @@ const SignUpPage = () => {
       await setDoc(doc(db, "users", user.uid), {
         email: email,
         organizationId: orgRef.id, 
-        role: 'user_admin', // Standardized to user_admin
+        role: 'user-admin', 
         createdAt: serverTimestamp(),
       });
 
       router.push("/dashboard");
-    } catch (error: any) {
+    } catch (error: any)
+     {
       console.error("Error signing up:", error);
-      setErrorMessage(error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setErrorMessage("This email address is already in use.");
+      } else if (error.code === 'auth/weak-password') {
+        setErrorMessage("Password should be at least 6 characters.");
+      }
+      else {
+        setErrorMessage("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsLoading(false); 
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen py-2 bg-octaview-secondary">
+      <main className="flex flex-col items-center justify-center w-full flex-1 px-4 sm:px-20 text-center">
         <h1 className="text-3xl font-bold" style={{ color: 'rgb(var(--octaview-primary))' }}>
           Sign Up for <span style={{ color: 'rgb(var(--octaview-accent))' }}>OctaVision</span>
         </h1>
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
-          <Card className="w-96">
+          <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle className="text-2xl">Create Your Account</CardTitle>
               <CardDescription>Enter your details to get started.</CardDescription>
@@ -101,6 +121,7 @@ const SignUpPage = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                   />
                 </div>
 
@@ -112,6 +133,7 @@ const SignUpPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                   />
                 </div>
 
@@ -123,9 +145,10 @@ const SignUpPage = () => {
                     value={organizationName}
                     onChange={(e) => setOrganizationName(e.target.value)}
                     required
+                    autoComplete="organization"
                   />
                 </div>
-
+                
                 <div>
                   <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-1">Organization Phone</Label>
                   <Input
@@ -134,6 +157,7 @@ const SignUpPage = () => {
                     value={organizationPhone}
                     onChange={(e) => setOrganizationPhone(e.target.value)}
                     required
+                    autoComplete="tel"
                   />
                 </div>
 
@@ -144,6 +168,7 @@ const SignUpPage = () => {
                     value={billingAddress}
                     onChange={(e) => setBillingAddress(e.target.value)}
                     required
+                    autoComplete="street-address"
                   />
                 </div>
 
@@ -158,6 +183,7 @@ const SignUpPage = () => {
                 </div>
 
                 <Button type="submit" disabled={isLoading} className="bg-primary text-primary-foreground hover:bg-primary/80">
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {isLoading ? "Signing Up..." : "Sign Up"}
                 </Button>
               </form>
@@ -166,7 +192,14 @@ const SignUpPage = () => {
         </div>
       </main>
 
-      <footer className="flex items-center justify-center w-full h-20 border-t"></footer>
+      <footer className="flex items-center justify-center w-full h-20 border-t border-border mt-8">
+        <p className="text-muted-foreground text-sm">
+            Already have an account?{" "}
+            <Link href="/signin" className="font-medium hover:text-accent">
+              Sign In
+            </Link>
+          </p>
+      </footer>
     </div>
   );
 };

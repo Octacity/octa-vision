@@ -3,12 +3,12 @@
 
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { db } from '@/firebase/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Settings,
   Users,
@@ -20,10 +20,10 @@ import {
   Bell,
   Menu,
   ArrowLeft,
-  // ArrowRight, // No longer needed if using Menu for collapsed state
   Loader2,
   Shield,
   UserPlus,
+  LogOut,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Sidebar,
@@ -47,6 +48,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import NotificationDrawer from '@/components/NotificationDrawer';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface MainLayoutProps {
@@ -71,6 +73,8 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar } = useSidebar();
   const currentPageTitle = pageTitles[pathname] || 'OctaVision';
   const { openNotificationDrawer } = useNotificationDrawer();
@@ -84,7 +88,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setUserRole(userData?.role || 'user'); // Default to 'user' if no role
+          setUserRole(userData?.role || 'user'); 
           const organizationId = userData?.organizationId;
 
           if (organizationId) {
@@ -106,14 +110,30 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           setUserRole(null);
         }
       } else {
-        setIsApproved(false);
-        setUserRole(null);
+        // User is not logged in, or session expired
+        setIsApproved(false); 
+        setUserRole(null);   
+        if (pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
+          router.push('/signin'); 
+        }
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router, pathname]);
+
+  const handleLogout = async () => {
+    const auth = getAuth();
+    try {
+      await signOut(auth);
+      toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+      router.push('/signin');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      toast({ variant: 'destructive', title: 'Logout Failed', description: 'Could not log you out. Please try again.' });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -122,6 +142,17 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       </div>
     );
   }
+  
+  // If still loading user data but no user is found, and not on public pages, show loader.
+  // This prevents brief flicker of content before redirect.
+  if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
+    return (
+      <div className="flex h-screen items-center justify-center w-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return (
     <>
@@ -256,21 +287,29 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Link href="/account">Account</Link>
+                <DropdownMenuItem asChild>
+                  <Link href="/account">
+                    <CircleUserRound className="mr-2 h-4 w-4" />
+                    Account
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/settings">Settings</Link>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/logout">Logout</Link>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {isApproved === false && (
+        {isApproved === false && getAuth().currentUser && (
           <div className="p-4">
             <Alert variant="destructive">
               <AlertTitle>Account Not Approved</AlertTitle>
@@ -282,7 +321,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           </div>
         )}
         <main className="p-8 flex-1 overflow-y-auto">
-          { (isLoading === false && isApproved === null && userRole === null) ? <div className="flex h-full items-center justify-center w-full"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div> : children }
+         {children}
         </main>
          <NotificationDrawer />
       </div>
