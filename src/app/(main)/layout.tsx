@@ -24,6 +24,7 @@ import {
   Shield,
   UserPlus,
   LogOut,
+  ShieldAlert,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -309,10 +310,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         {isApproved === false && getAuth().currentUser && (
           <div className="p-4">
             <Alert variant="destructive">
-              <AlertTitle>Account Not Approved</AlertTitle>
+              <ShieldAlert className="h-4 w-4" />
+              <AlertTitle>Organization Approval Pending</AlertTitle>
               <AlertDescription>
-                Your organization's account is awaiting approval from the
-                administrator. Camera processing and other features may be limited until approved. Please check back later or contact support.
+                Your organization's account is currently awaiting approval. 
+                Camera processing and certain features will remain paused until your account is approved by an administrator.
               </AlertDescription>
             </Alert>
           </div>
