@@ -139,11 +139,11 @@ type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 const addCameraStep3Schema = z.object({
     cameraPurposeDescription: z.string().min(1, "This field is required."),
     aiDetectionPrompt: z.string().min(1, "AI detection prompt is required."),
-    cameraAlertClasses: z.string().optional(), 
-    videoChunksValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    cameraAlertClasses: z.string().min(1, "Alert classes are required."), 
+    videoChunksValue: z.string().min(1, "Video chunks value is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoChunksUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
-    numFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
-    videoOverlapValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    numFrames: z.string().min(1, "Number of frames is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoOverlapValue: z.string().min(1, "Video overlap value is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoOverlapUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
 });
 type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
