@@ -132,7 +132,12 @@ const AdminOrganizationsPage: NextPage = () => {
               <TableBody>
                 {organizations.map((org) => (
                   <TableRow key={org.id}>
-                    <TableCell className="font-medium">{org.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {org.name}
+                      {/* Admin tag requested by user: "Add under the organisation name, a tag saying admin for organistation with admin as true." */}
+                      {/* This part is not implemented as the 'admin: true' field is not present in the Organization data model. */}
+                      {/* If 'approved' was meant, it's already covered by the Status column. */}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={org.approved ? 'default' : 'secondary'} className={org.approved ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-yellow-500 hover:bg-yellow-600 text-white'}>
                         {org.approved ? 'Approved' : 'Pending'}
@@ -148,14 +153,14 @@ const AdminOrganizationsPage: NextPage = () => {
                     <TableCell>{org.createdAt}</TableCell>
                     <TableCell className="text-right space-x-2">
                       {!org.approved && (
-                        <Button variant="outline" size="sm" onClick={() => handleApprove(org.id)} className="text-green-600 border-green-600 hover:bg-green-50">
+                        <Button variant="outline" size="sm" onClick={() => handleApprove(org.id)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700">
                           <CheckCircle className="mr-2 h-4 w-4" /> Approve
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => handleManageIPs(org.id)}>
+                      <Button variant="outline" size="sm" onClick={() => handleManageIPs(org.id)}>
                          <Server className="mr-2 h-4 w-4" /> Manage IPs
                       </Button>
-                       <Button variant="ghost" size="sm" onClick={() => handleManageUsers(org.id)}>
+                       <Button variant="outline" size="sm" onClick={() => handleManageUsers(org.id)}>
                          <UsersIconLucide className="mr-2 h-4 w-4" /> Manage Users
                       </Button>
                     </TableCell>
@@ -175,3 +180,4 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
+
