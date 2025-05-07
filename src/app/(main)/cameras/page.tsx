@@ -481,7 +481,7 @@ const CamerasPage: NextPage = () => {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
-                                        <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground"/>What does the cameras in this group do?
+                                        <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground"/>What does the cameras in this group looking at?
                                     </FormLabel>
                                     <FormControl>
                                         <Textarea placeholder="e.g., Monitors the main entrance and exit points." {...field} />
@@ -812,7 +812,7 @@ const CamerasPage: NextPage = () => {
                       </div>
                       {msg.sender === 'user' && msg.avatar && (
                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={msg.avatar} alt="User" data-ai-hint="user avatar" />
+                            <AvatarImage src={msg.avatar} alt="User" data-ai-hint="user avatar"/>
                             <AvatarFallback>{/* User initials */}</AvatarFallback>
                         </Avatar>
                       )}
