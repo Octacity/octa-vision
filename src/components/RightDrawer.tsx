@@ -34,7 +34,7 @@ const RightDrawer = ({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
         <SheetHeader className="h-16 flex items-center justify-center px-6 border-b"> {/* Added justify-center */}
-          <SheetTitle>{title}</SheetTitle>
+          <SheetTitle className="font-normal text-primary">{title}</SheetTitle>
         </SheetHeader>
         <ScrollArea className={`flex-grow ${noPadding ? '' : 'p-6'}`}>
             {children}

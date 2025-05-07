@@ -202,6 +202,7 @@ const CamerasPage: NextPage = () => {
 
   const formStep1 = useForm<AddCameraStep1Values>({
     resolver: zodResolver(addCameraStep1Schema),
+    mode: "onChange", // Validate on change to update isValid
     defaultValues: {
       rtspUrl: '',
       cameraName: '',
@@ -215,6 +216,7 @@ const CamerasPage: NextPage = () => {
 
   const formStep2 = useForm<AddCameraStep2Values>({
     resolver: zodResolver(addCameraStep2Schema),
+    mode: "onChange",
     defaultValues: {
         sceneDescription: '',
     },
@@ -222,6 +224,7 @@ const CamerasPage: NextPage = () => {
 
   const formStep3 = useForm<AddCameraStep3Values>({
     resolver: zodResolver(addCameraStep3Schema),
+    mode: "onChange",
     defaultValues: {
         cameraPurposeDescription: '',
         aiDetectionPrompt: '',
@@ -286,6 +289,10 @@ const CamerasPage: NextPage = () => {
       setShowNewGroupForm(true);
     } else {
       setShowNewGroupForm(false);
+      formStep1.setValue('newGroupName', ''); // Clear new group name if not adding new
+      formStep1.setValue('groupDescription', '');
+      formStep1.setValue('groupAIDetection', '');
+      formStep1.setValue('alertClasses', '');
     }
   };
 
@@ -293,9 +300,11 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data:", data);
     setIsProcessingStep2(true);
     setDrawerStep(2);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate API call for snapshot
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
     setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Simulate AI generating description
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate AI processing
     formStep2.setValue('sceneDescription', 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
     setIsProcessingStep2(false);
   };
@@ -341,6 +350,8 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data (final):", formStep1.getValues());
     console.log("Step 2 Data (final):", formStep2.getValues());
     console.log("Step 3 Data (final):", data);
+    // Here you would typically make an API call to save the camera data
+    // For now, just close the drawer
     handleDrawerClose();
   };
 
@@ -359,6 +370,7 @@ const CamerasPage: NextPage = () => {
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
+    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
@@ -846,7 +858,11 @@ const CamerasPage: NextPage = () => {
         return (
             <div className="flex justify-between p-4">
                 <Button variant="outline" onClick={handleDrawerClose}>Cancel</Button>
-                <Button type="submit" form="add-camera-form-step1" disabled={formStep1.formState.isSubmitting}>
+                <Button 
+                    type="submit" 
+                    form="add-camera-form-step1" 
+                    disabled={formStep1.formState.isSubmitting || !formStep1.formState.isValid}
+                >
                     {formStep1.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Next
                 </Button>
@@ -856,7 +872,11 @@ const CamerasPage: NextPage = () => {
         return (
             <div className="flex justify-between p-4">
                 <Button variant="outline" onClick={handleStep2Back}>Back</Button>
-                <Button type="submit" form="add-camera-form-step2" disabled={isProcessingStep2 || formStep2.formState.isSubmitting}>
+                <Button 
+                    type="submit" 
+                    form="add-camera-form-step2" 
+                    disabled={isProcessingStep2 || formStep2.formState.isSubmitting || !formStep2.formState.isValid}
+                >
                     {(isProcessingStep2 || formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Next
                 </Button>
@@ -866,7 +886,11 @@ const CamerasPage: NextPage = () => {
             return (
                 <div className="flex justify-between p-4">
                     <Button variant="outline" onClick={handleStep3Back}>Back</Button>
-                    <Button type="submit" form="add-camera-form-step3" disabled={formStep3.formState.isSubmitting}>
+                    <Button 
+                        type="submit" 
+                        form="add-camera-form-step3" 
+                        disabled={formStep3.formState.isSubmitting || !formStep3.formState.isValid}
+                    >
                         {formStep3.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Save Camera
                     </Button>
