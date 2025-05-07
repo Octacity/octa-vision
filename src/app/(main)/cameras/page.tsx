@@ -6,8 +6,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
+import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,13 +30,17 @@ import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
+import { useToast } from '@/hooks/use-toast';
 
 
-export interface Camera { // Exporting Camera interface
+export interface Camera { 
   id: string;
-  name: string;
+  cameraName: string; // Renamed from name for consistency with Firestore
   imageUrl: string;
   dataAiHint: string;
+  // other fields from cameras collection like orgId, userId, etc.
+  // currentConfigId?: string; 
+  // processingStatus?: string;
 }
 
 interface ChatMessage {
@@ -58,7 +62,7 @@ const addCameraStep1Schema = z.object({
   newGroupName: z.string().optional(),
   groupSceneContext: z.string().optional(), 
   groupAIDetectionTarget: z.string().optional(), 
-  groupAlertEvents: z.string().optional(), // Renamed from alertClasses
+  groupAlertEvents: z.string().optional(), 
 }).refine(data => {
   if (data.group === 'add_new_group' && !data.newGroupName) {
     return false;
@@ -106,19 +110,24 @@ const CamerasPage: NextPage = () => {
   const { openNotificationDrawer } = useNotificationDrawer();
   const [isOrgApproved, setIsOrgApproved] = useState<boolean | null>(null);
   const [isLoadingOrgStatus, setIsLoadingOrgStatus] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
 
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [groups, setGroups] = useState<{id: string, name: string}[]>(initialGroups);
+  const { toast } = useToast();
 
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
           const organizationId = userData?.organizationId;
+          setOrgId(organizationId);
           if (organizationId) {
             const orgDocRef = doc(db, 'organizations', organizationId);
             const orgDocSnap = await getDoc(orgDocRef);
@@ -135,6 +144,7 @@ const CamerasPage: NextPage = () => {
         }
       } else {
         setIsOrgApproved(false);
+        setOrgId(null);
       }
       setIsLoadingOrgStatus(false);
     });
@@ -171,10 +181,10 @@ const CamerasPage: NextPage = () => {
         cameraSceneContext: '',
         aiDetectionTarget: '',
         alertEvents: '',
-        videoChunksValue: '',
+        videoChunksValue: '10', // Default example
         videoChunksUnit: 'seconds',
-        numFrames: '',
-        videoOverlapValue: '',
+        numFrames: '5', // Default example
+        videoOverlapValue: '2', // Default example
         videoOverlapUnit: 'seconds',
     }
   });
@@ -183,7 +193,16 @@ const CamerasPage: NextPage = () => {
   const handleAddCameraClick = () => {
     formStep1.reset();
     formStep2.reset();
-    formStep3.reset();
+    formStep3.reset({ // Reset step 3 with defaults
+        cameraSceneContext: '',
+        aiDetectionTarget: '',
+        alertEvents: '',
+        videoChunksValue: '10',
+        videoChunksUnit: 'seconds',
+        numFrames: '5',
+        videoOverlapValue: '2',
+        videoOverlapUnit: 'seconds',
+    });
     setDrawerType('addCamera');
     setDrawerStep(1);
     setIsDrawerOpen(true);
@@ -199,7 +218,7 @@ const CamerasPage: NextPage = () => {
       {
         id: 'ai-initial-' + camera.id,
         sender: 'ai',
-        text: `You can now chat with ${camera.name}. Do you want to know about the alerts for the day?`,
+        text: `You can now chat with ${camera.cameraName}. Do you want to know about the alerts for the day?`,
         timestamp: new Date(),
         avatar: undefined, 
       }
@@ -235,6 +254,11 @@ const CamerasPage: NextPage = () => {
       formStep1.setValue('groupSceneContext', '');
       formStep1.setValue('groupAIDetectionTarget', '');
       formStep1.setValue('groupAlertEvents', '');
+      // Potentially pre-fill step 3 based on selected group's config if available
+      const selectedGroupData = groups.find(g => g.id === value);
+      if (selectedGroupData) {
+        // Example: formStep3.setValue('alertEvents', selectedGroupData.defaultAlertEvents);
+      }
     }
   };
 
@@ -243,9 +267,12 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
     setDrawerStep(2);
+    // Simulate API call for snapshot and scene description
     await new Promise(resolve => setTimeout(resolve, 1500)); 
     setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
     await new Promise(resolve => setTimeout(resolve, 2000)); 
+    // Simulate AI generating scene description
+    // In a real app, this would be an API call using the snapshot/RTSP URL
     formStep2.setValue('sceneDescription', 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
     setIsProcessingStep2(false);
   };
@@ -253,32 +280,38 @@ const CamerasPage: NextPage = () => {
   const handleStep2Back = () => {
     setDrawerStep(1);
     setSnapshotUrl(null);
-    formStep2.reset();
+    // formStep2.reset(); // Don't reset if we want to keep generated description on back
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
     console.log("Step 2 Data:", data);
     if (!formStep2.formState.isValid) return;
-    const groupSceneCtx = formStep1.getValues('groupSceneContext');
-    const groupAIDetectionTarget = formStep1.getValues('groupAIDetectionTarget');
+
+    const step1Values = formStep1.getValues();
     const currentSceneDesc = data.sceneDescription; 
 
-    let cameraPurpose = `Based on the scene description: "${currentSceneDesc}"`;
-    if (groupSceneCtx) {
-        cameraPurpose += ` and the group's context: "${groupSceneCtx}", this camera's role is to...`;
+    let cameraContext = `The camera is observing: "${currentSceneDesc}".`;
+    if (step1Values.group && step1Values.group !== 'add_new_group' && step1Values.groupSceneContext) {
+        cameraContext += ` As part of the group "${groups.find(g=>g.id === step1Values.group)?.name || step1Values.newGroupName}", which monitors "${step1Values.groupSceneContext}", its specific role involves...`;
+    } else if (step1Values.group === 'add_new_group' && step1Values.groupSceneContext) {
+        cameraContext += ` As part of the new group "${step1Values.newGroupName}", which will monitor "${step1Values.groupSceneContext}", its specific role involves...`;
     }
-    formStep3.setValue('cameraSceneContext', cameraPurpose); 
+    formStep3.setValue('cameraSceneContext', cameraContext); 
 
     let aiTarget = '';
-    if (groupAIDetectionTarget) {
-        aiTarget += `Inherited from group: "${groupAIDetectionTarget}". `;
+    if (step1Values.group && step1Values.group !== 'add_new_group' && step1Values.groupAIDetectionTarget) {
+        aiTarget += `Inherited from group: "${step1Values.groupAIDetectionTarget}". `;
+    } else if (step1Values.group === 'add_new_group' && step1Values.groupAIDetectionTarget) {
+         aiTarget += `From new group config: "${step1Values.groupAIDetectionTarget}". `;
     }
-    aiTarget += 'Additionally, for this specific camera detect...';
+    aiTarget += 'Additionally, for this specific camera, focus on detecting...'; // Placeholder for user to add more
     formStep3.setValue('aiDetectionTarget', aiTarget);
 
-    const groupAlerts = formStep1.getValues('groupAlertEvents');
+    const groupAlerts = step1Values.groupAlertEvents;
     if (groupAlerts) {
         formStep3.setValue('alertEvents', groupAlerts); 
+    } else {
+        formStep3.setValue('alertEvents', ''); // Ensure it's empty if no group alerts
     }
     setDrawerStep(3);
   };
@@ -287,14 +320,113 @@ const CamerasPage: NextPage = () => {
       setDrawerStep(2);
   };
 
-  const onSubmitStep3: SubmitHandler<AddCameraStep3Values> = async (data) => {
-    console.log("Saving camera...");
-    if (!formStep3.formState.isValid) return;
-    console.log("Step 1 Data (final):", formStep1.getValues());
-    console.log("Step 2 Data (final):", formStep2.getValues());
-    console.log("Step 3 Data (final):", data);
-    // TODO: Add logic to save camera to Firestore and update the `cameras` state
-    handleDrawerClose();
+  const onSubmitStep3: SubmitHandler<AddCameraStep3Values> = async (configData) => {
+    console.log("Attempting to save camera...");
+    if (!formStep3.formState.isValid || !currentUser || !orgId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Missing required information or user not authenticated.",
+      });
+      return;
+    }
+
+    const step1Data = formStep1.getValues();
+    const step2Data = formStep2.getValues(); // sceneDescription is here
+
+    const batch = writeBatch(db);
+    const now = serverTimestamp();
+
+    // 1. Create Camera Document
+    const cameraDocRef = doc(collection(db, 'cameras')); // Auto-generates ID
+    batch.set(cameraDocRef, {
+      cameraName: step1Data.cameraName,
+      groupId: (step1Data.group !== 'add_new_group' && step1Data.group) ? step1Data.group : null, // Handle new group later if needed or create group first
+      userId: currentUser.uid,
+      orgId: orgId,
+      createdAt: now,
+      updatedAt: now,
+      url: step1Data.rtspUrl,
+      protocol: "rtsp",
+      currentConfigId: null, // Will be updated after config is created
+      processingStatus: isOrgApproved ? "pending_setup" : "waiting_for_approval", // Initial status
+      activeVssStreamId: null,
+      historicalVssStreamIds: [],
+    });
+
+    // 2. Create Camera Configuration Document
+    const configDocRef = doc(collection(db, 'camera_configurations')); // Auto-generates ID
+    batch.set(configDocRef, {
+      cameraId: cameraDocRef.id,
+      createdAt: now,
+      videoChunks: {
+        value: parseFloat(configData.videoChunksValue),
+        unit: configData.videoChunksUnit,
+      },
+      numFrames: parseInt(configData.numFrames, 10),
+      videoOverlap: {
+        value: parseFloat(configData.videoOverlapValue),
+        unit: configData.videoOverlapUnit,
+      },
+      cameraSceneContext: configData.cameraSceneContext,
+      aiDetectionTarget: configData.aiDetectionTarget,
+      alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae), // Split and trim
+      sceneDescription: step2Data.sceneDescription,
+      userId: currentUser.uid, // User who created this config
+      previousConfigId: null, // First config
+    });
+    
+    // 3. Update Camera Document with currentConfigId
+    batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
+
+    // (Optional) Handle new group creation if `step1Data.group === 'add_new_group'`
+    // This would involve creating a document in the `groups` collection
+    // and then potentially setting `groupId` on the camera document.
+    // For simplicity, this part is omitted but would be needed for full functionality.
+    if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
+        const groupDocRef = doc(collection(db, 'groups'));
+        batch.set(groupDocRef, {
+            name: step1Data.newGroupName,
+            orgId: orgId,
+            userId: currentUser.uid,
+            createdAt: now,
+            updatedAt: now,
+            // Potentially add default config from step1Data.groupSceneContext etc.
+            defaultSceneContext: step1Data.groupSceneContext,
+            defaultAIDetectionTarget: step1Data.groupAIDetectionTarget,
+            defaultAlertEvents: step1Data.groupAlertEvents?.split(',').map(ae => ae.trim()).filter(ae => ae),
+        });
+        batch.update(cameraDocRef, { groupId: groupDocRef.id });
+        // Add to local state for immediate UI update
+        setGroups(prev => [...prev, {id: groupDocRef.id, name: step1Data.newGroupName!}]);
+    }
+
+
+    try {
+      await batch.commit();
+      toast({
+        title: "Camera Saved",
+        description: `${step1Data.cameraName} has been added successfully.`,
+      });
+      // Add to local state for immediate UI update
+      const newCamera: Camera = {
+        id: cameraDocRef.id,
+        cameraName: step1Data.cameraName,
+        imageUrl: snapshotUrl || 'https://picsum.photos/seed/newcam/400/300', // Use snapshot or placeholder
+        dataAiHint: 'newly added camera',
+        // currentConfigId: configDocRef.id,
+        // processingStatus: isOrgApproved ? "pending_setup" : "waiting_for_approval",
+      };
+      setCameras(prevCameras => [...prevCameras, newCamera]);
+      handleDrawerClose();
+    } catch (error) {
+      console.error("Error saving camera and configuration: ", error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save the camera and its configuration. Please try again.",
+      });
+    }
   };
 
   const handleSendChatMessage = async () => {
@@ -316,7 +448,7 @@ const CamerasPage: NextPage = () => {
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
       sender: 'ai',
-      text: `Okay, I've processed your message about ${selectedCameraForChat.name}: "${userMessage.text}". What else can I help you with?`,
+      text: `Okay, I've processed your message about ${selectedCameraForChat.cameraName}: "${userMessage.text}". What else can I help you with?`,
       timestamp: new Date(),
     };
     setChatMessages(prev => [...prev, aiResponse]);
@@ -389,7 +521,7 @@ const CamerasPage: NextPage = () => {
                     <Select onValueChange={handleGroupChange} defaultValue={field.value}>
                         <FormControl>
                         <SelectTrigger id="group">
-                            <SelectValue placeholder="Select a group" />
+                            <SelectValue placeholder="Select a group or add new" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -463,7 +595,7 @@ const CamerasPage: NextPage = () => {
                             />
                         <FormField
                             control={formStep1.control}
-                            name="groupAlertEvents" // Renamed from alertClasses
+                            name="groupAlertEvents" 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -802,9 +934,9 @@ const CamerasPage: NextPage = () => {
                 <Button 
                     type="submit" 
                     form="add-camera-form-step1" 
-                    disabled={formStep1.formState.isSubmitting || !formStep1.formState.isValid}
+                    disabled={formStep1.formState.isSubmitting || !formStep1.formState.isValid || isProcessingStep2}
                 >
-                    {formStep1.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {formStep1.formState.isSubmitting || isProcessingStep2 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Next
                 </Button>
             </div>
@@ -865,16 +997,16 @@ const CamerasPage: NextPage = () => {
 
   const getDrawerTitle = () => {
     if (drawerType === 'addCamera') {
-        let title = drawerStep === 1 ? "Add New Camera - Step 1" :
-               drawerStep === 2 ? "Add New Camera - Step 2" :
-               "Add New Camera - Step 3";
+        let title = drawerStep === 1 ? "Add New Camera - Details" : // Changed titles
+               drawerStep === 2 ? "Add New Camera - Scene Analysis" :
+               "Add New Camera - AI Configuration";
         if (!isLoadingOrgStatus && isOrgApproved === false) {
             title += " (Approval Pending)";
         }
         return title;
     }
     if (drawerType === 'chatCamera' && selectedCameraForChat) {
-        return `Chat with ${selectedCameraForChat.name}`;
+        return `Chat with ${selectedCameraForChat.cameraName}`;
     }
     return "Drawer";
   }
@@ -918,7 +1050,7 @@ const CamerasPage: NextPage = () => {
                 <div className="relative">
                     <Image
                     src={camera.imageUrl}
-                    alt={camera.name}
+                    alt={camera.cameraName}
                     width={200}
                     height={150}
                     className="rounded-t-lg aspect-video w-full object-cover"
@@ -927,7 +1059,7 @@ const CamerasPage: NextPage = () => {
                     <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
                 </div>
                 <div className="p-3">
-                    <h3 className="text-sm font-semibold mb-2 truncate">{camera.name}</h3>
+                    <h3 className="text-sm font-semibold mb-2 truncate">{camera.cameraName}</h3>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center space-x-2">
                         <TooltipProvider>
@@ -988,6 +1120,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
-
-    
