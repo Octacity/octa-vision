@@ -125,23 +125,25 @@ const AdminOrganizationsPage: NextPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="sticky left-0 bg-card z-10">Name</TableHead>
+                    <TableHead className="sticky left-0 bg-card z-10 w-[250px] ">Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>User Admin</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="sticky right-0 bg-card z-10 text-right min-w-[180px] px-4">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-card z-10 text-right px-4 w-[150px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {organizations.map((org) => (
                     <TableRow key={org.id}>
-                      <TableCell className="sticky left-0 bg-card z-10 font-medium whitespace-nowrap">
-                        {org.name}
-                        {org.admin && (
-                          <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
-                        )}
+                      <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                        <div className="max-w-[230px] overflow-x-auto whitespace-nowrap py-1 pr-1">
+                          {org.name}
+                          {org.admin && (
+                            <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={org.approved ? 'default' : 'secondary'} className={`${org.approved ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white`}>
@@ -156,7 +158,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-card z-10 text-right px-4">
+                      <TableCell className="sticky right-0 bg-card z-10 text-right px-4 w-[150px]">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
@@ -210,3 +212,4 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
+
