@@ -12,13 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, ArrowLeft, Edit3, Trash2, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface UserData {
   id: string;
   email: string;
-  role: 'system-admin' | 'user-admin' | 'user'; // Updated role type
-  createdAt: any; // Firestore Timestamp
-  // Add other relevant user fields if needed, e.g., name
+  role: 'system-admin' | 'user-admin' | 'user';
+  createdAt: any; 
 }
 
 interface OrganizationData {
@@ -41,7 +41,6 @@ const ManageOrganizationUsersPage: NextPage = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch organization details
         const orgDocRef = doc(db, 'organizations', orgId);
         const orgDocSnap = await getDoc(orgDocRef);
 
@@ -52,7 +51,6 @@ const ManageOrganizationUsersPage: NextPage = () => {
         }
         setOrganization(orgDocSnap.data() as OrganizationData);
 
-        // Fetch users for this organization
         const usersQuery = query(collection(db, 'users'), where('organizationId', '==', orgId));
         const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.map(doc => ({
@@ -115,43 +113,63 @@ const ManageOrganizationUsersPage: NextPage = () => {
             <UserPlus className="mr-2 h-4 w-4" /> Add User
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {users.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        user.role === 'system-admin' ? 'destructive' :
-                        user.role === 'user-admin' ? 'default' : 'secondary'
-                      }>
-                        {user.role === 'system-admin' ? 'System Admin' :
-                         user.role === 'user-admin' ? 'Org Admin' : 'User'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.createdAt}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEditUser(user.id)}>
-                        <Edit3 className="mr-2 h-3 w-3" /> Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                        <Trash2 className="mr-2 h-3 w-3" /> Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <TooltipProvider>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            user.role === 'system-admin' ? 'destructive' :
+                            user.role === 'user-admin' ? 'default' : 'secondary'
+                          }>
+                            {user.role === 'system-admin' ? 'System Admin' :
+                             user.role === 'user-admin' ? 'Org Admin' : 'User'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{user.createdAt}</TableCell>
+                        <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                          <div className="flex justify-end items-center space-x-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" onClick={() => handleEditUser(user.id)} className="h-8 w-8">
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit User</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Delete User</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TooltipProvider>
+            </div>
           ) : (
             <div className="mt-4 p-4 border rounded-md bg-muted text-center">
               <p className="text-sm text-muted-foreground">No users found for this organization.</p>

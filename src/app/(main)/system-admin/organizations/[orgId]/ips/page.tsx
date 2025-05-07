@@ -11,12 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, ArrowLeft, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CameraData {
   id: string;
   name: string;
   rtspUrl: string;
-  // Add other relevant camera fields if needed
 }
 
 interface OrganizationData {
@@ -39,7 +39,6 @@ const ManageOrganizationIPsPage: NextPage = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch organization details
         const orgDocRef = doc(db, 'organizations', orgId);
         const orgDocSnap = await getDoc(orgDocRef);
 
@@ -50,9 +49,6 @@ const ManageOrganizationIPsPage: NextPage = () => {
         }
         setOrganization(orgDocSnap.data() as OrganizationData);
 
-        // Fetch cameras for this organization
-        // This assumes you have a 'cameras' collection where each camera doc has an 'organizationId' field.
-        // And each camera document has 'name' and 'rtspUrl' fields.
         const camerasQuery = query(collection(db, 'cameras'), where('organizationId', '==', orgId));
         const camerasSnapshot = await getDocs(camerasQuery);
         const camerasData = camerasSnapshot.docs.map(doc => ({
@@ -72,7 +68,6 @@ const ManageOrganizationIPsPage: NextPage = () => {
   }, [orgId, toast, router]);
 
   const handleEditIp = (cameraId: string) => {
-    // Placeholder for edit functionality
     toast({ title: 'Edit IP', description: `Editing IP for camera ${cameraId} (not implemented).` });
   };
 
@@ -102,30 +97,43 @@ const ManageOrganizationIPsPage: NextPage = () => {
           <CardTitle>Manage Camera IPs for {organization.name}</CardTitle>
           <CardDescription>View and manage camera RTSP URLs (containing IP addresses) for this organization.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {cameras.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Camera Name</TableHead>
-                  <TableHead>RTSP URL / IP Address</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cameras.map((camera) => (
-                  <TableRow key={camera.id}>
-                    <TableCell className="font-medium">{camera.name}</TableCell>
-                    <TableCell>{camera.rtspUrl || 'N/A'}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => handleEditIp(camera.id)}>
-                        <Edit3 className="mr-2 h-4 w-4" /> Edit
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <TooltipProvider>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Camera Name</TableHead>
+                      <TableHead>RTSP URL / IP Address</TableHead>
+                      <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cameras.map((camera) => (
+                      <TableRow key={camera.id}>
+                        <TableCell className="font-medium">{camera.name}</TableCell>
+                        <TableCell>{camera.rtspUrl || 'N/A'}</TableCell>
+                        <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                           <div className="flex justify-end items-center space-x-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="outline" size="icon" onClick={() => handleEditIp(camera.id)} className="h-8 w-8">
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Edit IP</p>
+                                </TooltipContent>
+                              </Tooltip>
+                           </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TooltipProvider>
+            </div>
           ) : (
             <div className="mt-4 p-4 border rounded-md bg-muted text-center">
               <p className="text-sm text-muted-foreground">No cameras found for this organization.</p>
