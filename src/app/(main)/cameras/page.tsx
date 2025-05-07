@@ -7,7 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,8 +48,21 @@ interface ChatMessage {
   avatar?: string;
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  cameras?: string[];
+  defaultCameraSceneContext?: string;
+  defaultAiDetectionTarget?: string;
+  defaultAlertEvents?: string[];
+  defaultSceneDescription?: string;
+  defaultVideoChunks?: { value: number; unit: 'seconds' | 'minutes' };
+  defaultNumFrames?: number;
+  defaultVideoOverlap?: { value: number; unit: 'seconds' | 'minutes' };
+}
 
-const initialGroups: {id: string, name: string}[] = [];
+
+const initialGroups: Group[] = [];
 
 
 const addCameraStep1Schema = z.object({
@@ -57,10 +70,10 @@ const addCameraStep1Schema = z.object({
   cameraName: z.string().min(1, "Camera name is required."),
   group: z.string().optional(),
   newGroupName: z.string().optional(),
-  // Group default config fields
+  // Group default config fields - these are optional and only relevant if adding a new group
   groupDefaultCameraSceneContext: z.string().optional(), 
   groupDefaultAiDetectionTarget: z.string().optional(), 
-  groupDefaultAlertEvents: z.string().optional(),
+  groupDefaultAlertEvents: z.string().optional(), // Comma-separated string
   groupDefaultSceneDescription: z.string().optional(),
   groupDefaultVideoChunksValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
   groupDefaultVideoChunksUnit: z.enum(['seconds', 'minutes']).optional(),
@@ -88,11 +101,11 @@ const addCameraStep3Schema = z.object({
     cameraSceneContext: z.string().min(1, "This field is required."), 
     aiDetectionTarget: z.string().min(1, "AI detection target is required."), 
     alertEvents: z.string().min(1, "Alert events are required."), 
-    videoChunksValue: z.string().min(1, "Video chunks value is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
-    videoChunksUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
-    numFrames: z.string().min(1, "Number of frames is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
-    videoOverlapValue: z.string().min(1, "Video overlap value is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
-    videoOverlapUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
+    videoChunksValue: z.string().min(1, "Video chunks value is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoChunksUnit: z.enum(['seconds', 'minutes']).default('seconds'),
+    numFrames: z.string().min(1, "Number of frames is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoOverlapValue: z.string().min(1, "Video overlap value is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
+    videoOverlapUnit: z.enum(['seconds', 'minutes']).default('seconds'),
     serverIpAddress: z.string().ip({ message: "Invalid IP address format."}).min(1, "Server IP address is required."),
 });
 type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
@@ -119,7 +132,7 @@ const CamerasPage: NextPage = () => {
   const [orgId, setOrgId] = useState<string | null>(null);
 
   const [cameras, setCameras] = useState<Camera[]>([]);
-  const [groups, setGroups] = useState<{id: string, name: string, defaults?: Partial<AddCameraStep1Values & AddCameraStep3Values>}[]>(initialGroups);
+  const [groups, setGroups] = useState<Group[]>(initialGroups);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -205,17 +218,7 @@ const CamerasPage: NextPage = () => {
   const handleAddCameraClick = () => {
     formStep1.reset();
     formStep2.reset();
-    formStep3.reset({ 
-        cameraSceneContext: '',
-        aiDetectionTarget: '',
-        alertEvents: '',
-        videoChunksValue: '10',
-        videoChunksUnit: 'seconds',
-        numFrames: '5',
-        videoOverlapValue: '2',
-        videoOverlapUnit: 'seconds',
-        serverIpAddress: '',
-    });
+    formStep3.reset();
     setDrawerType('addCamera');
     setDrawerStep(1);
     setIsDrawerOpen(true);
@@ -259,32 +262,44 @@ const CamerasPage: NextPage = () => {
   const handleGroupChange = (value: string) => {
     setSelectedGroup(value);
     formStep1.setValue('group', value);
+    formStep2.resetField('sceneDescription'); // Reset step 2
+    formStep3.reset(); // Reset step 3
+
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
-    } else {
-      setShowNewGroupForm(false);
-      formStep1.setValue('newGroupName', ''); 
-      formStep1.setValue('groupDefaultCameraSceneContext', '');
-      formStep1.setValue('groupDefaultAiDetectionTarget', '');
-      formStep1.setValue('groupDefaultAlertEvents', '');
-      formStep1.setValue('groupDefaultSceneDescription', '');
+      // Set default values for new group default fields in formStep1 if needed
       formStep1.setValue('groupDefaultVideoChunksValue', '10');
       formStep1.setValue('groupDefaultVideoChunksUnit', 'seconds');
       formStep1.setValue('groupDefaultNumFrames', '5');
       formStep1.setValue('groupDefaultVideoOverlapValue', '2');
       formStep1.setValue('groupDefaultVideoOverlapUnit', 'seconds');
+
+    } else {
+      setShowNewGroupForm(false);
+      formStep1.setValue('newGroupName', ''); 
+      formStep1.resetField('groupDefaultCameraSceneContext');
+      formStep1.resetField('groupDefaultAiDetectionTarget');
+      formStep1.resetField('groupDefaultAlertEvents');
+      formStep1.resetField('groupDefaultSceneDescription');
+      formStep1.resetField('groupDefaultVideoChunksValue');
+      formStep1.resetField('groupDefaultVideoChunksUnit');
+      formStep1.resetField('groupDefaultNumFrames');
+      formStep1.resetField('groupDefaultVideoOverlapValue');
+      formStep1.resetField('groupDefaultVideoOverlapUnit');
       
       const selectedGroupData = groups.find(g => g.id === value);
-      if (selectedGroupData?.defaults) {
-        formStep3.setValue('cameraSceneContext', selectedGroupData.defaults.groupDefaultCameraSceneContext || '');
-        formStep3.setValue('aiDetectionTarget', selectedGroupData.defaults.groupDefaultAiDetectionTarget || '');
-        formStep3.setValue('alertEvents', selectedGroupData.defaults.groupDefaultAlertEvents || '');
-        formStep2.setValue('sceneDescription', selectedGroupData.defaults.groupDefaultSceneDescription || ''); // For step 2 prefill
-        formStep3.setValue('videoChunksValue', selectedGroupData.defaults.groupDefaultVideoChunksValue || '10');
-        formStep3.setValue('videoChunksUnit', selectedGroupData.defaults.groupDefaultVideoChunksUnit || 'seconds');
-        formStep3.setValue('numFrames', selectedGroupData.defaults.groupDefaultNumFrames || '5');
-        formStep3.setValue('videoOverlapValue', selectedGroupData.defaults.groupDefaultVideoOverlapValue || '2');
-        formStep3.setValue('videoOverlapUnit', selectedGroupData.defaults.groupDefaultVideoOverlapUnit || 'seconds');
+      if (selectedGroupData) {
+        // Pre-fill Step 2
+        formStep2.setValue('sceneDescription', selectedGroupData.defaultSceneDescription || '');
+        // Pre-fill Step 3
+        formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
+        formStep3.setValue('aiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
+        formStep3.setValue('alertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
+        formStep3.setValue('videoChunksValue', selectedGroupData.defaultVideoChunks?.value?.toString() || '10');
+        formStep3.setValue('videoChunksUnit', selectedGroupData.defaultVideoChunks?.unit || 'seconds');
+        formStep3.setValue('numFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
+        formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
+        formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
       }
     }
   };
@@ -293,21 +308,29 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data:", data);
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
-    setDrawerStep(2);
+    
+    // Simulate API call for snapshot
     await new Promise(resolve => setTimeout(resolve, 1500)); 
     setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
-    await new Promise(resolve => setTimeout(resolve, 2000)); 
+    
+    // Simulate AI scene description generation
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
     
     const step1Values = formStep1.getValues();
+    let sceneDescToSet = 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.'; // Default
+    
     if (step1Values.group && step1Values.group !== 'add_new_group') {
         const selectedGroupData = groups.find(g => g.id === step1Values.group);
-        formStep2.setValue('sceneDescription', selectedGroupData?.defaults?.groupDefaultSceneDescription || 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
+        if (selectedGroupData?.defaultSceneDescription) {
+            sceneDescToSet = selectedGroupData.defaultSceneDescription;
+        }
     } else if (step1Values.group === 'add_new_group' && step1Values.groupDefaultSceneDescription) {
-        formStep2.setValue('sceneDescription', step1Values.groupDefaultSceneDescription);
-    } else {
-        formStep2.setValue('sceneDescription', 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.');
+        sceneDescToSet = step1Values.groupDefaultSceneDescription;
     }
+    formStep2.setValue('sceneDescription', sceneDescToSet);
+    
     setIsProcessingStep2(false);
+    setDrawerStep(2);
   };
 
   const handleStep2Back = () => {
@@ -322,34 +345,56 @@ const CamerasPage: NextPage = () => {
     const step1Values = formStep1.getValues();
     const currentSceneDesc = data.sceneDescription; 
 
-    let cameraContext = `The camera is observing: "${currentSceneDesc}".`;
-    const selectedGroupData = groups.find(g => g.id === step1Values.group);
+    let baseCameraContext = `The camera is observing: "${currentSceneDesc}".`;
+    let finalCameraContext = baseCameraContext;
+    let finalAiTarget = 'Focus on detecting...'; // Default AI Target
+    let finalAlertEvents = '';
+    let finalVideoChunksValue = '10';
+    let finalVideoChunksUnit: 'seconds' | 'minutes' = 'seconds';
+    let finalNumFrames = '5';
+    let finalVideoOverlapValue = '2';
+    let finalVideoOverlapUnit: 'seconds' | 'minutes' = 'seconds';
 
-    if (step1Values.group && step1Values.group !== 'add_new_group' && selectedGroupData?.defaults?.groupDefaultCameraSceneContext) {
-        cameraContext += ` As part of the group "${selectedGroupData.name}", which monitors "${selectedGroupData.defaults.groupDefaultCameraSceneContext}", its specific role involves...`;
-        formStep3.setValue('cameraSceneContext', selectedGroupData.defaults.groupDefaultCameraSceneContext || cameraContext);
-        formStep3.setValue('aiDetectionTarget', selectedGroupData.defaults.groupDefaultAiDetectionTarget || 'Focus on detecting...');
-        formStep3.setValue('alertEvents', selectedGroupData.defaults.groupDefaultAlertEvents || '');
-        formStep3.setValue('videoChunksValue', selectedGroupData.defaults.groupDefaultVideoChunksValue || '10');
-        formStep3.setValue('videoChunksUnit', selectedGroupData.defaults.groupDefaultVideoChunksUnit || 'seconds');
-        formStep3.setValue('numFrames', selectedGroupData.defaults.groupDefaultNumFrames || '5');
-        formStep3.setValue('videoOverlapValue', selectedGroupData.defaults.groupDefaultVideoOverlapValue || '2');
-        formStep3.setValue('videoOverlapUnit', selectedGroupData.defaults.groupDefaultVideoOverlapUnit || 'seconds');
 
-    } else if (step1Values.group === 'add_new_group' && step1Values.groupDefaultCameraSceneContext) {
-        cameraContext += ` As part of the new group "${step1Values.newGroupName}", which will monitor "${step1Values.groupDefaultCameraSceneContext}", its specific role involves...`;
-        formStep3.setValue('cameraSceneContext', step1Values.groupDefaultCameraSceneContext || cameraContext);
-        formStep3.setValue('aiDetectionTarget', step1Values.groupDefaultAiDetectionTarget || 'Focus on detecting...');
-        formStep3.setValue('alertEvents', step1Values.groupDefaultAlertEvents || '');
-        formStep3.setValue('videoChunksValue', step1Values.groupDefaultVideoChunksValue || '10');
-        formStep3.setValue('videoChunksUnit', step1Values.groupDefaultVideoChunksUnit || 'seconds');
-        formStep3.setValue('numFrames', step1Values.groupDefaultNumFrames || '5');
-        formStep3.setValue('videoOverlapValue', step1Values.groupDefaultVideoOverlapValue || '2');
-        formStep3.setValue('videoOverlapUnit', step1Values.groupDefaultVideoOverlapUnit || 'seconds');
-    } else {
-        formStep3.setValue('cameraSceneContext', cameraContext);
-        formStep3.setValue('aiDetectionTarget', 'Focus on detecting...');
+    if (step1Values.group && step1Values.group !== 'add_new_group') {
+        const selectedGroupData = groups.find(g => g.id === step1Values.group);
+        if (selectedGroupData) {
+            if(selectedGroupData.defaultCameraSceneContext) finalCameraContext = selectedGroupData.defaultCameraSceneContext;
+            else if (selectedGroupData.name) finalCameraContext = `${baseCameraContext} It is part of the "${selectedGroupData.name}" group.`;
+            
+            if(selectedGroupData.defaultAiDetectionTarget) finalAiTarget = selectedGroupData.defaultAiDetectionTarget;
+            if(selectedGroupData.defaultAlertEvents) finalAlertEvents = selectedGroupData.defaultAlertEvents.join(', ');
+            if(selectedGroupData.defaultVideoChunks) {
+                finalVideoChunksValue = selectedGroupData.defaultVideoChunks.value.toString();
+                finalVideoChunksUnit = selectedGroupData.defaultVideoChunks.unit;
+            }
+            if(selectedGroupData.defaultNumFrames) finalNumFrames = selectedGroupData.defaultNumFrames.toString();
+            if(selectedGroupData.defaultVideoOverlap) {
+                finalVideoOverlapValue = selectedGroupData.defaultVideoOverlap.value.toString();
+                finalVideoOverlapUnit = selectedGroupData.defaultVideoOverlap.unit;
+            }
+        }
+    } else if (step1Values.group === 'add_new_group') {
+        if(step1Values.groupDefaultCameraSceneContext) finalCameraContext = step1Values.groupDefaultCameraSceneContext;
+        else if (step1Values.newGroupName) finalCameraContext = `${baseCameraContext} It will be part of the new group "${step1Values.newGroupName}".`;
+        
+        if(step1Values.groupDefaultAiDetectionTarget) finalAiTarget = step1Values.groupDefaultAiDetectionTarget;
+        if(step1Values.groupDefaultAlertEvents) finalAlertEvents = step1Values.groupDefaultAlertEvents; // Already a string
+        if(step1Values.groupDefaultVideoChunksValue) finalVideoChunksValue = step1Values.groupDefaultVideoChunksValue;
+        if(step1Values.groupDefaultVideoChunksUnit) finalVideoChunksUnit = step1Values.groupDefaultVideoChunksUnit;
+        if(step1Values.groupDefaultNumFrames) finalNumFrames = step1Values.groupDefaultNumFrames;
+        if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
+        if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
     }
+    
+    formStep3.setValue('cameraSceneContext', finalCameraContext);
+    formStep3.setValue('aiDetectionTarget', finalAiTarget);
+    formStep3.setValue('alertEvents', finalAlertEvents);
+    formStep3.setValue('videoChunksValue', finalVideoChunksValue);
+    formStep3.setValue('videoChunksUnit', finalVideoChunksUnit);
+    formStep3.setValue('numFrames', finalNumFrames);
+    formStep3.setValue('videoOverlapValue', finalVideoOverlapValue);
+    formStep3.setValue('videoOverlapUnit', finalVideoOverlapUnit);
     
     setDrawerStep(3);
   };
@@ -374,11 +419,51 @@ const CamerasPage: NextPage = () => {
 
     const batch = writeBatch(db);
     const now = serverTimestamp();
+    let finalGroupId: string | null = null;
+
+    // Handle Group Creation or Selection
+    if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
+        const groupDocRef = doc(collection(db, 'groups'));
+        finalGroupId = groupDocRef.id;
+        batch.set(groupDocRef, {
+            name: step1Data.newGroupName,
+            orgId: orgId,
+            userId: currentUser.uid,
+            createdAt: now,
+            updatedAt: now,
+            cameras: [], // Initialize with empty array, will be updated later
+            defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
+            defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
+            defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : [],
+            defaultSceneDescription: step1Data.groupDefaultSceneDescription || null,
+            defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
+            defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
+            defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
+        });
+        // Add to local state for UI update
+        const newGroupForState: Group = {
+          id: groupDocRef.id,
+          name: step1Data.newGroupName,
+          cameras: [],
+          defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext,
+          defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget,
+          defaultAlertEvents: step1Data.groupDefaultAlertEvents?.split(',').map(ae => ae.trim()).filter(ae => ae),
+          defaultSceneDescription: step1Data.groupDefaultSceneDescription,
+          defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : undefined,
+          defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : undefined,
+          defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : undefined,
+        };
+        setGroups(prev => [...prev, newGroupForState]);
+
+    } else if (step1Data.group) {
+        finalGroupId = step1Data.group;
+    }
+
 
     const cameraDocRef = doc(collection(db, 'cameras')); 
     batch.set(cameraDocRef, {
       cameraName: step1Data.cameraName,
-      groupId: (step1Data.group !== 'add_new_group' && step1Data.group) ? step1Data.group : null, 
+      groupId: finalGroupId, 
       userId: currentUser.uid,
       orgId: orgId,
       createdAt: now,
@@ -408,31 +493,26 @@ const CamerasPage: NextPage = () => {
       cameraSceneContext: configData.cameraSceneContext,
       aiDetectionTarget: configData.aiDetectionTarget,
       alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae), 
-      sceneDescription: step2Data.sceneDescription,
+      sceneDescription: step2Data.sceneDescription, // This is the actual scene description for this specific camera config
       userId: currentUser.uid, 
       previousConfigId: null, 
     });
     
     batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
-    if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
-        const groupDocRef = doc(collection(db, 'groups'));
-        batch.set(groupDocRef, {
-            name: step1Data.newGroupName,
-            orgId: orgId,
-            userId: currentUser.uid,
-            createdAt: now,
+    // Update group's camera list if a group is involved
+    if (finalGroupId) {
+        const groupRefToUpdate = doc(db, 'groups', finalGroupId);
+        batch.update(groupRefToUpdate, {
+            cameras: arrayUnion(cameraDocRef.id),
             updatedAt: now,
-            defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext,
-            defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget,
-            defaultAlertEvents: step1Data.groupDefaultAlertEvents?.split(',').map(ae => ae.trim()).filter(ae => ae),
-            defaultSceneDescription: step1Data.groupDefaultSceneDescription,
-            defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
-            defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
-            defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
         });
-        batch.update(cameraDocRef, { groupId: groupDocRef.id });
-        setGroups(prev => [...prev, {id: groupDocRef.id, name: step1Data.newGroupName!}]);
+         // Update local group state
+        setGroups(prevGroups => prevGroups.map(g => 
+            g.id === finalGroupId 
+            ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id] } 
+            : g
+        ));
     }
 
 
@@ -1197,3 +1277,5 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
+    
