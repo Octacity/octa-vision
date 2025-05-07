@@ -131,13 +131,13 @@ const AdminOrganizationsPage: NextPage = () => {
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px]">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-muted/50 z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {organizations.map((org) => (
                     <TableRow key={org.id}>
-                      <TableCell className="bg-card font-medium">
+                      <TableCell className="font-medium">
                         <div className="overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
                           {org.name}
                           {org.admin && (
@@ -158,7 +158,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[110px] min-w-[110px]">
+                      <TableCell className="sticky right-0 bg-muted/50 z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px]">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
