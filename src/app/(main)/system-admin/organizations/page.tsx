@@ -125,19 +125,19 @@ const AdminOrganizationsPage: NextPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead className="sticky left-0 bg-card z-10">Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>User Admin</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="text-right min-w-[180px]">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-card z-10 text-right min-w-[180px] px-4">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {organizations.map((org) => (
                     <TableRow key={org.id}>
-                      <TableCell className="font-medium whitespace-nowrap">
+                      <TableCell className="sticky left-0 bg-card z-10 font-medium whitespace-nowrap">
                         {org.name}
                         {org.admin && (
                           <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
@@ -156,7 +156,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="sticky right-0 bg-card z-10 text-right px-4">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
