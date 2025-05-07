@@ -353,7 +353,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         </div>
 
         {isApproved === false && getAuth().currentUser && userRole !== 'system-admin' && (
-          <div className="p-4">
+          <div className="p-4 md:p-8"> {/* Adjusted padding for consistency */}
             <Alert variant="destructive">
               <ShieldAlert className="h-4 w-4" />
               <AlertTitle>Organization Approval Pending</AlertTitle>
@@ -363,7 +363,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </Alert>
           </div>
         )}
-        <main className="p-8 flex-1 overflow-y-auto">
+        <main className="p-4 md:p-8 flex-1 overflow-y-auto"> {/* Responsive padding */}
          {children}
         </main>
          <NotificationDrawer />
