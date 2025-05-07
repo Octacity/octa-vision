@@ -56,9 +56,9 @@ const addCameraStep1Schema = z.object({
   cameraName: z.string().min(1, "Camera name is required."),
   group: z.string().optional(),
   newGroupName: z.string().optional(),
-  groupSceneContext: z.string().optional(), // Renamed from groupDescription
-  groupAIDetectionTarget: z.string().optional(), // Renamed from groupAIDetection
-  alertClasses: z.string().optional(),
+  groupSceneContext: z.string().optional(), 
+  groupAIDetectionTarget: z.string().optional(), 
+  groupAlertEvents: z.string().optional(), // Renamed from alertClasses
 }).refine(data => {
   if (data.group === 'add_new_group' && !data.newGroupName) {
     return false;
@@ -72,14 +72,14 @@ const addCameraStep1Schema = z.object({
 type AddCameraStep1Values = z.infer<typeof addCameraStep1Schema>;
 
 const addCameraStep2Schema = z.object({
-    sceneDescription: z.string().min(1, "Scene description is required."), // Was detailedSceneDescription
+    sceneDescription: z.string().min(1, "Scene description is required."),
 });
 type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 
 const addCameraStep3Schema = z.object({
-    cameraPurposeDescription: z.string().min(1, "This field is required."), // This field might be better named as sceneContext or similar
-    aiDetectionTarget: z.string().min(1, "AI detection target is required."), // Renamed from aiDetectionPrompt
-    cameraAlertEvents: z.string().min(1, "Alert events are required."), // Renamed from cameraAlertClasses
+    cameraSceneContext: z.string().min(1, "This field is required."), 
+    aiDetectionTarget: z.string().min(1, "AI detection target is required."), 
+    alertEvents: z.string().min(1, "Alert events are required."), 
     videoChunksValue: z.string().min(1, "Video chunks value is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoChunksUnit: z.enum(['seconds', 'minutes']).optional().default('seconds'),
     numFrames: z.string().min(1, "Number of frames is required.").refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
@@ -152,7 +152,7 @@ const CamerasPage: NextPage = () => {
       newGroupName: '',
       groupSceneContext: '',
       groupAIDetectionTarget: '',
-      alertClasses: '',
+      groupAlertEvents: '',
     },
   });
 
@@ -168,9 +168,9 @@ const CamerasPage: NextPage = () => {
     resolver: zodResolver(addCameraStep3Schema),
     mode: "onChange",
     defaultValues: {
-        cameraPurposeDescription: '',
+        cameraSceneContext: '',
         aiDetectionTarget: '',
-        cameraAlertEvents: '',
+        alertEvents: '',
         videoChunksValue: '',
         videoChunksUnit: 'seconds',
         numFrames: '',
@@ -234,7 +234,7 @@ const CamerasPage: NextPage = () => {
       formStep1.setValue('newGroupName', ''); 
       formStep1.setValue('groupSceneContext', '');
       formStep1.setValue('groupAIDetectionTarget', '');
-      formStep1.setValue('alertClasses', '');
+      formStep1.setValue('groupAlertEvents', '');
     }
   };
 
@@ -261,13 +261,13 @@ const CamerasPage: NextPage = () => {
     if (!formStep2.formState.isValid) return;
     const groupSceneCtx = formStep1.getValues('groupSceneContext');
     const groupAIDetectionTarget = formStep1.getValues('groupAIDetectionTarget');
-    const currentSceneDesc = data.sceneDescription; // Renamed from sceneDesc
+    const currentSceneDesc = data.sceneDescription; 
 
     let cameraPurpose = `Based on the scene description: "${currentSceneDesc}"`;
     if (groupSceneCtx) {
         cameraPurpose += ` and the group's context: "${groupSceneCtx}", this camera's role is to...`;
     }
-    formStep3.setValue('cameraPurposeDescription', cameraPurpose); // This field is essentially 'sceneContext' for the camera
+    formStep3.setValue('cameraSceneContext', cameraPurpose); 
 
     let aiTarget = '';
     if (groupAIDetectionTarget) {
@@ -276,9 +276,9 @@ const CamerasPage: NextPage = () => {
     aiTarget += 'Additionally, for this specific camera detect...';
     formStep3.setValue('aiDetectionTarget', aiTarget);
 
-    const groupAlertClasses = formStep1.getValues('alertClasses');
-    if (groupAlertClasses) {
-        formStep3.setValue('cameraAlertEvents', groupAlertClasses); // Renamed from cameraAlertClasses
+    const groupAlerts = formStep1.getValues('groupAlertEvents');
+    if (groupAlerts) {
+        formStep3.setValue('alertEvents', groupAlerts); 
     }
     setDrawerStep(3);
   };
@@ -433,7 +433,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep1.control}
-                            name="groupSceneContext" // Renamed from groupDescription
+                            name="groupSceneContext" 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -448,7 +448,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep1.control}
-                            name="groupAIDetectionTarget" // Renamed from groupAIDetection
+                            name="groupAIDetectionTarget" 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -463,16 +463,16 @@ const CamerasPage: NextPage = () => {
                             />
                         <FormField
                             control={formStep1.control}
-                            name="alertClasses"
+                            name="groupAlertEvents" // Renamed from alertClasses
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
-                                        <ShieldAlert className="w-4 h-4 mr-2 text-muted-foreground"/>Alert Classes
+                                        <ShieldAlert className="w-4 h-4 mr-2 text-muted-foreground"/>Group Alert Events
                                     </FormLabel>
                                     <FormControl>
                                         <Input placeholder="e.g., safety: worker not wearing ppe, safety: unlit work area" {...field} />
                                     </FormControl>
-                                    <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert classes if any predefined.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert events for the group.</p>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -530,7 +530,7 @@ const CamerasPage: NextPage = () => {
 
                 <FormField
                     control={formStep2.control}
-                    name="sceneDescription" // Was detailedSceneDescription
+                    name="sceneDescription" 
                     render={({ field }) => (
                         <FormItem className="text-left">
                             <FormLabel className="flex items-center">
@@ -567,12 +567,12 @@ const CamerasPage: NextPage = () => {
                     <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
                         <FormField
                             control={formStep3.control}
-                            name="cameraPurposeDescription" // This is effectively the camera's sceneContext
+                            name="cameraSceneContext" 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
                                         <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground" />
-                                        What does this camera do? (Scene Context)
+                                        What does this camera do? (Camera Scene Context)
                                     </FormLabel>
                                     <FormControl>
                                         <div className="relative">
@@ -593,7 +593,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep3.control}
-                            name="aiDetectionTarget" // Renamed from aiDetectionPrompt
+                            name="aiDetectionTarget" 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
@@ -619,7 +619,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep3.control}
-                            name="cameraAlertEvents" // Renamed from cameraAlertClasses
+                            name="alertEvents" 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
