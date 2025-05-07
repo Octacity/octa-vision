@@ -391,7 +391,7 @@ const CamerasPage: NextPage = () => {
   const renderDrawerContent = () => {
     if (drawerType === 'addCamera') {
       const approvalAlert = !isLoadingOrgStatus && isOrgApproved === false && (
-        <Alert variant="destructive" className="mb-4 mx-[5px]">
+        <Alert variant="destructive" className="mb-4">
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Organization Approval Pending</AlertTitle>
           <AlertDescription>
@@ -402,7 +402,7 @@ const CamerasPage: NextPage = () => {
 
       if (drawerStep === 1) {
         return (
-          <>
+          <div className="p-6">
             {approvalAlert}
             <Form {...formStep1}>
             <form id="add-camera-form-step1" onSubmit={formStep1.handleSubmit(onSubmitStep1)} className="space-y-8">
@@ -410,12 +410,12 @@ const CamerasPage: NextPage = () => {
                 control={formStep1.control}
                 name="rtspUrl"
                 render={({ field }) => (
-                    <FormItem className="px-[5px]">
+                    <FormItem>
                     <FormLabel className="flex items-center mb-1.5">
                         <Video className="w-4 h-4 mr-2 text-muted-foreground"/> RTSP URL
                     </FormLabel>
                     <FormControl>
-                        <Input placeholder="rtsp://..." {...field} className="w-[calc(100%-10px)]" />
+                        <Input placeholder="rtsp://..." {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -425,12 +425,12 @@ const CamerasPage: NextPage = () => {
                 control={formStep1.control}
                 name="cameraName"
                 render={({ field }) => (
-                    <FormItem className="px-[5px]">
+                    <FormItem>
                     <FormLabel className="flex items-center mb-1.5">
                         <Edit3 className="w-4 h-4 mr-2 text-muted-foreground"/> Name
                     </FormLabel>
                     <FormControl>
-                        <Input placeholder="e.g., Front Door Camera" {...field} className="w-[calc(100%-10px)]" />
+                        <Input placeholder="e.g., Front Door Camera" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -440,13 +440,13 @@ const CamerasPage: NextPage = () => {
                 control={formStep1.control}
                 name="group"
                 render={({ field }) => (
-                    <FormItem className="px-[5px]">
+                    <FormItem>
                     <FormLabel className="flex items-center mb-1.5">
                         <Folder className="w-4 h-4 mr-2 text-muted-foreground"/> Group
                     </FormLabel>
                     <Select onValueChange={handleGroupChange} defaultValue={field.value}>
                         <FormControl>
-                        <SelectTrigger id="group" className="w-[calc(100%-10px)]">
+                        <SelectTrigger id="group">
                             <SelectValue placeholder="Select a group" />
                         </SelectTrigger>
                         </FormControl>
@@ -467,7 +467,7 @@ const CamerasPage: NextPage = () => {
                 />
 
                 {showNewGroupForm && (
-                <Card className="p-4 bg-muted/50 mx-[5px]">
+                <Card className="p-4 bg-muted/50">
                     <div className="space-y-4">
                         <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center">
                             <Plus className="w-4 h-4 mr-2"/> Add a new group for your cameras
@@ -538,14 +538,14 @@ const CamerasPage: NextPage = () => {
                 )}
             </form>
             </Form>
-          </>
+          </div>
         );
         } else if (drawerStep === 2) {
         return (
-          <>
+          <div className="p-6">
             {approvalAlert}
             <Form {...formStep2}>
-                <form id="add-camera-form-step2" onSubmit={formStep2.handleSubmit(onSubmitStep2)} className="space-y-6 px-[5px] text-center">
+                <form id="add-camera-form-step2" onSubmit={formStep2.handleSubmit(onSubmitStep2)} className="space-y-6 text-center">
                 <div className="flex flex-col items-center space-y-2">
                     <p className="text-sm text-muted-foreground">Testing connection...</p>
                     {!snapshotUrl && !isProcessingStep2 && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
@@ -600,9 +600,9 @@ const CamerasPage: NextPage = () => {
                                     {...field}
                                     rows={3}
                                     readOnly={isProcessingStep2 && !field.value}
-                                    className="pr-10 w-[calc(100%-10px)]"
+                                    className="pr-10"
                                 />
-                                <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7">
+                                <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
                                     <Mic className="w-4 h-4" />
                                 </Button>
                                 </div>
@@ -613,14 +613,14 @@ const CamerasPage: NextPage = () => {
                 />
                 </form>
             </Form>
-          </>
+          </div>
         );
         } else if (drawerStep === 3) {
             return (
-              <>
+              <div className="p-6">
                 {approvalAlert}
                 <Form {...formStep3}>
-                    <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6 px-[5px]">
+                    <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
                         <FormField
                             control={formStep3.control}
                             name="cameraPurposeDescription"
@@ -636,9 +636,9 @@ const CamerasPage: NextPage = () => {
                                                 placeholder="Based on the dense description and the group's description, generate the detailed scene" 
                                                 {...field} 
                                                 rows={3}
-                                                className="pr-10 w-[calc(100%-10px)]"
+                                                className="pr-10"
                                             />
-                                            <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7">
+                                            <Button variant="ghost" size="icon" className="absolute right-1 top-2 h-7 w-7">
                                                 <Mic className="w-4 h-4" />
                                             </Button>
                                         </div>
@@ -662,9 +662,9 @@ const CamerasPage: NextPage = () => {
                                                 placeholder="If there is Group value + any specific value." 
                                                 {...field} 
                                                 rows={3}
-                                                className="pr-10 w-[calc(100%-10px)]"
+                                                className="pr-10"
                                             />
-                                            <Button variant="ghost" size="icon" className="absolute right-2 top-2 h-7 w-7">
+                                            <Button variant="ghost" size="icon" className="absolute right-1 top-2 h-7 w-7">
                                                 <Mic className="w-4 h-4" />
                                             </Button>
                                         </div>
@@ -686,7 +686,6 @@ const CamerasPage: NextPage = () => {
                                         <Input 
                                             placeholder="e.g., safety: worker not wearing ppe, safety: worker not wearing helmet, safety: unlit work area" 
                                             {...field} 
-                                            className="w-[calc(100%-10px)]"
                                         />
                                     </FormControl>
                                     <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert classes for this camera.</p>
@@ -783,20 +782,20 @@ const CamerasPage: NextPage = () => {
                                             No of frames
                                         </FormLabel>
                                         <FormControl>
-                                            <Input type="number" placeholder="e.g., 5" {...field} className="w-[calc(100%-10px)]" />
+                                            <Input type="number" placeholder="e.g., 5" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </div>
-                        <div className="flex items-center space-x-2 mt-4 px-[5px]">
+                        <div className="flex items-center space-x-2 mt-4">
                             <CalendarDays className="w-4 h-4 text-muted-foreground" />
                             <p className="text-sm text-muted-foreground">Total no. of frames processed in a day: <span className="font-medium text-foreground"> (Calculated based on above values)</span></p>
                         </div>
                     </form>
                 </Form>
-              </>
+              </div>
             );
         }
     } else if (drawerType === 'chatCamera' && selectedCameraForChat) {
@@ -856,7 +855,7 @@ const CamerasPage: NextPage = () => {
     if (drawerType === 'addCamera') {
         if (drawerStep === 1) {
         return (
-            <div className="flex justify-between p-4">
+            <div className="flex justify-between p-4 border-t">
                 <Button variant="outline" onClick={handleDrawerClose}>Cancel</Button>
                 <Button 
                     type="submit" 
@@ -870,7 +869,7 @@ const CamerasPage: NextPage = () => {
         );
         } else if (drawerStep === 2) {
         return (
-            <div className="flex justify-between p-4">
+            <div className="flex justify-between p-4 border-t">
                 <Button variant="outline" onClick={handleStep2Back}>Back</Button>
                 <Button 
                     type="submit" 
@@ -884,7 +883,7 @@ const CamerasPage: NextPage = () => {
         );
         } else if (drawerStep === 3) {
             return (
-                <div className="flex justify-between p-4">
+                <div className="flex justify-between p-4 border-t">
                     <Button variant="outline" onClick={handleStep3Back}>Back</Button>
                     <Button 
                         type="submit" 
