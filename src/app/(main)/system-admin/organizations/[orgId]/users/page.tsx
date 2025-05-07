@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 interface UserData {
   id: string;
   email: string;
-  role: 'user-admin' | 'user';
+  role: 'system-admin' | 'user-admin' | 'user'; // Updated role type
   createdAt: any; // Firestore Timestamp
   // Add other relevant user fields if needed, e.g., name
 }
@@ -109,8 +109,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
       <Card>
         <CardHeader className="flex flex-row justify-between items-center">
           <div>
-            {/* <CardTitle>Manage Users for {organization.name}</CardTitle> Removed CardTitle */}
-            <CardDescription>View, add, or modify users for {organization.name}.</CardDescription>
+            <CardDescription>View, add, or modify users for <span className="font-semibold">{organization.name}</span>.</CardDescription>
           </div>
            <Button onClick={handleAddUser}>
             <UserPlus className="mr-2 h-4 w-4" /> Add User
@@ -132,8 +131,12 @@ const ManageOrganizationUsersPage: NextPage = () => {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant={user.role === 'user-admin' ? 'default' : 'secondary'}>
-                        {user.role === 'user-admin' ? 'Admin' : 'User'}
+                      <Badge variant={
+                        user.role === 'system-admin' ? 'destructive' :
+                        user.role === 'user-admin' ? 'default' : 'secondary'
+                      }>
+                        {user.role === 'system-admin' ? 'System Admin' :
+                         user.role === 'user-admin' ? 'Org Admin' : 'User'}
                       </Badge>
                     </TableCell>
                     <TableCell>{user.createdAt}</TableCell>
@@ -161,4 +164,3 @@ const ManageOrganizationUsersPage: NextPage = () => {
 };
 
 export default ManageOrganizationUsersPage;
-
