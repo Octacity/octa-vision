@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Edit3, Trash2 } from 'lucide-react'; // Added Edit3, Trash2
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'; // Added Table components
-import { Badge } from '@/components/ui/badge'; // Added Badge
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Added Tooltip components
-import { useToast } from '@/hooks/use-toast'; // Added useToast
+import { PlusCircle, Edit3, Trash2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 const OrganizationUsersPage: NextPage = () => {
   const { toast } = useToast();
@@ -36,16 +36,14 @@ const OrganizationUsersPage: NextPage = () => {
   return (
     <div>
       <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Manage Organization Users</CardTitle>
-              <CardDescription>Add, remove, or update users within your organization.</CardDescription>
-            </div>
-            <Button onClick={handleAddUser}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add User
-            </Button>
+        <CardHeader className="flex flex-row justify-between items-center border-b">
+          <div>
+            {/* <CardTitle>Manage Organization Users</CardTitle> Removed for consistency, appbar has title */}
+            <CardDescription>Add, remove, or update users within your organization.</CardDescription>
           </div>
+          <Button onClick={handleAddUser}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add User
+          </Button>
         </CardHeader>
         <CardContent className="p-0 sm:p-6 sm:pt-0">
           {users.length > 0 ? (

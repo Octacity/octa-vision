@@ -7,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon } from 'lucide-react'; // Renamed Users to UsersIconLucide, Server to ServerIcon
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +42,6 @@ const AdminOrganizationsPage: NextPage = () => {
       const orgsSnapshot = await getDocs(collection(db, 'organizations'));
       const orgsData = await Promise.all(orgsSnapshot.docs.map(async (orgDoc) => {
         const data = orgDoc.data();
-        // Fetch user-admin email (assuming first user-admin found)
         let userAdminEmail = 'N/A';
         const usersAdminQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id), where('role', '==', 'user-admin'));
         const usersAdminSnapshot = await getDocs(usersAdminQuery);
@@ -50,7 +49,6 @@ const AdminOrganizationsPage: NextPage = () => {
           userAdminEmail = usersAdminSnapshot.docs[0].data().email;
         }
         
-        // Fetch total user count for the organization
         const allUsersQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id));
         const allUsersSnapshot = await getDocs(allUsersQuery);
         const userCount = allUsersSnapshot.size; 
@@ -58,7 +56,6 @@ const AdminOrganizationsPage: NextPage = () => {
         const camerasQuery = query(collection(db, 'cameras'), where('organizationId', '==', orgDoc.id));
         const camerasSnapshot = await getDocs(camerasQuery);
         const cameraCount = camerasSnapshot.size;
-
 
         return {
           id: orgDoc.id,
@@ -69,10 +66,12 @@ const AdminOrganizationsPage: NextPage = () => {
           userAdminEmail,
           userCount,
           cameraCount,
-          admin: data.admin === true, // Check for admin flag
+          admin: data.admin === true,
         } as Organization;
       }));
-      setOrganizations(orgsData);
+      // Filter out admin organization if not needed to be listed for management
+      // setOrganizations(orgsData.filter(org => !org.admin)); 
+      setOrganizations(orgsData); // Show all orgs, admin tag will differentiate
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -88,7 +87,7 @@ const AdminOrganizationsPage: NextPage = () => {
     try {
       await updateDoc(doc(db, 'organizations', orgId), { approved: true });
       toast({ title: 'Success', description: 'Organization approved.' });
-      fetchOrganizations(); // Refresh list
+      fetchOrganizations(); 
     } catch (error) {
       console.error("Error approving organization: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not approve organization.' });
@@ -103,6 +102,11 @@ const AdminOrganizationsPage: NextPage = () => {
     router.push(`/system-admin/organizations/${orgId}/users`);
   };
 
+  // Placeholder for adding a new organization - might not be typical from this page
+  const handleAddOrganization = () => {
+    toast({ title: 'Add Organization', description: 'Functionality to add organization (not typically done here, usually via signup).' });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8 h-full">
@@ -114,9 +118,15 @@ const AdminOrganizationsPage: NextPage = () => {
   return (
     <div>
       <Card>
-        <CardHeader>
-          {/* <CardTitle>Organizations</CardTitle> Removed CardTitle */}
-          <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
+        <CardHeader className="flex flex-row justify-between items-center border-b">
+          <div>
+            <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
+          </div>
+           {/* Example "Add" button, if needed for this context 
+           <Button onClick={handleAddOrganization}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Organization
+          </Button>
+          */}
         </CardHeader>
         <CardContent className="p-0 sm:p-6 sm:pt-0">
           {organizations.length > 0 ? (
@@ -125,23 +135,32 @@ const AdminOrganizationsPage: NextPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="bg-card">Name</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>User Admin</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[120px] min-w-[120px] border-l border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {organizations.map((org) => (
                     <TableRow key={org.id}>
                       <TableCell className="font-medium">
-                        <div className="overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
-                          {org.name}
+                        <div className="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
+                          <span>{org.name}</span>
                           {org.admin && (
-                            <Badge variant="outline" className="ml-2 border-primary text-primary">Admin</Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                 <Badge variant="outline" className="ml-2 border-primary text-primary cursor-default">
+                                  <Shield className="h-3 w-3 mr-1"/> Admin
+                                 </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>This is an administrative organization.</p>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       </TableCell>
@@ -152,13 +171,15 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{org.userAdminEmail}</TableCell>
                       <TableCell className="text-center">
-                        <Link href={`/system-admin/organizations/${org.id}/users`} className="text-primary hover:underline">
-                          {org.userCount}
-                        </Link>
+                        <Button variant="link" asChild className="p-0 h-auto">
+                          <Link href={`/system-admin/organizations/${org.id}/users`} className="text-primary hover:underline">
+                            {org.userCount}
+                          </Link>
+                        </Button>
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[120px] min-w-[120px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>

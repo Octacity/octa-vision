@@ -9,7 +9,7 @@ import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, ArrowLeft, Edit3 } from 'lucide-react';
+import { Loader2, ArrowLeft, Edit3, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -53,6 +53,8 @@ const ManageOrganizationIPsPage: NextPage = () => {
         const camerasSnapshot = await getDocs(camerasQuery);
         const camerasData = camerasSnapshot.docs.map(doc => ({
           id: doc.id,
+          name: doc.data().cameraName, // Ensure field name matches Firestore
+          rtspUrl: doc.data().rtspUrl, // Ensure field name matches Firestore
           ...doc.data(),
         })) as CameraData[];
         setCameras(camerasData);
@@ -69,6 +71,10 @@ const ManageOrganizationIPsPage: NextPage = () => {
 
   const handleEditIp = (cameraId: string) => {
     toast({ title: 'Edit IP', description: `Editing IP for camera ${cameraId} (not implemented).` });
+  };
+
+  const handleAddIp = () => {
+    toast({ title: 'Add IP', description: 'Adding new camera IP (not implemented).' });
   };
 
   if (loading) {
@@ -93,9 +99,15 @@ const ManageOrganizationIPsPage: NextPage = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>
-        <CardHeader>
-          <CardTitle>Manage Camera IPs for {organization.name}</CardTitle>
-          <CardDescription>View and manage camera RTSP URLs (containing IP addresses) for this organization.</CardDescription>
+        <CardHeader className="flex flex-row justify-between items-center border-b">
+          <div>
+            <CardDescription>
+              View and manage camera RTSP URLs for <strong className="text-foreground">{organization.name}</strong>.
+            </CardDescription>
+          </div>
+          <Button onClick={handleAddIp}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add IP / Camera
+          </Button>
         </CardHeader>
         <CardContent className="p-0 sm:p-6 sm:pt-0">
           {cameras.length > 0 ? (
@@ -112,7 +124,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
                   <TableBody>
                     {cameras.map((camera) => (
                       <TableRow key={camera.id}>
-                        <TableCell className="font-medium">{camera.name}</TableCell>
+                        <TableCell className="font-medium">{camera.name || 'Unnamed Camera'}</TableCell>
                         <TableCell>{camera.rtspUrl || 'N/A'}</TableCell>
                         <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
                            <div className="flex justify-end items-center space-x-1">
