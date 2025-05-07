@@ -82,7 +82,7 @@ const AdminOrganizationsPage: NextPage = () => {
 
   useEffect(() => {
     fetchOrganizations();
-  }, []);
+  }, [toast]); // Removed fetchOrganizations from dependency array as it causes infinite loop with toast
 
   const handleApprove = async (orgId: string) => {
     try {
@@ -131,7 +131,7 @@ const AdminOrganizationsPage: NextPage = () => {
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right min-w-[180px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -156,39 +156,41 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="text-right space-x-1">
-                        {!org.approved && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end items-center space-x-1">
+                          {!org.approved && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" onClick={() => handleApprove(org.id)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700 h-8 w-8">
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Approve Organization</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => handleApprove(org.id)} className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700 h-8 w-8">
-                                <CheckCircle className="h-4 w-4" />
+                              <Button variant="outline" size="icon" onClick={() => handleManageIPs(org.id)} className="h-8 w-8">
+                                <ServerIcon className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Approve Organization</p>
+                              <p>Manage IPs</p>
                             </TooltipContent>
                           </Tooltip>
-                        )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" onClick={() => handleManageIPs(org.id)} className="h-8 w-8">
-                              <ServerIcon className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Manage IPs</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" onClick={() => handleManageUsers(org.id)} className="h-8 w-8">
-                              <UsersIconLucide className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Manage Users</p>
-                          </TooltipContent>
-                        </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => handleManageUsers(org.id)} className="h-8 w-8">
+                                <UsersIconLucide className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Manage Users</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
