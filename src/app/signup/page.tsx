@@ -30,7 +30,7 @@ const SignUpPage = () => {
   const [organizationDescription, setOrganizationDescription] = useState("");
   const [needForOctaVision, setNeedForOctaVision] = useState(""); // New state for the new field
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -46,7 +46,7 @@ const SignUpPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-    setIsLoading(true); 
+    setIsLoading(true);
 
     try {
       const auth = getAuth();
@@ -71,8 +71,8 @@ const SignUpPage = () => {
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
-        organizationId: orgRef.id, 
-        role: 'user-admin', 
+        organizationId: orgRef.id,
+        role: 'user-admin',
         createdAt: serverTimestamp(),
       });
 
@@ -89,7 +89,7 @@ const SignUpPage = () => {
         setErrorMessage("An unexpected error occurred. Please try again.");
       }
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -120,6 +120,7 @@ const SignUpPage = () => {
                   <Input
                     type="email"
                     id="email"
+                    placeholder="Enter your email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -132,6 +133,7 @@ const SignUpPage = () => {
                   <Input
                     type="password"
                     id="password"
+                    placeholder="Create a strong password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -144,18 +146,20 @@ const SignUpPage = () => {
                   <Input
                     type="text"
                     id="organizationName"
+                    placeholder="Enter your organization's name"
                     value={organizationName}
                     onChange={(e) => setOrganizationName(e.target.value)}
                     required
                     autoComplete="organization"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="organizationPhone" className="block text-left text-muted-foreground mb-1">Organization Phone</Label>
                   <Input
                     type="tel"
                     id="organizationPhone"
+                    placeholder="Enter organization's phone number"
                     value={organizationPhone}
                     onChange={(e) => setOrganizationPhone(e.target.value)}
                     required
@@ -167,6 +171,7 @@ const SignUpPage = () => {
                   <Label htmlFor="billingAddress" className="block text-left text-muted-foreground mb-1">Billing Address</Label>
                   <Textarea
                     id="billingAddress"
+                    placeholder="Enter the complete billing address"
                     value={billingAddress}
                     onChange={(e) => setBillingAddress(e.target.value)}
                     required
@@ -178,12 +183,13 @@ const SignUpPage = () => {
                   <Label htmlFor="organizationDescription" className="block text-left text-muted-foreground mb-1">Organization Description</Label>
                   <Textarea
                     id="organizationDescription"
+                    placeholder="Describe your organization briefly"
                     value={organizationDescription}
                     onChange={(e) => setOrganizationDescription(e.target.value)}
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="needForOctaVision" className="block text-left text-muted-foreground mb-1">How do you plan to use OctaVision?</Label>
                   <Textarea
