@@ -383,7 +383,7 @@ const CamerasPage: NextPage = () => {
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Organization Approval Pending</AlertTitle>
           <AlertDescription>
-            You can add cameras, but they will not start processing feeds or generating alerts until your organization's account is approved by an administrator.
+            You can add cameras and set up configurations. However, camera processing will only begin after your organization&apos;s account is approved by an administrator and based on server space availability.
           </AlertDescription>
         </Alert>
       );
@@ -1011,3 +1011,6 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
+
+    
