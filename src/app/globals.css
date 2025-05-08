@@ -35,7 +35,7 @@ body {
     --radius: 0.5rem;
 
     /* Global hover colors */
-    --hover-background: 172 61% 55%; /* Adjusted: Lighter teal for hover background */
+    --hover-background: 172 61% 48%; /* Lighter teal for hover background */
     --hover-foreground: 0 0% 100%; /* White for hover text/icon */
 
     /* Sidebar specific colors */
@@ -71,8 +71,8 @@ body {
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
+    --border: 0 0% 30%; /* Adjusted for better visibility in dark mode */
+    --input: 0 0% 30%; /* Adjusted for better visibility in dark mode */
     --ring: 0 0% 83.1%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -81,7 +81,7 @@ body {
     --chart-5: 340 75% 55%;
 
     /* Global hover colors */
-    --hover-background: 172 61% 40%; /* Adjusted: Lighter teal for dark mode hover */
+    --hover-background: 172 61% 48%; /* Lighter teal for dark mode hover */
     --hover-foreground: 0 0% 98%; /* Light text for dark mode hover */
     
     /* Sidebar specific colors */
@@ -93,7 +93,7 @@ body {
     --sidebar-accent-foreground: 0 0% 100%; /* White for active text/icon */
     --sidebar-hover-background: var(--hover-background); /* Use global hover */
     --sidebar-hover-foreground: var(--hover-foreground); /* Use global hover */
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-border: 240 4% 25%; /* Adjusted for better visibility in dark mode */
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
