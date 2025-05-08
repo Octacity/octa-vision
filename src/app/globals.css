@@ -35,7 +35,7 @@ body {
     --radius: 0.5rem;
 
     /* Global hover colors */
-    --hover-background: 172 50% 45%; /* Slightly lighter teal for hover */
+    --hover-background: 172 61% 48%; /* Lighter teal for hover */
     --hover-foreground: 0 0% 100%; /* White for hover text/icon */
 
     /* Sidebar specific colors */
@@ -69,7 +69,7 @@ body {
     --muted-foreground: 0 0% 63.9%;
     --accent: 172 61% 43%; /* Existing accent, can be same as primary or different */
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 70% 55%; /* Brighter red for dark mode alerts */
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 30%; 
     --input: 0 0% 30%; 
@@ -81,7 +81,7 @@ body {
     --chart-5: 340 75% 55%;
 
     /* Global hover colors */
-    --hover-background: 172 50% 48%; /* Lighter teal for dark mode hover */
+    --hover-background: 172 61% 53%; /* Lighter teal for dark mode hover */
     --hover-foreground: 0 0% 98%; /* Light text for dark mode hover */
     
     /* Sidebar specific colors */
@@ -99,7 +99,6 @@ body {
     /* OctaVision specific variables for dark mode */
     /* --octaview-primary HSL: 220 10% 90% */
     --octaview-primary: 230, 230, 230; /* Light gray text for body in dark mode */
-    /* --octaview-secondary HSL: 220 13% 22% */
     --octaview-secondary: 50, 53, 61; /* A slightly lighter dark gray for the body's background */
   }
 }
