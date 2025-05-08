@@ -49,7 +49,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
-import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'; // Updated import
+import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'; 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import NotificationDrawer from '@/components/NotificationDrawer';
@@ -68,12 +68,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar(); // useSidebar from context
+  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar(); 
   const { openNotificationDrawer } = useNotificationDrawer();
-  const { translate, language } = useLanguage(); // Added language for potential keying if needed
+  const { translate, language } = useLanguage(); 
 
   const getPageTitle = (pathname: string): string => {
-    // Note: These keys must exist in your translation files
     const routeToTranslationKey: Record<string, string> = {
       '/dashboard': 'dashboard',
       '/cameras': 'cameras',
@@ -84,8 +83,8 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       '/account': 'account',
       '/organization-users': 'organizationUsers',
       '/system-admin': 'systemAdministration',
-      '/system-admin/organizations': 'manageOrganizations',
-      '/system-admin/servers': 'manageServers',
+      '/system-admin/organizations': 'organizations', // Updated key
+      '/system-admin/servers': 'servers', // Updated key
     };
      if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/ips')) {
         return translate('manageCameraIPs');
@@ -150,11 +149,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     const auth = getAuth();
     try {
       await signOut(auth);
-      toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') }); // Example, add to translations
+      toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') }); 
       router.push('/signin');
     } catch (error) {
       console.error("Error signing out: ", error);
-      toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') }); // Example
+      toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') }); 
     }
   };
   
@@ -187,7 +186,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         <SidebarHeader className="h-16 border-b border-border flex items-center justify-center px-4 py-5">
           <Link
             href="/dashboard"
-            className="text-lg font-semibold text-foreground" // Use text-foreground for theme-aware color
+            className="text-lg font-semibold text-foreground" 
             onClick={handleMenuItemClick}
           >
             {sidebarState === 'collapsed' && !isMobile ? 'OV' : translate('octaVision')}
@@ -273,7 +272,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     <Link href="/system-admin/organizations" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Briefcase className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>{translate('manageOrganizations')}</span>}
+                        {sidebarState === 'expanded' && <span>{translate('organizations')}</span>} 
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
@@ -281,7 +280,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     <Link href="/system-admin/servers" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Server className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>{translate('manageServers')}</span>}
+                        {sidebarState === 'expanded' && <span>{translate('servers')}</span>}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
@@ -302,7 +301,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
             <h1
-              className="text-lg ml-2 font-normal text-foreground" // Use text-foreground for theme-aware color
+              className="text-lg ml-2 font-normal text-foreground" 
             >
               {currentPageTitle}
             </h1>
@@ -381,4 +380,3 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
-

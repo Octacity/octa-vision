@@ -288,17 +288,15 @@ const SidebarTrigger = React.forwardRef<
     <Button
       ref={ref}
       data-sidebar="trigger"
-      variant="outline" // Added variant outline
+      variant="outline" 
       size="icon"
-      className={cn("h-8 w-8 p-1.5 border", className)}  // Added border class
+      className={cn("h-8 w-8 p-1.5 border", className)}  
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      {/* {state === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />} */}
-      {/* <PanelLeft className="h-4 w-4" /> */}
       <Menu className="h-4 w-4" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
@@ -369,7 +367,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("h-16 border-b border-border flex items-center justify-center px-4 py-5", className)} // Increased py-5 for more padding
+      className={cn("h-16 border-b border-border flex items-center justify-center px-4 py-5", className)} 
       {...props}
     />
   )
@@ -549,7 +547,7 @@ const sidebarMenuButtonVariants = cva(
         default: "h-10 text-sm py-3", 
         sm: "h-9 text-xs py-3",
         lg: "h-12 text-sm py-3",
-        icon: "h-8 w-8 p-1.5 justify-center", 
+        icon: "h-8 w-8 p-1.5 justify-center items-center", 
       },
     },
     defaultVariants: {
@@ -576,7 +574,7 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       children,
-      onClick: propOnClick, // Capture the onClick prop from the parent (e.g., Link)
+      onClick: propOnClick, 
       ...props
     },
     ref
@@ -588,14 +586,14 @@ const SidebarMenuButton = React.forwardRef<
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
     
     
-    const paddingClass = sidebarState === 'collapsed' && !isMobile ? 'p-1.5' : 'px-3';
+    const paddingClass = sidebarState === 'collapsed' && !isMobile && size === 'icon' ? 'p-1.5' : 'px-3';
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
       if (propOnClick) {
-        propOnClick(event); // Call original onClick if it exists
+        propOnClick(event); 
       }
       if (isMobile) {
-        setOpenMobile(false); // Close mobile sidebar on click
+        setOpenMobile(false); 
       }
     };
 
@@ -609,9 +607,10 @@ const SidebarMenuButton = React.forwardRef<
         className={cn(
           sidebarMenuButtonVariants({ variant, size }), 
           paddingClass, 
+          "flex items-center", // Ensure flex and items-center for proper alignment
           className
         )}
-        onClick={handleClick} // Use the new handleClick
+        onClick={handleClick} 
         {...props}
       >
         {children}
@@ -795,5 +794,3 @@ export {
   sidebarMenuButtonVariants,
   // useSidebar from context is already exported as useSidebarContextHook
 }
-
-

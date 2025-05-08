@@ -22,8 +22,8 @@ const translationsData: Record<Language, Translations> = {
     account: 'My Account',
     organizationUsers: 'Organization Users',
     systemAdministration: 'System Administration',
-    manageOrganizations: 'Manage Organizations',
-    manageServers: 'Manage Servers',
+    organizations: 'Organizations', // Changed from Manage Organizations
+    servers: 'Servers', // Changed from Manage Servers
     manageCameraIPs: 'Manage Camera IPs',
     manageOrganizationUsers: 'Manage Organization Users',
     octaVision: 'OctaVision',
@@ -40,7 +40,7 @@ const translationsData: Record<Language, Translations> = {
         es: 'Spanish',
         pt: 'Portuguese',
     },
-    settingsPage: { // Renamed from 'settings' to avoid conflict if 'settings' is a page title
+    settingsPage: {
         notifications: {
             title: 'Notification Settings',
             email: 'Email Notifications',
@@ -82,8 +82,8 @@ const translationsData: Record<Language, Translations> = {
     account: 'Mi Cuenta',
     organizationUsers: 'Usuarios de la Organización',
     systemAdministration: 'Administración del Sistema',
-    manageOrganizations: 'Gestionar Organizaciones',
-    manageServers: 'Gestionar Servidores',
+    organizations: 'Organizaciones', // Changed from Gestionar Organizaciones
+    servers: 'Servidores', // Changed from Gestionar Servidores
     manageCameraIPs: 'Gestionar IPs de Cámaras',
     manageOrganizationUsers: 'Gestionar Usuarios de la Organización',
     octaVision: 'OctaVision',
@@ -100,7 +100,7 @@ const translationsData: Record<Language, Translations> = {
         es: 'Español',
         pt: 'Portugués',
     },
-    settingsPage: { // Renamed
+    settingsPage: { 
         notifications: {
             title: 'Configuración de Notificaciones',
             email: 'Notificaciones por Correo',
@@ -142,8 +142,8 @@ const translationsData: Record<Language, Translations> = {
     account: 'Minha Conta',
     organizationUsers: 'Usuários da Organização',
     systemAdministration: 'Administração do Sistema',
-    manageOrganizations: 'Gerenciar Organizações',
-    manageServers: 'Gerenciar Servidores',
+    organizations: 'Organizações', // Changed from Gerenciar Organizações
+    servers: 'Servidores', // Changed from Gerenciar Servidores
     manageCameraIPs: 'Gerenciar IPs de Câmera',
     manageOrganizationUsers: 'Gerenciar Usuários da Organização',
     octaVision: 'OctaVision',
@@ -160,7 +160,7 @@ const translationsData: Record<Language, Translations> = {
         es: 'Espanhol',
         pt: 'Português',
     },
-    settingsPage: { // Renamed
+    settingsPage: { 
         notifications: {
             title: 'Configurações de Notificação',
             email: 'Notificações por Email',
