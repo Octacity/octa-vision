@@ -40,7 +40,7 @@ const translationsData: Record<Language, Translations> = {
         es: 'Spanish',
         pt: 'Portuguese',
     },
-    settings: {
+    settingsPage: { // Renamed from 'settings' to avoid conflict if 'settings' is a page title
         notifications: {
             title: 'Notification Settings',
             email: 'Email Notifications',
@@ -100,7 +100,7 @@ const translationsData: Record<Language, Translations> = {
         es: 'Español',
         pt: 'Portugués',
     },
-    settings: {
+    settingsPage: { // Renamed
         notifications: {
             title: 'Configuración de Notificaciones',
             email: 'Notificaciones por Correo',
@@ -160,7 +160,7 @@ const translationsData: Record<Language, Translations> = {
         es: 'Espanhol',
         pt: 'Português',
     },
-    settings: {
+    settingsPage: { // Renamed
         notifications: {
             title: 'Configurações de Notificação',
             email: 'Notificações por Email',

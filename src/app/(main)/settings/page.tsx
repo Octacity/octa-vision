@@ -19,19 +19,19 @@ const SettingsPage: NextPage = () => {
       <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{translate('settings.notifications.title')}</CardTitle>
+            <CardTitle>{translate('settingsPage.notifications.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="email-notifications">{translate('settings.notifications.email')}</Label>
+              <Label htmlFor="email-notifications">{translate('settingsPage.notifications.email')}</Label>
               <Switch id="email-notifications" defaultChecked />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="push-notifications">{translate('settings.notifications.push')}</Label>
+              <Label htmlFor="push-notifications">{translate('settingsPage.notifications.push')}</Label>
               <Switch id="push-notifications" />
             </div>
              <div className="flex items-center justify-between">
-              <Label htmlFor="alert-sound">{translate('settings.notifications.sound')}</Label>
+              <Label htmlFor="alert-sound">{translate('settingsPage.notifications.sound')}</Label>
               <Switch id="alert-sound" defaultChecked />
             </div>
           </CardContent>
@@ -39,18 +39,18 @@ const SettingsPage: NextPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>{translate('settings.theme.title')}</CardTitle>
+            <CardTitle>{translate('settingsPage.theme.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="flex items-center justify-between">
-              <Label htmlFor="dark-mode">{translate('settings.theme.darkMode')}</Label>
+              <Label htmlFor="dark-mode">{translate('settingsPage.theme.darkMode')}</Label>
               <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={toggleTheme} />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="language-select">{translate('settings.theme.language')}</Label>
+              <Label htmlFor="language-select">{translate('settingsPage.theme.language')}</Label>
               <Select value={language} onValueChange={(value) => setLanguage(value as 'en' | 'es' | 'pt')}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder={translate('settings.theme.selectLanguage')} />
+                  <SelectValue placeholder={translate('settingsPage.theme.selectLanguage')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">{translate('languages.en')}</SelectItem>
@@ -65,11 +65,11 @@ const SettingsPage: NextPage = () => {
 
          <Card>
           <CardHeader>
-            <CardTitle>{translate('settings.data.title')}</CardTitle>
+            <CardTitle>{translate('settingsPage.data.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-             <Button variant="outline">{translate('settings.data.export')}</Button>
-             <Button variant="destructive">{translate('settings.data.deleteAccount')}</Button>
+             <Button variant="outline">{translate('settingsPage.data.export')}</Button>
+             <Button variant="destructive">{translate('settingsPage.data.deleteAccount')}</Button>
           </CardContent>
         </Card>
       </div>
