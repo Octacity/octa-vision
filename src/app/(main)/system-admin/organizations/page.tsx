@@ -80,7 +80,7 @@ const AdminOrganizationsPage: NextPage = () => {
           admin: data.admin === true,
         } as Organization;
       }));
-      setOrganizations(orgsData.filter(org => !org.admin)); // Filter out admin organizations
+      setOrganizations(orgsData); // Removed filter for admin organizations
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
