@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI agent for generating suggested alert events for a camera group.
@@ -12,6 +13,7 @@ import {z} from 'genkit';
 
 const GenerateGroupAlertEventsInputSchema = z.object({
   aiDetectionTarget: z.string().describe('The text describing what the AI should detect for this group of cameras.'),
+  language: z.string().describe('The language for the response (e.g., "en", "es").').optional().default('en'),
 });
 export type GenerateGroupAlertEventsInput = z.infer<typeof GenerateGroupAlertEventsInputSchema>;
 
@@ -38,7 +40,7 @@ suggested alert events might be: "security: unauthorized zone entry, security: a
 AI Detection Target:
 {{{aiDetectionTarget}}}
 
-Provide your suggested alert events below:`,
+Provide your suggested alert events below in {{language}}:`,
 });
 
 const generateGroupAlertEventsFlow = ai.defineFlow(
@@ -50,18 +52,18 @@ const generateGroupAlertEventsFlow = ai.defineFlow(
   async (input) => {
     try {
       const {output} = await prompt(input);
-      // The prompt is expected to return an object matching GenerateGroupAlertEventsOutputSchema.
-      // If the model doesn't adhere, 'output' might be null or not have the expected fields.
       if (!output?.suggestedAlertEvents) {
         console.warn('AI model did not return expected "suggestedAlertEvents" structure.', output);
-        return { suggestedAlertEvents: "Error: AI failed to generate suggestions in the expected format." };
+        // Consider returning a language-specific error message if possible, or a generic one.
+        const errorMsg = input.language === 'es' 
+            ? "Error: La IA no generó sugerencias en el formato esperado." 
+            : "Error: AI failed to generate suggestions in the expected format.";
+        return { suggestedAlertEvents: errorMsg };
       }
       return output;
     } catch (error: any) {
-      // This case means the call to the model (prompt(input)) failed.
-      // This could be due to API key issues, network problems, or other API errors.
       console.error('generateGroupAlertEventsFlow: Error during AI prompt execution:', error);
-      const errorMessage = error?.message || "Failed to communicate with the AI model.";
+      const errorMessage = error?.message || (input.language === 'es' ? "Falló la comunicación con el modelo IA." : "Failed to communicate with the AI model.");
       return { suggestedAlertEvents: `Error: ${errorMessage}` };
     }
   }

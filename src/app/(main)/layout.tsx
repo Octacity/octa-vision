@@ -55,37 +55,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import NotificationDrawer from '@/components/NotificationDrawer';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 
 interface MainLayoutProps {
   children: ReactNode;
 }
-
-const pageTitles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/cameras': 'Cameras',
-  '/groups': 'Groups',
-  '/monitor': 'Monitor',
-  '/videos': 'Videos',
-  '/settings': 'Settings',
-  '/account': 'My Account',
-  '/organization-users': 'Organization Users',
-  '/system-admin': 'System Administration',
-  '/system-admin/organizations': 'Manage Organizations',
-  // Removed '/system-admin/users' as it's now nested
-  '/system-admin/servers': 'Manage Servers',
-};
-
-const getPageTitle = (pathname: string): string => {
-  if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/ips')) {
-    return 'Manage Camera IPs';
-  }
-  if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/users')) {
-    return 'Manage Organization Users';
-  }
-  return pageTitles[pathname] || 'OctaVision';
-};
-
 
 const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
@@ -95,8 +70,35 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const router = useRouter();
   const { toast } = useToast();
   const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar();
-  const currentPageTitle = getPageTitle(pathname);
   const { openNotificationDrawer } = useNotificationDrawer();
+  const { translate, language } = useLanguage(); // Added language for potential keying if needed
+
+  const getPageTitle = (pathname: string): string => {
+    // Note: These keys must exist in your translation files
+    const routeToTranslationKey: Record<string, string> = {
+      '/dashboard': 'dashboard',
+      '/cameras': 'cameras',
+      '/groups': 'groups',
+      '/monitor': 'monitor',
+      '/videos': 'videos',
+      '/settings': 'settings',
+      '/account': 'account',
+      '/organization-users': 'organizationUsers',
+      '/system-admin': 'systemAdministration',
+      '/system-admin/organizations': 'manageOrganizations',
+      '/system-admin/servers': 'manageServers',
+    };
+     if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/ips')) {
+        return translate('manageCameraIPs');
+    }
+    if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/users')) {
+        return translate('manageOrganizationUsers');
+    }
+    const key = routeToTranslationKey[pathname] || 'octaVision';
+    return translate(key);
+  };
+  
+  const currentPageTitle = getPageTitle(pathname);
 
 
   useEffect(() => {
@@ -149,11 +151,11 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     const auth = getAuth();
     try {
       await signOut(auth);
-      toast({ title: 'Signed Out', description: 'You have been successfully signed out.' });
+      toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') }); // Example, add to translations
       router.push('/signin');
     } catch (error) {
       console.error("Error signing out: ", error);
-      toast({ variant: 'destructive', title: 'Sign Out Failed', description: 'Could not sign you out. Please try again.' });
+      toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') }); // Example
     }
   };
   
@@ -172,8 +174,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }
   
   if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
-     // This check is to prevent brief flash of content if auth state resolves quickly
-     // but routing hasn't happened yet.
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -192,7 +192,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             style={{ color: 'rgb(var(--octaview-primary))' }}
             onClick={handleMenuItemClick}
           >
-            {sidebarState === 'collapsed' && !isMobile ? 'OV' : 'OctaVision'}
+            {sidebarState === 'collapsed' && !isMobile ? 'OV' : translate('octaVision')}
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -201,7 +201,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <Link href="/dashboard" passHref legacyBehavior>
                 <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                   <Home className="h-4 w-4" />
-                  {sidebarState === 'expanded' && <span>Dashboard</span>}
+                  {sidebarState === 'expanded' && <span>{translate('dashboard')}</span>}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -211,7 +211,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/cameras" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <CameraIcon className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Cameras</span>}
+                      {sidebarState === 'expanded' && <span>{translate('cameras')}</span>}
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -219,7 +219,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/groups" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <UsersIcon className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Groups</span>}
+                      {sidebarState === 'expanded' && <span>{translate('groups')}</span>}
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -227,7 +227,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/monitor" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <Activity className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Monitor</span>}
+                      {sidebarState === 'expanded' && <span>{translate('monitor')}</span>}
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -235,7 +235,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/videos" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <Film className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Videos</span>}
+                      {sidebarState === 'expanded' && <span>{translate('videos')}</span>}
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -243,7 +243,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/settings" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <Settings className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Settings</span>}
+                      {sidebarState === 'expanded' && <span>{translate('settings')}</span>}
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -251,7 +251,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   <Link href="/account" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                       <CircleUserRound className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>Account</span>}
+                      {sidebarState === 'expanded' && <span>{translate('account')}</span>}
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -260,7 +260,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     <Link href="/organization-users" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <UserPlus className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>Org Users</span>}
+                        {sidebarState === 'expanded' && <span>{translate('organizationUsers')}</span>}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
@@ -269,22 +269,21 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             )}
             {userRole === 'system-admin' && (
               <SidebarGroup>
-                <SidebarGroupLabel>System Admin</SidebarGroupLabel>
+                <SidebarGroupLabel>{translate('systemAdministration')}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenuItem>
                     <Link href="/system-admin/organizations" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Briefcase className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>Organizations</span>}
+                        {sidebarState === 'expanded' && <span>{translate('manageOrganizations')}</span>}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
-                  {/* Removed System Users direct link from here */}
                    <SidebarMenuItem>
                     <Link href="/system-admin/servers" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Server className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>Our Servers</span>}
+                        {sidebarState === 'expanded' && <span>{translate('manageServers')}</span>}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
@@ -333,19 +332,19 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 <DropdownMenuItem asChild>
                   <Link href="/account">
                     <CircleUserRound className="mr-2 h-4 w-4" />
-                    Account
+                    {translate('account')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    {translate('settings')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
+                  {translate('signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -353,17 +352,17 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         </div>
 
         {isApproved === false && getAuth().currentUser && userRole !== 'system-admin' && (
-          <div className="p-4 md:p-8"> {/* Adjusted padding for consistency */}
+          <div className="p-4 md:p-8"> 
             <Alert variant="destructive">
               <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>Organization Approval Pending</AlertTitle>
+              <AlertTitle>{translate('orgApprovalPending.title')}</AlertTitle> {/* Add to translations */}
               <AlertDescription>
-                Your organization's account is currently awaiting approval. You can add cameras and set up configurations. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.
+                {translate('orgApprovalPending.description')} {/* Add to translations */}
               </AlertDescription>
             </Alert>
           </div>
         )}
-        <main className="p-4 md:p-8 flex-1 overflow-y-auto"> {/* Responsive padding */}
+        <main className="p-4 md:p-8 flex-1 overflow-y-auto"> 
          {children}
         </main>
          <NotificationDrawer />
@@ -385,4 +384,3 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
-

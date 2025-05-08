@@ -6,50 +6,69 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const SettingsPage: NextPage = () => {
+  const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, translate } = useLanguage();
+
   return (
     <div>
       <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Notification Settings</CardTitle>
+            <CardTitle>{translate('settings.notifications.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="email-notifications">Email Notifications</Label>
+              <Label htmlFor="email-notifications">{translate('settings.notifications.email')}</Label>
               <Switch id="email-notifications" defaultChecked />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="push-notifications">Push Notifications</Label>
+              <Label htmlFor="push-notifications">{translate('settings.notifications.push')}</Label>
               <Switch id="push-notifications" />
             </div>
              <div className="flex items-center justify-between">
-              <Label htmlFor="alert-sound">Alert Sound</Label>
+              <Label htmlFor="alert-sound">{translate('settings.notifications.sound')}</Label>
               <Switch id="alert-sound" defaultChecked />
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Theme Settings</CardTitle>
+            <CardTitle>{translate('settings.theme.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="flex items-center justify-between">
-              <Label htmlFor="dark-mode">Dark Mode</Label>
-              <Switch id="dark-mode" />
+              <Label htmlFor="dark-mode">{translate('settings.theme.darkMode')}</Label>
+              <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={toggleTheme} />
             </div>
-             {/* Add more theme settings here */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="language-select">{translate('settings.theme.language')}</Label>
+              <Select value={language} onValueChange={(value) => setLanguage(value as 'en' | 'es')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={translate('settings.theme.selectLanguage')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">{translate('languages.en')}</SelectItem>
+                  <SelectItem value="es">{translate('languages.es')}</SelectItem>
+                  {/* Add more languages here */}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
+
          <Card>
           <CardHeader>
-            <CardTitle>Data Management</CardTitle>
+            <CardTitle>{translate('settings.data.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-             <Button variant="outline">Export My Data</Button>
-             <Button variant="destructive">Delete My Account</Button>
+             <Button variant="outline">{translate('settings.data.export')}</Button>
+             <Button variant="destructive">{translate('settings.data.deleteAccount')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -58,3 +77,4 @@ const SettingsPage: NextPage = () => {
 };
 
 export default SettingsPage;
+

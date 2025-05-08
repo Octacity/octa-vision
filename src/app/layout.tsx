@@ -1,7 +1,10 @@
+
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"; // Added Toaster import
+import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -14,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'OctaVision - AI Camera Analytics', // Updated title
-  description: 'Let your cameras talk to you! AI-powered alerts and insights for your enterprise.', // Updated description
+  title: 'OctaVision - AI Camera Analytics',
+  description: 'Let your cameras talk to you! AI-powered alerts and insights for your enterprise.',
 };
 
 export default function RootLayout({
@@ -24,13 +27,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body 
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
-        {children}
-        <Toaster /> {/* Added Toaster component */}
+        <ThemeProvider>
+          <LanguageProvider>
+            {children}
+            <Toaster />
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -33,6 +33,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import { useToast } from '@/hooks/use-toast';
 import { generateGroupAlertEvents } from '@/ai/flows/generate-group-alert-events';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 
 export interface Camera { 
@@ -135,6 +136,7 @@ const CamerasPage: NextPage = () => {
   const [groups, setGroups] = useState<Group[]>(initialGroups);
   const { toast } = useToast();
   const [isGeneratingAlerts, setIsGeneratingAlerts] = useState(false);
+  const { language, translate } = useLanguage();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -188,16 +190,16 @@ const CamerasPage: NextPage = () => {
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings to use this feature.',
+            title: translate('cameraAccessDenied.title'), // Example: Add to translations
+            description: translate('cameraAccessDenied.description'), // Example
           });
         }
       } else {
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
-          title: 'Camera Not Supported',
-          description: 'Your browser does not support camera access or media devices are not available.',
+          title: translate('cameraNotSupported.title'), // Example
+          description: translate('cameraNotSupported.description'), // Example
         });
       }
     };
@@ -210,7 +212,7 @@ const CamerasPage: NextPage = () => {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [toast]);
+  }, [toast, translate]);
 
 
   const formStep1 = useForm<AddCameraStep1Values>({
@@ -276,7 +278,7 @@ const CamerasPage: NextPage = () => {
       {
         id: 'ai-initial-' + camera.id,
         sender: 'ai',
-        text: `You can now chat with ${camera.cameraName}. Do you want to know about the alerts for the day?`,
+        text: translate('chat.initialMessage', { cameraName: camera.cameraName }), // Example
         timestamp: new Date(),
         avatar: undefined, 
       }
@@ -606,7 +608,7 @@ const CamerasPage: NextPage = () => {
     }
     setIsGeneratingAlerts(true);
     try {
-        const response = await generateGroupAlertEvents({ aiDetectionTarget: detectionTarget });
+        const response = await generateGroupAlertEvents({ aiDetectionTarget: detectionTarget, language: language });
         if (response && response.suggestedAlertEvents && !response.suggestedAlertEvents.startsWith("Error:")) {
             formStep1.setValue('groupDefaultAlertEvents', response.suggestedAlertEvents);
             toast({

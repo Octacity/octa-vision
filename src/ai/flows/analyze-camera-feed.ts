@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A camera feed analysis AI agent.
@@ -17,6 +18,7 @@ const AnalyzeCameraFeedInputSchema = z.object({
       "A camera feed, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   prompt: z.string().describe('A prompt describing the event or object to detect.'),
+  language: z.string().describe('The language for the response (e.g., "en", "es").').optional().default('en'),
 });
 export type AnalyzeCameraFeedInput = z.infer<typeof AnalyzeCameraFeedInputSchema>;
 
@@ -33,28 +35,18 @@ export async function analyzeCameraFeed(input: AnalyzeCameraFeedInput): Promise<
 const prompt = ai.definePrompt({
   name: 'analyzeCameraFeedPrompt',
   input: {
-    schema: z.object({
-      cameraFeedDataUri: z
-        .string()
-        .describe(
-          "A camera feed, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-        ),
-      prompt: z.string().describe('A prompt describing the event or object to detect.'),
-    }),
+    schema: AnalyzeCameraFeedInputSchema, // Use the main input schema
   },
   output: {
-    schema: z.object({
-      eventDetected: z.boolean().describe('Whether or not the event was detected.'),
-      alertMessage: z.string().describe('A message to alert the user about the event.'),
-    }),
+    schema: AnalyzeCameraFeedOutputSchema, // Use the main output schema
   },
-  prompt: `You are an AI agent specializing in analyzing security camera footage. You will use the camera feed and the user-provided prompt to determine if the event described in the prompt is detected in the camera feed. If the event is detected, set eventDetected to true and provide an appropriate alert message. If the event is not detected, set eventDetected to false and provide a message indicating that the event was not detected.\n\nUser Prompt: {{{prompt}}}\nCamera Feed: {{media url=cameraFeedDataUri}}`,
+  prompt: `You are an AI agent specializing in analyzing security camera footage. You will use the camera feed and the user-provided prompt to determine if the event described in the prompt is detected in the camera feed. If the event is detected, set eventDetected to true and provide an appropriate alert message. If the event is not detected, set eventDetected to false and provide a message indicating that the event was not detected. Respond in {{language}}.
+
+User Prompt: {{{prompt}}}
+Camera Feed: {{media url=cameraFeedDataUri}}`,
 });
 
-const analyzeCameraFeedFlow = ai.defineFlow<
-  typeof AnalyzeCameraFeedInputSchema,
-  typeof AnalyzeCameraFeedOutputSchema
->(
+const analyzeCameraFeedFlow = ai.defineFlow( // Removed explicit type parameters as they are inferred
   {
     name: 'analyzeCameraFeedFlow',
     inputSchema: AnalyzeCameraFeedInputSchema,
