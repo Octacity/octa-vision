@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { NextPage } from 'next';
@@ -53,6 +52,7 @@ export interface Group {
   id: string;
   name: string;
   cameras?: string[];
+  videos?: string[]; // Added videos field
   defaultCameraSceneContext?: string;
   defaultAiDetectionTarget?: string;
   defaultAlertEvents?: string[];
@@ -432,7 +432,8 @@ const CamerasPage: NextPage = () => {
             userId: currentUser.uid,
             createdAt: now,
             updatedAt: now,
-            cameras: [], // Initialize with empty array, will be updated later
+            cameras: [], 
+            videos: [], // Initialize with empty array for videos
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : [],
@@ -446,6 +447,7 @@ const CamerasPage: NextPage = () => {
           id: groupDocRef.id,
           name: step1Data.newGroupName,
           cameras: [],
+          videos: [], // Add to local state
           defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext,
           defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget,
           defaultAlertEvents: step1Data.groupDefaultAlertEvents?.split(',').map(ae => ae.trim()).filter(ae => ae),
@@ -1280,4 +1282,3 @@ const CamerasPage: NextPage = () => {
 export default CamerasPage;
 
     
-
