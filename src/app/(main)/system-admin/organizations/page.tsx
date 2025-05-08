@@ -2,19 +2,22 @@
 'use client';
 
 import type { NextPage } from 'next';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle } from 'lucide-react';
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 
 interface Organization {
   id: string;
@@ -30,11 +33,19 @@ interface Organization {
   admin?: boolean; // Field to indicate if org has admin privileges
 }
 
+type SortField = 'name' | 'status' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
+
 const AdminOrganizationsPage: NextPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const { translate } = useLanguage();
+
+  const [filterText, setFilterText] = useState('');
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const fetchOrganizations = async () => {
     setLoading(true);
@@ -69,9 +80,7 @@ const AdminOrganizationsPage: NextPage = () => {
           admin: data.admin === true,
         } as Organization;
       }));
-      // Filter out admin organization if not needed to be listed for management
-      // setOrganizations(orgsData.filter(org => !org.admin)); 
-      setOrganizations(orgsData); // Show all orgs, admin tag will differentiate
+      setOrganizations(orgsData);
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -94,18 +103,54 @@ const AdminOrganizationsPage: NextPage = () => {
     }
   };
   
-  const handleManageIPs = (orgId: string) => {
-    router.push(`/system-admin/organizations/${orgId}/ips`);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
   };
 
-  const handleManageUsers = (orgId: string) => {
-    router.push(`/system-admin/organizations/${orgId}/users`);
-  };
+  const filteredAndSortedOrganizations = useMemo(() => {
+    let filtered = organizations.filter(org => 
+      org.name.toLowerCase().includes(filterText.toLowerCase()) ||
+      (org.userAdminEmail && org.userAdminEmail.toLowerCase().includes(filterText.toLowerCase()))
+    );
 
-  // Placeholder for adding a new organization - might not be typical from this page
-  const handleAddOrganization = () => {
-    toast({ title: 'Add Organization', description: 'Functionality to add organization (not typically done here, usually via signup).' });
-  };
+    if (sortField) {
+      filtered.sort((a, b) => {
+        let valA = a[sortField];
+        let valB = b[sortField];
+
+        if (sortField === 'status') {
+          valA = a.approved;
+          valB = b.approved;
+        }
+        
+        if (sortField === 'createdAt') {
+            // Assuming createdAt is a string like "MM/DD/YYYY"
+            // For robust sorting, convert to Date objects or ensure consistent string format like YYYY-MM-DD
+            const dateA = a.createdAt && a.createdAt !== 'N/A' ? new Date(a.createdAt) : new Date(0);
+            const dateB = b.createdAt && b.createdAt !== 'N/A' ? new Date(b.createdAt) : new Date(0);
+            valA = dateA.getTime();
+            valB = dateB.getTime();
+        }
+
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return filtered;
+  }, [organizations, filterText, sortField, sortDirection]);
+
 
   if (loading) {
     return (
@@ -118,34 +163,54 @@ const AdminOrganizationsPage: NextPage = () => {
   return (
     <div>
       <Card>
-        <CardHeader className="flex flex-row justify-between items-center border-b">
-          <div>
-            <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
+        <CardHeader className="border-b p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              {/* CardTitle removed as page title is in appbar */}
+              <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Filter by name or admin email..."
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                className="pl-8 pr-4 py-2 h-9 w-full sm:w-[250px] text-sm rounded-md border"
+              />
+            </div>
           </div>
-           {/* Example "Add" button, if needed for this context 
-           <Button onClick={handleAddOrganization}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Organization
-          </Button>
-          */}
         </CardHeader>
         <CardContent className="p-0 sm:p-6 sm:pt-0">
-          {organizations.length > 0 ? (
+          {filteredAndSortedOrganizations.length > 0 ? (
             <div className="overflow-x-auto">
               <TooltipProvider>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                       <Button variant="ghost" onClick={() => handleSort('name')} className="px-1 py-0.5 h-auto hover:bg-muted/50">
+                        Name <ArrowUpDown className="ml-2 h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('status')} className="px-1 py-0.5 h-auto hover:bg-muted/50">
+                        Status <ArrowUpDown className="ml-2 h-3 w-3" />
+                      </Button>
+                    </TableHead>
                     <TableHead>User Admin</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Cameras</TableHead>
-                    <TableHead>Requested</TableHead>
-                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[120px] min-w-[120px] border-l border-border">Actions</TableHead>
+                    <TableHead>
+                      <Button variant="ghost" onClick={() => handleSort('createdAt')} className="px-1 py-0.5 h-auto hover:bg-muted/50">
+                        Requested <ArrowUpDown className="ml-2 h-3 w-3" />
+                      </Button>
+                    </TableHead>
+                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {organizations.map((org) => (
+                  {filteredAndSortedOrganizations.map((org) => (
                     <TableRow key={org.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
@@ -179,7 +244,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[120px] min-w-[120px] border-l border-border">
+                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
@@ -195,7 +260,7 @@ const AdminOrganizationsPage: NextPage = () => {
                           )}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => handleManageIPs(org.id)} className="h-8 w-8">
+                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/ips`)} className="h-8 w-8">
                                 <ServerIcon className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -205,7 +270,7 @@ const AdminOrganizationsPage: NextPage = () => {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => handleManageUsers(org.id)} className="h-8 w-8">
+                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/users`)} className="h-8 w-8">
                                 <UsersIconLucide className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -223,7 +288,7 @@ const AdminOrganizationsPage: NextPage = () => {
             </div>
           ) : (
             <div className="mt-4 p-4 border rounded-md bg-muted text-center">
-              <p className="text-sm text-muted-foreground">No organizations found.</p>
+              <p className="text-sm text-muted-foreground">No organizations found matching your criteria.</p>
             </div>
           )}
         </CardContent>
@@ -233,3 +298,4 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
+
