@@ -35,7 +35,7 @@ body {
     --radius: 0.5rem;
 
     /* Global hover colors */
-    --hover-background: 172 61% 48%; /* Lighter teal for hover background */
+    --hover-background: 172 50% 43%; /* Slightly lighter teal for hover */
     --hover-foreground: 0 0% 100%; /* White for hover text/icon */
 
     /* Sidebar specific colors */
@@ -61,18 +61,18 @@ body {
     --card-foreground: 0 0% 98%;
     --popover: 218 17% 18%;
     --popover-foreground: 0 0% 98%;
-    --primary: 330 76% 54%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 172 61% 38%; /* Changed from pink to teal for toggles */
+    --primary-foreground: 0 0% 98%; /* Ensure foreground for primary is light */
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 172 61% 38%;
+    --accent: 172 61% 43%; /* Existing accent, can be same as primary or different */
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 30%; /* Adjusted for better visibility in dark mode */
-    --input: 0 0% 30%; /* Adjusted for better visibility in dark mode */
+    --border: 0 0% 30%; 
+    --input: 0 0% 30%; 
     --ring: 0 0% 83.1%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -81,7 +81,7 @@ body {
     --chart-5: 340 75% 55%;
 
     /* Global hover colors */
-    --hover-background: 172 61% 48%; /* Lighter teal for dark mode hover */
+    --hover-background: 172 50% 48%; /* Lighter teal for dark mode hover */
     --hover-foreground: 0 0% 98%; /* Light text for dark mode hover */
     
     /* Sidebar specific colors */
@@ -89,12 +89,14 @@ body {
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 172 61% 38%; /* Teal for active background */
-    --sidebar-accent-foreground: 0 0% 100%; /* White for active text/icon */
-    --sidebar-hover-background: var(--hover-background); /* Use global hover */
-    --sidebar-hover-foreground: var(--hover-foreground); /* Use global hover */
-    --sidebar-border: 240 4% 25%; /* Adjusted for better visibility in dark mode */
+    --sidebar-accent: var(--accent); 
+    --sidebar-accent-foreground: var(--accent-foreground); 
+    --sidebar-hover-background: var(--hover-background); 
+    --sidebar-hover-foreground: var(--hover-foreground); 
+    --sidebar-border: 240 4% 25%; 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --octaview-primary: 220, 220, 220; /* Lighter color for OctaVision title in dark mode */
   }
 }
 

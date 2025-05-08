@@ -188,8 +188,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         <SidebarHeader className="h-16 border-b border-border flex items-center justify-center px-4 py-5">
           <Link
             href="/dashboard"
-            className="text-lg font-semibold"
-            style={{ color: 'rgb(var(--octaview-primary))' }}
+            className="text-lg font-semibold text-foreground" // Use text-foreground for theme-aware color
             onClick={handleMenuItemClick}
           >
             {sidebarState === 'collapsed' && !isMobile ? 'OV' : translate('octaVision')}
@@ -304,8 +303,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
             <h1
-              className="text-lg ml-2 font-normal"
-              style={{ color: 'rgb(var(--octaview-primary))' }}
+              className="text-lg ml-2 font-normal text-foreground" // Use text-foreground for theme-aware color
             >
               {currentPageTitle}
             </h1>
@@ -355,9 +353,9 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <div className="p-4 md:p-8"> 
             <Alert variant="destructive">
               <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>{translate('orgApprovalPending.title')}</AlertTitle> {/* Add to translations */}
+              <AlertTitle>{translate('orgApprovalPending.title')}</AlertTitle> 
               <AlertDescription>
-                {translate('orgApprovalPending.description')} {/* Add to translations */}
+                {translate('orgApprovalPending.description')} 
               </AlertDescription>
             </Alert>
           </div>
