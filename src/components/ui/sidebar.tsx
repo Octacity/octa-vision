@@ -297,7 +297,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <Menu className="h-4 w-4" />
+      {state === 'expanded' ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -507,7 +507,7 @@ const SidebarMenu = React.forwardRef<
     <ul
       ref={ref}
       data-sidebar="menu"
-      className={cn("flex flex-col", className)}
+      className={cn("flex flex-col pt-1", className)}
       {...props}
     />
   )
@@ -544,10 +544,10 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))] hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-10 text-sm py-3", 
-        sm: "h-9 text-xs py-3",
-        lg: "h-12 text-sm py-3",
-        icon: "h-8 w-8 p-1.5 justify-center items-center", 
+        default: "h-10 text-sm", 
+        sm: "h-9 text-xs",
+        lg: "h-12 text-sm",
+        icon: "h-8 w-8 justify-center items-center", 
       },
     },
     defaultVariants: {
@@ -794,3 +794,4 @@ export {
   sidebarMenuButtonVariants,
   // useSidebar from context is already exported as useSidebarContextHook
 }
+
