@@ -11,12 +11,12 @@
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 
-export const GenerateGroupAlertEventsInputSchema = z.object({
+const GenerateGroupAlertEventsInputSchema = z.object({
   aiDetectionTarget: z.string().describe('The text describing what the AI should detect for this group of cameras.'),
 });
 export type GenerateGroupAlertEventsInput = z.infer<typeof GenerateGroupAlertEventsInputSchema>;
 
-export const GenerateGroupAlertEventsOutputSchema = z.object({
+const GenerateGroupAlertEventsOutputSchema = z.object({
   suggestedAlertEvents: z.string().describe('A comma-separated string of suggested alert event types, e.g., "safety: ppe violation, security: unauthorized access".'),
 });
 export type GenerateGroupAlertEventsOutput = z.infer<typeof GenerateGroupAlertEventsOutputSchema>;
@@ -57,3 +57,4 @@ const generateGroupAlertEventsFlow = ai.defineFlow(
     return output;
   }
 );
+
