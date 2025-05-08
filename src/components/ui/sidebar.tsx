@@ -297,6 +297,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
+      {/* {state === 'expanded' ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />} */}
       {state === 'expanded' ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
@@ -535,7 +536,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md text-left outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-[hsl(var(--sidebar-hover-background))] data-[state=open]:hover:text-[hsl(var(--sidebar-hover-foreground))] [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md text-left outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-[hsl(var(--sidebar-hover-background))] hover:text-[hsl(var(--sidebar-hover-foreground))] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-[hsl(var(--sidebar-hover-background))] data-[state=open]:hover:text-[hsl(var(--sidebar-hover-foreground))] [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 leading-none",
   {
     variants: {
       variant: {
@@ -794,4 +795,5 @@ export {
   sidebarMenuButtonVariants,
   // useSidebar from context is already exported as useSidebarContextHook
 }
+
 
