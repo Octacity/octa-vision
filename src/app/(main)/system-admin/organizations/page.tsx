@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { NextPage } from 'next';
@@ -64,7 +63,7 @@ const AdminOrganizationsPage: NextPage = () => {
         const allUsersSnapshot = await getDocs(allUsersQuery);
         const userCount = allUsersSnapshot.size; 
 
-        const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgDoc.id)); // Corrected field to orgId
+        const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgDoc.id)); 
         const camerasSnapshot = await getDocs(camerasQuery);
         const cameraCount = camerasSnapshot.size;
 
@@ -80,7 +79,7 @@ const AdminOrganizationsPage: NextPage = () => {
           admin: data.admin === true,
         } as Organization;
       }));
-      setOrganizations(orgsData); // Removed filter for admin organizations
+      setOrganizations(orgsData);
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -90,6 +89,7 @@ const AdminOrganizationsPage: NextPage = () => {
 
   useEffect(() => {
     fetchOrganizations();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   const handleApprove = async (orgId: string) => {
@@ -204,7 +204,7 @@ const AdminOrganizationsPage: NextPage = () => {
                         Requested <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -242,7 +242,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">
+                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
@@ -276,16 +276,7 @@ const AdminOrganizationsPage: NextPage = () => {
                               <p>Manage IPs</p>
                             </TooltipContent>
                           </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/users`)} className="h-8 w-8">
-                                <UsersIconLucide className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Manage Users</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          {/* Removed Manage Users button from here as user count is now the link */}
                         </div>
                       </TableCell>
                     </TableRow>
