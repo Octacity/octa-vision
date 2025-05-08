@@ -90,6 +90,12 @@ const translationsData: Record<Language, Translations> = {
         failed: 'Failed',
         something_failed: 'Error',
         unknown: 'Unknown',
+    },
+    manageBilling: {
+        pageTitle: 'Manage Billing/Usage',
+        description: 'View billing details and usage patterns for {{orgName}}.',
+        tooltip: 'Manage Billing/Usage',
+        noData: 'Billing and usage data is not yet available for this organization.',
     }
   },
   es: {
@@ -170,6 +176,12 @@ const translationsData: Record<Language, Translations> = {
         failed: 'Falló',
         something_failed: 'Error',
         unknown: 'Desconocido',
+    },
+    manageBilling: {
+        pageTitle: 'Gestionar Facturación/Uso',
+        description: 'Ver detalles de facturación y patrones de uso para {{orgName}}.',
+        tooltip: 'Gestionar Facturación/Uso',
+        noData: 'Los datos de facturación y uso aún no están disponibles para esta organización.',
     }
   },
   pt: {
@@ -250,6 +262,12 @@ const translationsData: Record<Language, Translations> = {
         failed: 'Falhou',
         something_failed: 'Erro',
         unknown: 'Desconhecido',
+    },
+    manageBilling: {
+        pageTitle: 'Gerenciar Faturamento/Uso',
+        description: 'Ver detalhes de faturamento e padrões de uso para {{orgName}}.',
+        tooltip: 'Gerenciar Faturamento/Uso',
+        noData: 'Os dados de faturamento e uso ainda não estão disponíveis para esta organização.',
     }
   }
 };

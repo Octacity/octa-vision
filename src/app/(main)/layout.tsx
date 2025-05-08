@@ -27,6 +27,7 @@ import {
   Briefcase, 
   Server, 
   Folder, 
+  DollarSign,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,9 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     }
     if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/cameras')) {
         return translate('manageOrganizationCameras');
+    }
+    if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/billing')) {
+        return translate('manageBilling.pageTitle');
     }
     const key = routeToTranslationKey[pathname] || 'octaVision';
     return translate(key);

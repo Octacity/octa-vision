@@ -7,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon, Edit3 } from 'lucide-react';
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon, Edit3, DollarSign } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -205,7 +205,7 @@ const AdminOrganizationsPage: NextPage = () => {
                         Requested <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -269,7 +269,7 @@ const AdminOrganizationsPage: NextPage = () => {
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
+                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
@@ -291,6 +291,16 @@ const AdminOrganizationsPage: NextPage = () => {
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Manage IPs</p>
+                            </TooltipContent>
+                          </Tooltip>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/billing`)} className="h-8 w-8">
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{translate('manageBilling.tooltip')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </div>
