@@ -20,15 +20,15 @@ const translationsData: Record<Language, Translations> = {
     videos: 'Videos',
     settings: 'Settings',
     account: 'My Account',
-    organizationUsers: 'Organization Users',
+    users: 'Users', // Changed from 'organizationUsers'
     systemAdministration: 'System Administration',
     organizations: 'Organizations', 
     servers: 'Servers', 
     manageCameraIPs: 'Manage Camera IPs',
-    manageOrganizationUsers: 'Manage Organization Users',
+    manageOrganizationUsers: 'Manage Organization Users', // This key might need review if the meaning changed
     manageOrganizationCameras: 'Manage Organization Cameras',
-    allOrganizationsTitle: 'All Organizations', // Kept for fallback or other uses
-    manageOrgsTitle: 'Manage Orgs', // New key
+    allOrganizationsTitle: 'All Organizations', 
+    manageOrgsTitle: 'Manage Orgs', 
     actions: 'Actions',
     octaVision: 'OctaVision',
     signOut: 'Sign Out',
@@ -106,7 +106,7 @@ const translationsData: Record<Language, Translations> = {
     videos: 'Videos',
     settings: 'Configuración',
     account: 'Mi Cuenta',
-    organizationUsers: 'Usuarios de la Organización',
+    users: 'Usuarios', // Changed from 'Usuarios de la Organización'
     systemAdministration: 'Administración del Sistema',
     organizations: 'Organizaciones', 
     servers: 'Servidores', 
@@ -114,7 +114,7 @@ const translationsData: Record<Language, Translations> = {
     manageOrganizationUsers: 'Gestionar Usuarios de la Organización',
     manageOrganizationCameras: 'Gestionar Cámaras de Organización',
     allOrganizationsTitle: 'Todas las Organizaciones',
-    manageOrgsTitle: 'Gestionar Orgs', // New key
+    manageOrgsTitle: 'Gestionar Orgs', 
     actions: 'Acciones',
     octaVision: 'OctaVision',
     signOut: 'Cerrar Sesión',
@@ -192,7 +192,7 @@ const translationsData: Record<Language, Translations> = {
     videos: 'Vídeos',
     settings: 'Configurações',
     account: 'Minha Conta',
-    organizationUsers: 'Usuários da Organização',
+    users: 'Usuários', // Changed from 'Usuários da Organização'
     systemAdministration: 'Administração do Sistema',
     organizations: 'Organizações', 
     servers: 'Servidores', 
@@ -200,7 +200,7 @@ const translationsData: Record<Language, Translations> = {
     manageOrganizationUsers: 'Gerenciar Usuários da Organização',
     manageOrganizationCameras: 'Gerenciar Câmeras da Organização',
     allOrganizationsTitle: 'Todas as Organizações',
-    manageOrgsTitle: 'Gerenciar Orgs', // New key
+    manageOrgsTitle: 'Gerenciar Orgs', 
     actions: 'Ações',
     octaVision: 'OctaVision',
     signOut: 'Sair',
@@ -346,4 +346,3 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
     </LanguageContext.Provider>
   );
 };
-
