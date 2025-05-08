@@ -49,11 +49,15 @@ const SignInPage = () => {
         email,
         password
       );
+
       const user = userCredential.user;
+      console.log("User after sign-in:", user); // Log user object
 
       const userDoc = await getDoc(doc(db, "users", user.uid));
+      console.log("User document exists:", userDoc.exists()); // Log if userDoc exists
 
       if (userDoc.exists()) {
+        console.log("Redirecting to dashboard...");
         router.push("/dashboard");
       } else {
         setErrorMessage("User data not found. Please contact support.");
