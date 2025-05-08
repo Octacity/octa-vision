@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -6,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon } from 'lucide-react';
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon, Edit3 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -234,18 +235,38 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{org.userAdminEmail}</TableCell>
                       <TableCell className="text-center">
-                        <Button variant="link" asChild className="p-0 h-auto">
-                          <Link href={`/system-admin/organizations/${org.id}/users`} className="text-primary hover:underline">
-                            {org.userCount}
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-center space-x-1">
+                          <span>{org.userCount}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" asChild className="h-7 w-7 p-1">
+                                <Link href={`/system-admin/organizations/${org.id}/users`}>
+                                  <UsersIconLucide className="h-3.5 w-3.5" />
+                                </Link>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Manage Users ({org.userCount})</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
-                         <Button variant="link" asChild className="p-0 h-auto">
-                          <Link href={`/system-admin/organizations/${org.id}/cameras`} className="text-primary hover:underline">
-                            {org.cameraCount}
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-center space-x-1">
+                          <span>{org.cameraCount}</span>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                               <Button variant="outline" size="icon" asChild className="h-7 w-7 p-1">
+                                <Link href={`/system-admin/organizations/${org.id}/cameras`}>
+                                  <CameraIcon className="h-3.5 w-3.5" />
+                                </Link>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Manage Cameras ({org.cameraCount})</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
                       <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
@@ -262,7 +283,6 @@ const AdminOrganizationsPage: NextPage = () => {
                               </TooltipContent>
                             </Tooltip>
                           )}
-                           {/* Camera Icon Link - already handled by the clickable camera count */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/ips`)} className="h-8 w-8">
