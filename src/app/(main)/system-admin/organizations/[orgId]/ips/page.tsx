@@ -109,7 +109,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
             <PlusCircle className="mr-2 h-4 w-4" /> Add IP / Camera
           </Button>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6 sm:pt-0">
+        <CardContent className="p-0"> {/* Removed sm:p-6 sm:pt-0 */}
           {cameras.length > 0 ? (
             <div className="overflow-x-auto">
               <TooltipProvider>
