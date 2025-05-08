@@ -45,12 +45,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider,
-  useSidebar,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'; // Updated import
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import NotificationDrawer from '@/components/NotificationDrawer';
@@ -69,7 +68,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar();
+  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar(); // useSidebar from context
   const { openNotificationDrawer } = useNotificationDrawer();
   const { translate, language } = useLanguage(); // Added language for potential keying if needed
 

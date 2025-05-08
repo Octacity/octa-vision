@@ -20,6 +20,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+// Renamed import to avoid conflict with the local useSidebar hook
+import { useSidebar as useSidebarContextHook } from "@/contexts/SidebarContext"; 
 
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -28,6 +30,16 @@ const SIDEBAR_WIDTH = "12rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3.5rem" // Default collapsed width
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
+//This is the local hook, not from context
+export function useSidebar() {
+  const context = React.useContext(SidebarContext)
+  if (!context) {
+    throw new Error("useSidebar must be used within a SidebarProvider component that wraps this.")
+  }
+  return context;
+}
+
 
 type SidebarContextType = {
   state: "expanded" | "collapsed"
@@ -41,16 +53,8 @@ type SidebarContextType = {
 
 const SidebarContext = React.createContext<SidebarContextType | null>(null)
 
-export function useSidebar() {
-  const context = React.useContext(SidebarContext)
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
-  }
 
-  return context
-}
-
-// This is the actual SidebarProvider component
+// This is the actual SidebarProvider component that uses the context hook
 export const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -169,7 +173,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar() 
+    const { isMobile, state, openMobile, setOpenMobile } = useSidebarContextHook() 
 
     if (collapsible === "none") {
       return (
@@ -202,7 +206,10 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className={cn(
+              "w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground dark:text-[hsl(var(--sidebar-foreground))] [&>button]:hidden",
+              className
+            )}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -275,22 +282,24 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar, state, isMobile } = useSidebar() 
+  const { toggleSidebar, state, isMobile } = useSidebarContextHook() 
 
   return (
     <Button
       ref={ref}
       data-sidebar="trigger"
-      variant="outline"
+      variant="outline" // Added variant outline
       size="icon"
-      className={cn("h-8 w-8 p-1.5 border", className)} 
+      className={cn("h-8 w-8 p-1.5 border", className)}  // Added border class
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      {state === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+      {/* {state === 'expanded' && !isMobile ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />} */}
+      {/* <PanelLeft className="h-4 w-4" /> */}
+      <Menu className="h-4 w-4" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -301,7 +310,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar() 
+  const { toggleSidebar } = useSidebarContextHook() 
 
   return (
     <button
@@ -360,7 +369,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("h-16 border-b border-border flex items-center justify-center px-4 py-5", className)}
+      className={cn("h-16 border-b border-border flex items-center justify-center px-4 py-5", className)} // Increased py-5 for more padding
       {...props}
     />
   )
@@ -511,7 +520,7 @@ const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<"li">
 >(({ className, ...props }, ref) => {
-  const { state, isMobile } = useSidebar() 
+  const { state, isMobile } = useSidebarContextHook() 
   return (
     <li
       ref={ref}
@@ -573,7 +582,7 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    const { isMobile, state: sidebarState, setOpenMobile } = useSidebar() 
+    const { isMobile, state: sidebarState, setOpenMobile } = useSidebarContextHook() 
 
     
     const size = sidebarState === 'collapsed' && !isMobile ? 'icon' : propSize || 'default';
@@ -784,6 +793,7 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   sidebarMenuButtonVariants,
-  // useSidebar is already exported above
+  // useSidebar from context is already exported as useSidebarContextHook
 }
+
 
