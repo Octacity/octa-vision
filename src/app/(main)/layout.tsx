@@ -194,7 +194,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           </Link>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarMenu>
+          <SidebarMenu className="pt-1">
             <SidebarMenuItem>
               <Link href="/dashboard" passHref legacyBehavior>
                 <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
@@ -381,3 +381,4 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
+
