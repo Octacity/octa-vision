@@ -138,8 +138,6 @@ const CamerasPage: NextPage = () => {
   const [isGeneratingAlerts, setIsGeneratingAlerts] = useState(false);
   const { language, translate } = useLanguage();
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
     const auth = getAuth();
@@ -174,45 +172,6 @@ const CamerasPage: NextPage = () => {
     });
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    const getCameraPermission = async () => {
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setHasCameraPermission(true);
-
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: translate('cameraAccessDenied.title'), // Example: Add to translations
-            description: translate('cameraAccessDenied.description'), // Example
-          });
-        }
-      } else {
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: translate('cameraNotSupported.title'), // Example
-          description: translate('cameraNotSupported.description'), // Example
-        });
-      }
-    };
-
-    getCameraPermission();
-
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [toast, translate]);
 
 
   const formStep1 = useForm<AddCameraStep1Values>({
@@ -278,7 +237,7 @@ const CamerasPage: NextPage = () => {
       {
         id: 'ai-initial-' + camera.id,
         sender: 'ai',
-        text: translate('chat.initialMessage', { cameraName: camera.cameraName }), // Example
+        text: translate('chat.initialMessage', { cameraName: camera.cameraName }), 
         timestamp: new Date(),
         avatar: undefined, 
       }
@@ -1232,32 +1191,7 @@ const CamerasPage: NextPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div className="space-x-2">
-          {/* Camera live feed display */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Live Camera Preview</CardTitle>
-              <CardDescription>Attempting to access your local camera.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
-              {hasCameraPermission === false && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertCircleIcon className="h-4 w-4" />
-                  <AlertTitle>Camera Access Denied or Not Supported</AlertTitle>
-                  <AlertDescription>
-                    Please ensure your browser has camera permissions enabled for this site and that a camera is connected.
-                    If the problem persists, your browser may not support this feature or there might be an issue with your camera.
-                  </AlertDescription>
-                </Alert>
-              )}
-               {hasCameraPermission === null && (
-                <div className="mt-4 flex items-center justify-center p-4 border rounded-md bg-muted">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                  <p className="text-sm text-muted-foreground">Checking camera access...</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+         {/* Placeholder for where a camera feed might go, or other primary content for this page */}
         </div>
         <div className="flex flex-wrap items-center space-x-2 sm:space-x-2 gap-y-2 justify-end">
           <Button onClick={handleAddCameraClick}>
@@ -1364,6 +1298,8 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
+    
 
     
 
