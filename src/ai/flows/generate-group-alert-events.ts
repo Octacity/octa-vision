@@ -48,11 +48,21 @@ const generateGroupAlertEventsFlow = ai.defineFlow(
     outputSchema: GenerateGroupAlertEventsOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
-    if (!output || !output.suggestedAlertEvents) {
-        // Handle the case where output is null or undefined, or suggestedAlertEvents is missing
-        return { suggestedAlertEvents: "Error: Could not generate alert events. Model returned no valid output." };
+    try {
+      const {output} = await prompt(input);
+      // The prompt is expected to return an object matching GenerateGroupAlertEventsOutputSchema.
+      // If the model doesn't adhere, 'output' might be null or not have the expected fields.
+      if (!output?.suggestedAlertEvents) {
+        console.warn('AI model did not return expected "suggestedAlertEvents" structure.', output);
+        return { suggestedAlertEvents: "Error: AI failed to generate suggestions in the expected format." };
+      }
+      return output;
+    } catch (error: any) {
+      // This case means the call to the model (prompt(input)) failed.
+      // This could be due to API key issues, network problems, or other API errors.
+      console.error('generateGroupAlertEventsFlow: Error during AI prompt execution:', error);
+      const errorMessage = error?.message || "Failed to communicate with the AI model.";
+      return { suggestedAlertEvents: `Error: ${errorMessage}` };
     }
-    return output;
   }
 );
