@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -21,12 +20,12 @@ import {
   ArrowLeft,
   Loader2,
   Shield,
-  Users as UsersIcon, // Changed from UserPlus
+  Users as UsersIcon,
   LogOut,
   ShieldAlert,
-  Briefcase, 
-  Server, 
-  Folder, 
+  Briefcase,
+  Server,
+  Folder,
   DollarSign,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -50,7 +49,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
-import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'; 
+import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import NotificationDrawer from '@/components/NotificationDrawer';
@@ -69,9 +68,9 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar(); 
+  const { state: sidebarState, isMobile, toggleSidebar, setOpenMobile } = useSidebar();
   const { openNotificationDrawer } = useNotificationDrawer();
-  const { translate, language } = useLanguage(); 
+  const { translate, language } = useLanguage();
 
   const getPageTitle = (pathname: string): string => {
     const routeToTranslationKey: Record<string, string> = {
@@ -82,7 +81,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       '/videos': 'videos',
       '/settings': 'settings',
       '/account': 'account',
-      '/organization-users': 'users', // Changed from 'organizationUsers'
+      '/organization-users': 'users',
       '/system-admin': 'systemAdministration',
       '/system-admin/organizations': 'organizations',
       '/system-admin/servers': 'servers',
@@ -102,7 +101,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     const key = routeToTranslationKey[pathname] || 'octaVision';
     return translate(key);
   };
-  
+
   const currentPageTitle = getPageTitle(pathname);
 
 
@@ -114,7 +113,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setUserRole(userData?.role || 'user'); 
+          setUserRole(userData?.role || 'user');
           const organizationId = userData?.organizationId;
 
           if (organizationId) {
@@ -131,7 +130,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 console.error('Organization ID not found for user.');
                 setIsApproved(false);
              } else {
-                setIsApproved(true); 
+                setIsApproved(true);
              }
           }
         } else {
@@ -140,10 +139,10 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           setUserRole(null);
         }
       } else {
-        setIsApproved(null); // Set to null if no user, so approval status is not incorrectly false
-        setUserRole(null);   
+        setIsApproved(null);
+        setUserRole(null);
         if (pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
-          router.push('/signin'); 
+          router.push('/signin');
         }
       }
       setIsLoading(false);
@@ -156,14 +155,14 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     const auth = getAuth();
     try {
       await signOut(auth);
-      toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') }); 
+      toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') });
       router.push('/signin');
     } catch (error) {
       console.error("Error signing out: ", error);
-      toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') }); 
+      toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') });
     }
   };
-  
+
   const handleMenuItemClick = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -177,7 +176,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       </div>
     );
   }
-  
+
   if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
     return (
       <div className="flex h-screen items-center justify-center w-full">
@@ -193,7 +192,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         <SidebarHeader className="h-16 border-b border-border flex items-center justify-center px-4 py-5">
           <Link
             href="/dashboard"
-            className="text-lg font-semibold text-foreground" 
+            className="text-lg font-semibold text-foreground"
             onClick={handleMenuItemClick}
           >
             {sidebarState === 'collapsed' && !isMobile ? 'OV' : translate('octaVision')}
@@ -209,74 +208,72 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            
-            {/* Standard User Menus - Visible to all authenticated users */}
-            {/* isApproved can be null during loading, or if user has no orgId (e.g. system-admin) */}
-            { (isApproved === true || isApproved === null || userRole === 'system-admin') && ( 
-              <>
-                <SidebarMenuItem>
-                  <Link href="/cameras" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <CameraIcon className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>{translate('cameras')}</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/groups" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <Folder className="h-4 w-4" /> 
-                      {sidebarState === 'expanded' && <span>{translate('groups')}</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/monitor" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <Activity className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>{translate('monitor')}</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/videos" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <Film className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>{translate('videos')}</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/settings" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <Settings className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>{translate('settings')}</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/account" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <CircleUserRound className="h-4 w-4" />
-                      {sidebarState === 'expanded' && <span>{translate('account')}</span>}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
 
-                {/* User Admin Specific Menu */}
-                {userRole === 'user-admin' && (
-                  <SidebarMenuItem>
-                    <Link href="/organization-users" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                        <UsersIcon className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>{translate('users')}</span>}
-                      </SidebarMenuButton>
-                    </Link>
-                  </SidebarMenuItem>
-                )}
-              </>
-            )}
-            
+            {/* Standard User Menus - Always visible for authenticated users */}
+            <>
+              <SidebarMenuItem>
+                <Link href="/cameras" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <CameraIcon className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>{translate('cameras')}</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/groups" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <Folder className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>{translate('groups')}</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/monitor" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <Activity className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>{translate('monitor')}</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/videos" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <Film className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>{translate('videos')}</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/settings" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <Settings className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>{translate('settings')}</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/account" passHref legacyBehavior>
+                  <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <CircleUserRound className="h-4 w-4" />
+                    {sidebarState === 'expanded' && <span>{translate('account')}</span>}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+
+              {/* User Admin Specific Menu */}
+              {userRole === 'user-admin' && (
+                <SidebarMenuItem>
+                  <Link href="/organization-users" passHref legacyBehavior>
+                    <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                      <UsersIcon className="h-4 w-4" />
+                      {sidebarState === 'expanded' && <span>{translate('users')}</span>}
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              )}
+            </>
+
+
             {/* System Admin Specific Menus */}
             {userRole === 'system-admin' && (
               <SidebarGroup>
@@ -286,7 +283,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                     <Link href="/system-admin/organizations" passHref legacyBehavior>
                       <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
                         <Briefcase className="h-4 w-4" />
-                        {sidebarState === 'expanded' && <span>{translate('organizations')}</span>} 
+                        {sidebarState === 'expanded' && <span>{translate('organizations')}</span>}
                       </SidebarMenuButton>
                     </Link>
                   </SidebarMenuItem>
@@ -315,7 +312,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
             <h1
-              className="text-lg ml-2 font-normal text-foreground" 
+              className="text-lg ml-2 font-normal text-foreground"
             >
               {currentPageTitle}
             </h1>
@@ -362,17 +359,17 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         </div>
 
         {isApproved === false && getAuth().currentUser && userRole !== 'system-admin' && (
-          <div className="p-4 md:p-8"> 
+          <div className="p-4 md:p-8">
             <Alert variant="destructive">
               <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>{translate('orgApprovalPending.title')}</AlertTitle> 
+              <AlertTitle>{translate('orgApprovalPending.title')}</AlertTitle>
               <AlertDescription>
-                {translate('orgApprovalPending.description')} 
+                {translate('orgApprovalPending.description')}
               </AlertDescription>
             </Alert>
           </div>
         )}
-        <main className="p-4 md:p-8 flex-1 overflow-y-auto"> 
+        <main className="p-4 md:p-8 flex-1 overflow-y-auto">
          {children}
         </main>
          <NotificationDrawer />
