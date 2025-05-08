@@ -48,13 +48,14 @@ const SettingsPage: NextPage = () => {
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="language-select">{translate('settings.theme.language')}</Label>
-              <Select value={language} onValueChange={(value) => setLanguage(value as 'en' | 'es')}>
+              <Select value={language} onValueChange={(value) => setLanguage(value as 'en' | 'es' | 'pt')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder={translate('settings.theme.selectLanguage')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">{translate('languages.en')}</SelectItem>
                   <SelectItem value="es">{translate('languages.es')}</SelectItem>
+                  <SelectItem value="pt">{translate('languages.pt')}</SelectItem>
                   {/* Add more languages here */}
                 </SelectContent>
               </Select>
@@ -77,4 +78,3 @@ const SettingsPage: NextPage = () => {
 };
 
 export default SettingsPage;
-

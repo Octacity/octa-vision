@@ -13,7 +13,7 @@ import {z} from 'genkit';
 
 const GenerateGroupAlertEventsInputSchema = z.object({
   aiDetectionTarget: z.string().describe('The text describing what the AI should detect for this group of cameras.'),
-  language: z.string().describe('The language for the response (e.g., "en", "es").').optional().default('en'),
+  language: z.string().describe('The language for the response (e.g., "en", "es", "pt").').optional().default('en'),
 });
 export type GenerateGroupAlertEventsInput = z.infer<typeof GenerateGroupAlertEventsInputSchema>;
 
@@ -55,15 +55,25 @@ const generateGroupAlertEventsFlow = ai.defineFlow(
       if (!output?.suggestedAlertEvents) {
         console.warn('AI model did not return expected "suggestedAlertEvents" structure.', output);
         // Consider returning a language-specific error message if possible, or a generic one.
-        const errorMsg = input.language === 'es' 
-            ? "Error: La IA no generó sugerencias en el formato esperado." 
-            : "Error: AI failed to generate suggestions in the expected format.";
+        let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
+        if (input.language === 'es') {
+            errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
+        } else if (input.language === 'pt') {
+            errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
+        }
         return { suggestedAlertEvents: errorMsg };
       }
       return output;
     } catch (error: any) {
       console.error('generateGroupAlertEventsFlow: Error during AI prompt execution:', error);
-      const errorMessage = error?.message || (input.language === 'es' ? "Falló la comunicación con el modelo IA." : "Failed to communicate with the AI model.");
+      let errorMessage = "Failed to communicate with the AI model.";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (input.language === 'es') {
+        errorMessage = "Falló la comunicación con el modelo IA.";
+      } else if (input.language === 'pt') {
+        errorMessage = "Falha na comunicação com o modelo de IA.";
+      }
       return { suggestedAlertEvents: `Error: ${errorMessage}` };
     }
   }

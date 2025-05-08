@@ -18,7 +18,7 @@ const AnalyzeCameraFeedInputSchema = z.object({
       "A camera feed, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   prompt: z.string().describe('A prompt describing the event or object to detect.'),
-  language: z.string().describe('The language for the response (e.g., "en", "es").').optional().default('en'),
+  language: z.string().describe('The language for the response (e.g., "en", "es", "pt").').optional().default('en'),
 });
 export type AnalyzeCameraFeedInput = z.infer<typeof AnalyzeCameraFeedInputSchema>;
 
