@@ -733,11 +733,11 @@ const CamerasPage: NextPage = () => {
                                       </span>
                                        <Button
                                             type="button"
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
                                             onClick={handleGenerateGroupAlerts}
                                             disabled={isGeneratingAlerts || !formStep1.watch('groupDefaultAiDetectionTarget')}
-                                            className="text-xs text-primary hover:bg-primary/10"
+                                            className="text-xs"
                                         >
                                             {isGeneratingAlerts ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
                                             Suggest
