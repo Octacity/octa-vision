@@ -11,7 +11,6 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Settings,
-  Users as UsersIcon, 
   Activity,
   Film,
   Home,
@@ -27,6 +26,7 @@ import {
   ShieldAlert,
   Briefcase, 
   Server, 
+  Folder, // Added Folder icon
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -215,7 +215,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 <SidebarMenuItem>
                   <Link href="/groups" passHref legacyBehavior>
                     <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
-                      <UsersIcon className="h-4 w-4" />
+                      <Folder className="h-4 w-4" /> 
                       {sidebarState === 'expanded' && <span>{translate('groups')}</span>}
                     </SidebarMenuButton>
                   </Link>

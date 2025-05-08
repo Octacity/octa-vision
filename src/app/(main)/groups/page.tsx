@@ -4,7 +4,7 @@
 import type { NextPage } from 'next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Users } from 'lucide-react'; // Added Users icon
+import { Plus, Folder } from 'lucide-react'; // Changed Users to Folder icon
 
 const GroupsPage: NextPage = () => {
   // Placeholder for actual groups data, would be fetched from backend
@@ -29,7 +29,7 @@ const GroupsPage: NextPage = () => {
         <Card>
           <CardContent className="pt-6"> {/* Added pt-6 to give some space if CardHeader is removed */}
             <div className="flex flex-col items-center justify-center text-center py-12">
-              <Users className="w-16 h-16 text-muted-foreground mb-4" />
+              <Folder className="w-16 h-16 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold text-foreground mb-2">No Camera Groups Yet</h3>
               <p className="text-muted-foreground mb-6">Organize your cameras by creating groups for easier management and monitoring.</p>
               <Button onClick={handleAddGroup}>
