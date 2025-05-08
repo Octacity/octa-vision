@@ -18,10 +18,10 @@ const SettingsPage: NextPage = () => {
     <div>
       <div className="grid gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle>{translate('settingsPage.notifications.title')}</CardTitle>
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="font-normal text-primary">{translate('settingsPage.notifications.title')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div className="flex items-center justify-between">
               <Label htmlFor="email-notifications">{translate('settingsPage.notifications.email')}</Label>
               <Switch id="email-notifications" defaultChecked />
@@ -38,10 +38,10 @@ const SettingsPage: NextPage = () => {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{translate('settingsPage.theme.title')}</CardTitle>
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="font-normal text-primary">{translate('settingsPage.theme.title')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
              <div className="flex items-center justify-between">
               <Label htmlFor="dark-mode">{translate('settingsPage.theme.darkMode')}</Label>
               <Switch id="dark-mode" checked={theme === 'dark'} onCheckedChange={toggleTheme} />
@@ -64,10 +64,10 @@ const SettingsPage: NextPage = () => {
         </Card>
 
          <Card>
-          <CardHeader>
-            <CardTitle>{translate('settingsPage.data.title')}</CardTitle>
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="font-normal text-primary">{translate('settingsPage.data.title')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
              <Button variant="outline">{translate('settingsPage.data.export')}</Button>
              <Button variant="destructive">{translate('settingsPage.data.deleteAccount')}</Button>
           </CardContent>
