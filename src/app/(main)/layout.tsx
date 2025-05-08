@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -65,6 +66,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [canAccessSystemAdminMenu, setCanAccessSystemAdminMenu] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -113,7 +115,10 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setUserRole(userData?.role || 'user');
+          const currentRole = userData?.role || 'user';
+          setUserRole(currentRole);
+          
+          let orgHasAdminPrivileges = false;
           const organizationId = userData?.organizationId;
 
           if (organizationId) {
@@ -121,26 +126,41 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             if (orgDoc.exists()) {
               const orgData = orgDoc.data();
               setIsApproved(orgData?.approved || false);
+              if (orgData?.admin === true) {
+                orgHasAdminPrivileges = true;
+              }
             } else {
               console.error('Organization not found.');
               setIsApproved(false);
             }
           } else {
-             if (userData?.role !== 'system-admin') {
-                console.error('Organization ID not found for user.');
-                setIsApproved(false);
+             // If user has no organizationId, they are either 'system-admin' or their org setup is incomplete
+             if (currentRole !== 'system-admin') {
+                // This case (no orgId and not system-admin) might indicate an issue or a specific user type
+                console.error('Organization ID not found for non-system-admin user.');
+                setIsApproved(false); 
              } else {
-                setIsApproved(true);
+                // System admins are considered 'approved' for UI purposes and don't need an org approval banner
+                setIsApproved(true); 
              }
           }
+
+          if (currentRole === 'system-admin' || orgHasAdminPrivileges) {
+            setCanAccessSystemAdminMenu(true);
+          } else {
+            setCanAccessSystemAdminMenu(false);
+          }
+
         } else {
           console.error('User data not found.');
           setIsApproved(false);
           setUserRole(null);
+          setCanAccessSystemAdminMenu(false);
         }
       } else {
         setIsApproved(null);
         setUserRole(null);
+        setCanAccessSystemAdminMenu(false);
         if (pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
           router.push('/signin');
         }
@@ -178,6 +198,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }
 
   if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
+     // This block is to ensure redirection happens if auth state changes to null while not on public pages
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -275,7 +296,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
 
             {/* System Admin Specific Menus */}
-            {userRole === 'system-admin' && (
+            {canAccessSystemAdminMenu && (
               <SidebarGroup>
                 <SidebarGroupLabel>{translate('systemAdministration')}</SidebarGroupLabel>
                 <SidebarGroupContent>
