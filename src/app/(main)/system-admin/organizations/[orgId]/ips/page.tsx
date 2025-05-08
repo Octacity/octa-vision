@@ -101,7 +101,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
       <Card>
         <CardHeader className="flex flex-row justify-between items-center border-b">
           <div>
-            <CardDescription>
+            <CardDescription className="text-xs">
               View and manage camera RTSP URLs for <strong className="text-foreground">{organization.name}</strong>.
             </CardDescription>
           </div>
@@ -159,3 +159,4 @@ const ManageOrganizationIPsPage: NextPage = () => {
 };
 
 export default ManageOrganizationIPsPage;
+

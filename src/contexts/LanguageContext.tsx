@@ -27,7 +27,8 @@ const translationsData: Record<Language, Translations> = {
     manageCameraIPs: 'Manage Camera IPs',
     manageOrganizationUsers: 'Manage Organization Users',
     manageOrganizationCameras: 'Manage Organization Cameras',
-    allOrganizationsTitle: 'All Organizations',
+    allOrganizationsTitle: 'All Organizations', // Kept for fallback or other uses
+    manageOrgsTitle: 'Manage Orgs', // New key
     actions: 'Actions',
     octaVision: 'OctaVision',
     signOut: 'Sign Out',
@@ -107,6 +108,7 @@ const translationsData: Record<Language, Translations> = {
     manageOrganizationUsers: 'Gestionar Usuarios de la Organización',
     manageOrganizationCameras: 'Gestionar Cámaras de Organización',
     allOrganizationsTitle: 'Todas las Organizaciones',
+    manageOrgsTitle: 'Gestionar Orgs', // New key
     actions: 'Acciones',
     octaVision: 'OctaVision',
     signOut: 'Cerrar Sesión',
@@ -186,6 +188,7 @@ const translationsData: Record<Language, Translations> = {
     manageOrganizationUsers: 'Gerenciar Usuários da Organização',
     manageOrganizationCameras: 'Gerenciar Câmeras da Organização',
     allOrganizationsTitle: 'Todas as Organizações',
+    manageOrgsTitle: 'Gerenciar Orgs', // New key
     actions: 'Ações',
     octaVision: 'OctaVision',
     signOut: 'Sair',
@@ -325,3 +328,4 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
     </LanguageContext.Provider>
   );
 };
+

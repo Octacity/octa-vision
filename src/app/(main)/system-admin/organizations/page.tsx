@@ -164,8 +164,8 @@ const AdminOrganizationsPage: NextPage = () => {
         <CardHeader className="border-b p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle>{translate('allOrganizationsTitle')}</CardTitle>
-              <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
+              <CardTitle className="text-xl font-normal">{translate('manageOrgsTitle')}</CardTitle>
+              <CardDescription className="text-xs">View all organizations, approve new ones, and manage their settings.</CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -306,3 +306,4 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
+

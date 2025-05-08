@@ -39,7 +39,7 @@ const OrganizationUsersPage: NextPage = () => {
         <CardHeader className="flex flex-row justify-between items-center border-b">
           <div>
             {/* <CardTitle>Manage Organization Users</CardTitle> Removed for consistency, appbar has title */}
-            <CardDescription>Add, remove, or update users within your organization.</CardDescription>
+            <CardDescription className="text-xs">Add, remove, or update users within your organization.</CardDescription>
           </div>
           <Button onClick={handleAddUser}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add User
@@ -110,3 +110,4 @@ const OrganizationUsersPage: NextPage = () => {
 };
 
 export default OrganizationUsersPage;
+

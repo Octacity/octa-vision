@@ -126,7 +126,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
       <Card>
         <CardHeader className="flex flex-row justify-between items-center border-b">
           <div>
-            <CardDescription>
+            <CardDescription className="text-xs">
               {translate('manageOrgCameras.description', { orgName: organization.name })}
             </CardDescription>
           </div>
@@ -189,3 +189,4 @@ const ManageOrganizationCamerasPage: NextPage = () => {
 };
 
 export default ManageOrganizationCamerasPage;
+
