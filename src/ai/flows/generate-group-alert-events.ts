@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview AI agent for generating suggested alert events for a camera group.
@@ -50,11 +49,10 @@ const generateGroupAlertEventsFlow = ai.defineFlow(
   },
   async (input) => {
     const {output} = await prompt(input);
-    if (!output) {
-        // Handle the case where output is null or undefined
-        return { suggestedAlertEvents: "Error: Could not generate alert events. Model returned no output." };
+    if (!output || !output.suggestedAlertEvents) {
+        // Handle the case where output is null or undefined, or suggestedAlertEvents is missing
+        return { suggestedAlertEvents: "Error: Could not generate alert events. Model returned no valid output." };
     }
     return output;
   }
 );
-
