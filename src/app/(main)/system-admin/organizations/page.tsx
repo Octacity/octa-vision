@@ -240,7 +240,13 @@ const AdminOrganizationsPage: NextPage = () => {
                           </Link>
                         </Button>
                       </TableCell>
-                      <TableCell className="text-center">{org.cameraCount}</TableCell>
+                      <TableCell className="text-center">
+                         <Button variant="link" asChild className="p-0 h-auto">
+                          <Link href={`/system-admin/organizations/${org.id}/cameras`} className="text-primary hover:underline">
+                            {org.cameraCount}
+                          </Link>
+                        </Button>
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
                       <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
@@ -256,16 +262,7 @@ const AdminOrganizationsPage: NextPage = () => {
                               </TooltipContent>
                             </Tooltip>
                           )}
-                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/cameras`)} className="h-8 w-8">
-                                <CameraIcon className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Manage Cameras</p>
-                            </TooltipContent>
-                          </Tooltip>
+                           {/* Camera Icon Link - already handled by the clickable camera count */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/ips`)} className="h-8 w-8">
@@ -276,7 +273,6 @@ const AdminOrganizationsPage: NextPage = () => {
                               <p>Manage IPs</p>
                             </TooltipContent>
                           </Tooltip>
-                          {/* Removed Manage Users button from here as user count is now the link */}
                         </div>
                       </TableCell>
                     </TableRow>
