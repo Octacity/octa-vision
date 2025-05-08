@@ -7,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search } from 'lucide-react';
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -64,7 +64,7 @@ const AdminOrganizationsPage: NextPage = () => {
         const allUsersSnapshot = await getDocs(allUsersQuery);
         const userCount = allUsersSnapshot.size; 
 
-        const camerasQuery = query(collection(db, 'cameras'), where('organizationId', '==', orgDoc.id));
+        const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgDoc.id)); // Corrected field to orgId
         const camerasSnapshot = await getDocs(camerasQuery);
         const cameraCount = camerasSnapshot.size;
 
@@ -80,7 +80,7 @@ const AdminOrganizationsPage: NextPage = () => {
           admin: data.admin === true,
         } as Organization;
       }));
-      setOrganizations(orgsData);
+      setOrganizations(orgsData.filter(org => !org.admin)); // Filter out admin organizations
     } catch (error) {
       console.error("Error fetching organizations: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
@@ -129,8 +129,6 @@ const AdminOrganizationsPage: NextPage = () => {
         }
         
         if (sortField === 'createdAt') {
-            // Assuming createdAt is a string like "MM/DD/YYYY"
-            // For robust sorting, convert to Date objects or ensure consistent string format like YYYY-MM-DD
             const dateA = a.createdAt && a.createdAt !== 'N/A' ? new Date(a.createdAt) : new Date(0);
             const dateB = b.createdAt && b.createdAt !== 'N/A' ? new Date(b.createdAt) : new Date(0);
             valA = dateA.getTime();
@@ -166,7 +164,7 @@ const AdminOrganizationsPage: NextPage = () => {
         <CardHeader className="border-b p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              {/* CardTitle removed as page title is in appbar */}
+              <CardTitle>{translate('allOrganizationsTitle')}</CardTitle>
               <CardDescription>View all organizations, approve new ones, and manage their settings.</CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">
@@ -181,7 +179,7 @@ const AdminOrganizationsPage: NextPage = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0"> {/* Removed sm:p-6 sm:pt-0 */}
+        <CardContent className="p-0">
           {filteredAndSortedOrganizations.length > 0 ? (
             <div className="overflow-x-auto">
               <TooltipProvider>
@@ -206,7 +204,7 @@ const AdminOrganizationsPage: NextPage = () => {
                         Requested <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -244,7 +242,7 @@ const AdminOrganizationsPage: NextPage = () => {
                       </TableCell>
                       <TableCell className="text-center">{org.cameraCount}</TableCell>
                       <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
+                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
@@ -258,6 +256,16 @@ const AdminOrganizationsPage: NextPage = () => {
                               </TooltipContent>
                             </Tooltip>
                           )}
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/cameras`)} className="h-8 w-8">
+                                <CameraIcon className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Manage Cameras</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/ips`)} className="h-8 w-8">
@@ -298,4 +306,3 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
-

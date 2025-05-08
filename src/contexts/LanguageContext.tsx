@@ -22,10 +22,13 @@ const translationsData: Record<Language, Translations> = {
     account: 'My Account',
     organizationUsers: 'Organization Users',
     systemAdministration: 'System Administration',
-    organizations: 'Organizations', // Changed from Manage Organizations
-    servers: 'Servers', // Changed from Manage Servers
+    organizations: 'Organizations', 
+    servers: 'Servers', 
     manageCameraIPs: 'Manage Camera IPs',
     manageOrganizationUsers: 'Manage Organization Users',
+    manageOrganizationCameras: 'Manage Organization Cameras',
+    allOrganizationsTitle: 'All Organizations',
+    actions: 'Actions',
     octaVision: 'OctaVision',
     signOut: 'Sign Out',
     signOutSuccessMessage: 'You have been successfully signed out.',
@@ -69,8 +72,24 @@ const translationsData: Record<Language, Translations> = {
     },
     chat: {
       initialMessage: 'Hello! How can I help you with {{cameraName}} today?',
+    },
+    manageOrgCameras: {
+        description: 'View and manage cameras for {{orgName}}.',
+        addCamera: 'Add Camera',
+        cameraName: 'Camera Name',
+        rtspUrl: 'RTSP URL',
+        status: 'Status',
+        editConfig: 'Edit Configuration',
+        noCameras: 'No cameras found for this organization.',
+    },
+    cameraStatus: {
+        running_normal: 'Running Normal',
+        waiting_for_approval: 'Waiting for Approval',
+        pending_setup: 'Pending Setup',
+        failed: 'Failed',
+        something_failed: 'Error',
+        unknown: 'Unknown',
     }
-    // Add more keys as needed
   },
   es: {
     dashboard: 'Tablero',
@@ -82,10 +101,13 @@ const translationsData: Record<Language, Translations> = {
     account: 'Mi Cuenta',
     organizationUsers: 'Usuarios de la Organización',
     systemAdministration: 'Administración del Sistema',
-    organizations: 'Organizaciones', // Changed from Gestionar Organizaciones
-    servers: 'Servidores', // Changed from Gestionar Servidores
+    organizations: 'Organizaciones', 
+    servers: 'Servidores', 
     manageCameraIPs: 'Gestionar IPs de Cámaras',
     manageOrganizationUsers: 'Gestionar Usuarios de la Organización',
+    manageOrganizationCameras: 'Gestionar Cámaras de Organización',
+    allOrganizationsTitle: 'Todas las Organizaciones',
+    actions: 'Acciones',
     octaVision: 'OctaVision',
     signOut: 'Cerrar Sesión',
     signOutSuccessMessage: 'Has cerrado sesión correctamente.',
@@ -129,8 +151,24 @@ const translationsData: Record<Language, Translations> = {
     },
     chat: {
       initialMessage: '¡Hola! ¿Cómo puedo ayudarte con {{cameraName}} hoy?',
+    },
+    manageOrgCameras: {
+        description: 'Ver y gestionar cámaras para {{orgName}}.',
+        addCamera: 'Añadir Cámara',
+        cameraName: 'Nombre de Cámara',
+        rtspUrl: 'URL RTSP',
+        status: 'Estado',
+        editConfig: 'Editar Configuración',
+        noCameras: 'No se encontraron cámaras para esta organización.',
+    },
+    cameraStatus: {
+        running_normal: 'Funcionando Normalmente',
+        waiting_for_approval: 'Esperando Aprobación',
+        pending_setup: 'Pendiente de Configuración',
+        failed: 'Falló',
+        something_failed: 'Error',
+        unknown: 'Desconocido',
     }
-    // Add more keys as needed
   },
   pt: {
     dashboard: 'Painel',
@@ -142,10 +180,13 @@ const translationsData: Record<Language, Translations> = {
     account: 'Minha Conta',
     organizationUsers: 'Usuários da Organização',
     systemAdministration: 'Administração do Sistema',
-    organizations: 'Organizações', // Changed from Gerenciar Organizações
-    servers: 'Servidores', // Changed from Gerenciar Servidores
+    organizations: 'Organizações', 
+    servers: 'Servidores', 
     manageCameraIPs: 'Gerenciar IPs de Câmera',
     manageOrganizationUsers: 'Gerenciar Usuários da Organização',
+    manageOrganizationCameras: 'Gerenciar Câmeras da Organização',
+    allOrganizationsTitle: 'Todas as Organizações',
+    actions: 'Ações',
     octaVision: 'OctaVision',
     signOut: 'Sair',
     signOutSuccessMessage: 'Você saiu com sucesso.',
@@ -189,15 +230,31 @@ const translationsData: Record<Language, Translations> = {
     },
     chat: {
       initialMessage: 'Olá! Como posso te ajudar com {{cameraName}} hoje?',
+    },
+    manageOrgCameras: {
+        description: 'Ver e gerenciar câmeras para {{orgName}}.',
+        addCamera: 'Adicionar Câmera',
+        cameraName: 'Nome da Câmera',
+        rtspUrl: 'URL RTSP',
+        status: 'Status',
+        editConfig: 'Editar Configuração',
+        noCameras: 'Nenhuma câmera encontrada para esta organização.',
+    },
+    cameraStatus: {
+        running_normal: 'Funcionando Normalmente',
+        waiting_for_approval: 'Aguardando Aprovação',
+        pending_setup: 'Pendente de Configuração',
+        failed: 'Falhou',
+        something_failed: 'Erro',
+        unknown: 'Desconhecido',
     }
-    // Add more keys as needed
   }
 };
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (language: Language) => void;
-  translate: (key: string, replacements?: Record<string, string>) => string;
+  translate: (key: string, replacements?: Record<string, string>, fallback?: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -222,12 +279,11 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
     if (storedLanguage && translationsData[storedLanguage]) {
       setLanguageState(storedLanguage);
     } else {
-      // navigator.language can give 'en-US', so we take the first part
       const browserLanguage = navigator.language.split('-')[0] as Language;
       if (translationsData[browserLanguage]) {
         setLanguageState(browserLanguage);
       } else {
-        setLanguageState('en'); // Default to English if browser language not supported
+        setLanguageState('en'); 
       }
     }
   }, []);
@@ -236,13 +292,11 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
     if (translationsData[newLanguage]) {
       setLanguageState(newLanguage);
       localStorage.setItem('language', newLanguage);
-      // Optionally, you might want to set the lang attribute on the HTML element
-      // document.documentElement.lang = newLanguage;
     }
   }, []);
 
   const translate = useCallback(
-    (key: string, replacements: Record<string, string> = {}): string => {
+    (key: string, replacements: Record<string, string> = {}, fallback?: string): string => {
       const keys = key.split('.');
       let current: string | Translations | undefined = translationsData[language];
       for (const k of keys) {
@@ -254,9 +308,8 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
         }
       }
 
-      let result = typeof current === 'string' ? current : key; // Fallback to key if not found
+      let result = typeof current === 'string' ? current : (fallback || key); 
 
-      // Apply replacements
       Object.keys(replacements).forEach(placeholder => {
         result = result.replace(new RegExp(`{{${placeholder}}}`, 'g'), replacements[placeholder]);
       });

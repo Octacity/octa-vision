@@ -26,7 +26,7 @@ import {
   ShieldAlert,
   Briefcase, 
   Server, 
-  Folder, // Added Folder icon
+  Folder, 
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -83,14 +83,17 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
       '/account': 'account',
       '/organization-users': 'organizationUsers',
       '/system-admin': 'systemAdministration',
-      '/system-admin/organizations': 'organizations', // Updated key
-      '/system-admin/servers': 'servers', // Updated key
+      '/system-admin/organizations': 'organizations',
+      '/system-admin/servers': 'servers',
     };
      if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/ips')) {
         return translate('manageCameraIPs');
     }
     if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/users')) {
         return translate('manageOrganizationUsers');
+    }
+    if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/cameras')) {
+        return translate('manageOrganizationCameras');
     }
     const key = routeToTranslationKey[pathname] || 'octaVision';
     return translate(key);
