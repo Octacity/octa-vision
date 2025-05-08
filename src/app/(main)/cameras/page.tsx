@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -52,11 +53,11 @@ export interface Group {
   id: string;
   name: string;
   cameras?: string[];
-  videos?: string[]; // Added videos field
+  videos?: string[];
   defaultCameraSceneContext?: string;
   defaultAiDetectionTarget?: string;
   defaultAlertEvents?: string[];
-  defaultSceneDescription?: string;
+  // defaultSceneDescription?: string; // Removed as per request
   defaultVideoChunks?: { value: number; unit: 'seconds' | 'minutes' };
   defaultNumFrames?: number;
   defaultVideoOverlap?: { value: number; unit: 'seconds' | 'minutes' };
@@ -75,7 +76,7 @@ const addCameraStep1Schema = z.object({
   groupDefaultCameraSceneContext: z.string().optional(), 
   groupDefaultAiDetectionTarget: z.string().optional(), 
   groupDefaultAlertEvents: z.string().optional(), // Comma-separated string
-  groupDefaultSceneDescription: z.string().optional(),
+  // groupDefaultSceneDescription: z.string().optional(), // Removed as per request
   groupDefaultVideoChunksValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
   groupDefaultVideoChunksUnit: z.enum(['seconds', 'minutes']).optional(),
   groupDefaultNumFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
@@ -182,7 +183,7 @@ const CamerasPage: NextPage = () => {
       groupDefaultCameraSceneContext: '',
       groupDefaultAiDetectionTarget: '',
       groupDefaultAlertEvents: '',
-      groupDefaultSceneDescription: '',
+      // groupDefaultSceneDescription: '', // Removed as per request
       groupDefaultVideoChunksValue: '10',
       groupDefaultVideoChunksUnit: 'seconds',
       groupDefaultNumFrames: '5',
@@ -281,7 +282,7 @@ const CamerasPage: NextPage = () => {
       formStep1.resetField('groupDefaultCameraSceneContext');
       formStep1.resetField('groupDefaultAiDetectionTarget');
       formStep1.resetField('groupDefaultAlertEvents');
-      formStep1.resetField('groupDefaultSceneDescription');
+      // formStep1.resetField('groupDefaultSceneDescription'); // Removed
       formStep1.resetField('groupDefaultVideoChunksValue');
       formStep1.resetField('groupDefaultVideoChunksUnit');
       formStep1.resetField('groupDefaultNumFrames');
@@ -290,8 +291,8 @@ const CamerasPage: NextPage = () => {
       
       const selectedGroupData = groups.find(g => g.id === value);
       if (selectedGroupData) {
-        // Pre-fill Step 2
-        formStep2.setValue('sceneDescription', selectedGroupData.defaultSceneDescription || '');
+        // Pre-fill Step 2 - SceneDescription will be set by onSubmitStep1 or manually
+        // formStep2.setValue('sceneDescription', selectedGroupData.defaultSceneDescription || ''); // Removed
         // Pre-fill Step 3
         formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
         formStep3.setValue('aiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
@@ -317,17 +318,11 @@ const CamerasPage: NextPage = () => {
     // Simulate AI scene description generation
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     
-    const step1Values = formStep1.getValues();
+    // const step1Values = formStep1.getValues(); // Not needed here anymore for sceneDesc
     let sceneDescToSet = 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.'; // Default
     
-    if (step1Values.group && step1Values.group !== 'add_new_group') {
-        const selectedGroupData = groups.find(g => g.id === step1Values.group);
-        if (selectedGroupData?.defaultSceneDescription) {
-            sceneDescToSet = selectedGroupData.defaultSceneDescription;
-        }
-    } else if (step1Values.group === 'add_new_group' && step1Values.groupDefaultSceneDescription) {
-        sceneDescToSet = step1Values.groupDefaultSceneDescription;
-    }
+    // If using AI to generate, set it here, for now, it's a default or pre-filled if editing existing camera config.
+    // The logic for pre-filling from group defaults has been removed as defaultSceneDescription is removed from Group.
     formStep2.setValue('sceneDescription', sceneDescToSet);
     
     setIsProcessingStep2(false);
@@ -433,11 +428,11 @@ const CamerasPage: NextPage = () => {
             createdAt: now,
             updatedAt: now,
             cameras: [], 
-            videos: [], // Initialize with empty array for videos
+            videos: [], 
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : [],
-            defaultSceneDescription: step1Data.groupDefaultSceneDescription || null,
+            // defaultSceneDescription: step1Data.groupDefaultSceneDescription || null, // Removed
             defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
             defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
             defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
@@ -447,11 +442,11 @@ const CamerasPage: NextPage = () => {
           id: groupDocRef.id,
           name: step1Data.newGroupName,
           cameras: [],
-          videos: [], // Add to local state
+          videos: [],
           defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext,
           defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget,
           defaultAlertEvents: step1Data.groupDefaultAlertEvents?.split(',').map(ae => ae.trim()).filter(ae => ae),
-          defaultSceneDescription: step1Data.groupDefaultSceneDescription,
+          // defaultSceneDescription: step1Data.groupDefaultSceneDescription, // Removed
           defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : undefined,
           defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : undefined,
           defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : undefined,
@@ -496,21 +491,19 @@ const CamerasPage: NextPage = () => {
       cameraSceneContext: configData.cameraSceneContext,
       aiDetectionTarget: configData.aiDetectionTarget,
       alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae), 
-      sceneDescription: step2Data.sceneDescription, // This is the actual scene description for this specific camera config
+      sceneDescription: step2Data.sceneDescription, 
       userId: currentUser.uid, 
       previousConfigId: null, 
     });
     
     batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
-    // Update group's camera list if a group is involved
     if (finalGroupId) {
         const groupRefToUpdate = doc(db, 'groups', finalGroupId);
         batch.update(groupRefToUpdate, {
             cameras: arrayUnion(cameraDocRef.id),
             updatedAt: now,
         });
-         // Update local group state
         setGroups(prevGroups => prevGroups.map(g => 
             g.id === finalGroupId 
             ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id] } 
@@ -692,21 +685,7 @@ const CamerasPage: NextPage = () => {
                                 </FormItem>
                             )}
                         />
-                         <FormField
-                            control={formStep1.control}
-                            name="groupDefaultSceneDescription" 
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center mb-1.5">
-                                        <Wand2 className="w-4 h-4 mr-2 text-muted-foreground"/>Default Scene Description (Group)
-                                    </FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="e.g., A busy loading dock with frequent truck arrivals." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                         {/* Removed Default Scene Description (Group) FormField */}
                         <FormField
                             control={formStep1.control}
                             name="groupDefaultAiDetectionTarget" 
