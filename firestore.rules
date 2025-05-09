@@ -38,9 +38,9 @@ service cloud.firestore {
       allow read: if isOrgOwner(orgId) || isSystemAdmin() || isUser();
       allow update: if isOrgOwner(orgId)|| isSystemAdmin();
     }
-      // Admin rules: allow everything
-        match /{anyPath=**} {
-            allow read, write: if isSystemAdmin();
-        }
+    // Admin rules: allow everything
+      match /{anyPath=**} {
+          allow read, write: if isSystemAdmin();
+      }
   }
 }
