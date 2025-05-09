@@ -51,38 +51,53 @@ const AdminOrganizationsPage: NextPage = () => {
     setLoading(true);
     try {
       const orgsSnapshot = await getDocs(collection(db, 'organizations'));
-      const orgsData = await Promise.all(orgsSnapshot.docs.map(async (orgDoc) => {
+      const orgsDataPromises = orgsSnapshot.docs.map(async (orgDoc) => {
         const data = orgDoc.data();
         let userAdminEmail = 'N/A';
-        const usersAdminQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id), where('role', '==', 'user-admin'));
-        const usersAdminSnapshot = await getDocs(usersAdminQuery);
-        if (!usersAdminSnapshot.empty) {
-          userAdminEmail = usersAdminSnapshot.docs[0].data().email;
-        }
         
-        const allUsersQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id));
-        const allUsersSnapshot = await getDocs(allUsersQuery);
-        const userCount = allUsersSnapshot.size; 
+        if (!orgDoc.id) {
+          console.error("Organization document missing ID:", orgDoc);
+          return null; // Skip this problematic document
+        }
 
-        const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgDoc.id)); 
-        const camerasSnapshot = await getDocs(camerasQuery);
-        const cameraCount = camerasSnapshot.size;
+        try {
+          const usersAdminQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id), where('role', '==', 'user-admin'));
+          const usersAdminSnapshot = await getDocs(usersAdminQuery);
+          if (!usersAdminSnapshot.empty && usersAdminSnapshot.docs[0]?.data()) {
+            userAdminEmail = usersAdminSnapshot.docs[0].data().email || 'N/A';
+          }
+          
+          const allUsersQuery = query(collection(db, 'users'), where('organizationId', '==', orgDoc.id));
+          const allUsersSnapshot = await getDocs(allUsersQuery);
+          const userCount = allUsersSnapshot.size; 
 
-        return {
-          id: orgDoc.id,
-          name: data.name,
-          approved: data.approved,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
-          phone: data.phone || 'N/A',
-          userAdminEmail,
-          userCount,
-          cameraCount,
-          admin: data.admin === true,
-        } as Organization;
-      }));
-      setOrganizations(orgsData);
+          const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgDoc.id)); 
+          const camerasSnapshot = await getDocs(camerasQuery);
+          const cameraCount = camerasSnapshot.size;
+
+          return {
+            id: orgDoc.id,
+            name: data.name || 'Unnamed Organization', // Provide a fallback for name
+            approved: data.approved === true, // Ensure boolean
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
+            phone: data.phone || 'N/A',
+            userAdminEmail,
+            userCount,
+            cameraCount,
+            admin: data.admin === true, // Ensure boolean
+          } as Organization;
+        } catch (error) {
+          console.error(`Error processing sub-queries for org ${orgDoc.id}:`, error);
+          return null; // Skip this org if sub-queries fail
+        }
+      });
+      
+      const resolvedOrgsData = await Promise.all(orgsDataPromises);
+      const validOrgsData = resolvedOrgsData.filter(org => org !== null) as Organization[];
+      setOrganizations(validOrgsData);
+
     } catch (error) {
-      console.error("Error fetching organizations: ", error);
+      console.error("Error fetching organizations collection: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organizations.' });
     }
     setLoading(false);
@@ -115,7 +130,7 @@ const AdminOrganizationsPage: NextPage = () => {
 
   const filteredAndSortedOrganizations = useMemo(() => {
     let filtered = organizations.filter(org => 
-      org.name.toLowerCase().includes(filterText.toLowerCase()) ||
+      org.name?.toLowerCase().includes(filterText.toLowerCase()) ||
       (org.userAdminEmail && org.userAdminEmail.toLowerCase().includes(filterText.toLowerCase()))
     );
 
