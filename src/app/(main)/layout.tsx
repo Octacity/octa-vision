@@ -66,6 +66,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [canAccessSystemAdminMenu, setCanAccessSystemAdminMenu] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -170,8 +171,14 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
     return () => unsubscribe();
   }, [router, pathname]);
+  
+  useEffect(() => {
+    setIsPageLoading(false); // Hide loader when pathname changes (new page "loaded")
+  }, [pathname]);
+
 
   const handleSignOut = async () => {
+    setIsPageLoading(true);
     const auth = getAuth();
     try {
       await signOut(auth);
@@ -180,10 +187,14 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     } catch (error) {
       console.error("Error signing out: ", error);
       toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') });
+      setIsPageLoading(false);
     }
   };
 
-  const handleMenuItemClick = () => {
+  const handleMenuItemClick = (href?: string) => {
+    if (href && href !== pathname) {
+      setIsPageLoading(true);
+    }
     if (isMobile) {
       setOpenMobile(false);
     }
@@ -198,7 +209,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }
 
   if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
-     // This block is to ensure redirection happens if auth state changes to null while not on public pages
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -214,7 +224,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <Link
             href="/dashboard"
             className="text-lg font-semibold text-foreground"
-            onClick={handleMenuItemClick}
+            onClick={() => handleMenuItemClick("/dashboard")}
           >
             {sidebarState === 'collapsed' && !isMobile ? 'OV' : translate('octaVision')}
           </Link>
@@ -223,7 +233,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           <SidebarMenu className="pt-1">
             <SidebarMenuItem>
               <Link href="/dashboard" passHref legacyBehavior>
-                <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                <SidebarMenuButton isActive={pathname === '/dashboard'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/dashboard")}>
                   <Home className="h-4 w-4" />
                   {sidebarState === 'expanded' && <span>{translate('dashboard')}</span>}
                 </SidebarMenuButton>
@@ -234,7 +244,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             <>
               <SidebarMenuItem>
                 <Link href="/cameras" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                  <SidebarMenuButton isActive={pathname === '/cameras'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/cameras")}>
                     <CameraIcon className="h-4 w-4" />
                     {sidebarState === 'expanded' && <span>{translate('cameras')}</span>}
                   </SidebarMenuButton>
@@ -242,7 +252,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/groups" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                  <SidebarMenuButton isActive={pathname === '/groups'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/groups")}>
                     <Folder className="h-4 w-4" />
                     {sidebarState === 'expanded' && <span>{translate('groups')}</span>}
                   </SidebarMenuButton>
@@ -250,7 +260,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/monitor" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                  <SidebarMenuButton isActive={pathname === '/monitor'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/monitor")}>
                     <Activity className="h-4 w-4" />
                     {sidebarState === 'expanded' && <span>{translate('monitor')}</span>}
                   </SidebarMenuButton>
@@ -258,7 +268,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/videos" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                  <SidebarMenuButton isActive={pathname === '/videos'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/videos")}>
                     <Film className="h-4 w-4" />
                     {sidebarState === 'expanded' && <span>{translate('videos')}</span>}
                   </SidebarMenuButton>
@@ -266,7 +276,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/settings" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                  <SidebarMenuButton isActive={pathname === '/settings'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/settings")}>
                     <Settings className="h-4 w-4" />
                     {sidebarState === 'expanded' && <span>{translate('settings')}</span>}
                   </SidebarMenuButton>
@@ -274,7 +284,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/account" passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                  <SidebarMenuButton isActive={pathname === '/account'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/account")}>
                     <CircleUserRound className="h-4 w-4" />
                     {sidebarState === 'expanded' && <span>{translate('account')}</span>}
                   </SidebarMenuButton>
@@ -285,7 +295,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               {userRole === 'user-admin' && (
                 <SidebarMenuItem>
                   <Link href="/organization-users" passHref legacyBehavior>
-                    <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                    <SidebarMenuButton isActive={pathname === '/organization-users'} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/organization-users")}>
                       <UsersIcon className="h-4 w-4" />
                       {sidebarState === 'expanded' && <span>{translate('users')}</span>}
                     </SidebarMenuButton>
@@ -302,7 +312,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 <SidebarGroupContent>
                   <SidebarMenuItem>
                     <Link href="/system-admin/organizations" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/organizations')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/system-admin/organizations")}>
                         <Briefcase className="h-4 w-4" />
                         {sidebarState === 'expanded' && <span>{translate('organizations')}</span>}
                       </SidebarMenuButton>
@@ -310,7 +320,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                   </SidebarMenuItem>
                    <SidebarMenuItem>
                     <Link href="/system-admin/servers" passHref legacyBehavior>
-                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={handleMenuItemClick}>
+                      <SidebarMenuButton isActive={pathname.startsWith('/system-admin/servers')} size={sidebarState === 'collapsed' && !isMobile ? 'icon' : 'default'} onClick={() => handleMenuItemClick("/system-admin/servers")}>
                         <Server className="h-4 w-4" />
                         {sidebarState === 'expanded' && <span>{translate('servers')}</span>}
                       </SidebarMenuButton>
@@ -357,13 +367,13 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem onClick={() => handleMenuItemClick("/account")} asChild>
                   <Link href="/account">
                     <CircleUserRound className="mr-2 h-4 w-4" />
                     {translate('account')}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem onClick={() => handleMenuItemClick("/settings")} asChild>
                   <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     {translate('settings')}
@@ -390,7 +400,12 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </Alert>
           </div>
         )}
-        <main className="p-4 md:p-8 flex-1 overflow-y-auto">
+        <main className="p-4 md:p-8 flex-1 overflow-y-auto relative">
+         {isPageLoading && (
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+          )}
          {children}
         </main>
          <NotificationDrawer />
