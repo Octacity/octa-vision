@@ -20,12 +20,12 @@ const translationsData: Record<Language, Translations> = {
     videos: 'Videos',
     settings: 'Settings',
     account: 'My Account',
-    users: 'Users', // Changed from 'organizationUsers'
+    users: 'Users', 
     systemAdministration: 'System Administration',
     organizations: 'Organizations', 
     servers: 'Servers', 
     manageCameraIPs: 'Manage Camera IPs',
-    manageOrganizationUsers: 'Manage Organization Users', // This key might need review if the meaning changed
+    manageOrganizationUsers: 'Manage Organization Users', 
     manageOrganizationCameras: 'Manage Organization Cameras',
     allOrganizationsTitle: 'All Organizations', 
     manageOrgsTitle: 'Manage Orgs', 
@@ -56,11 +56,6 @@ const translationsData: Record<Language, Translations> = {
             darkMode: 'Dark Mode',
             language: 'Language',
             selectLanguage: 'Select Language',
-        },
-        data: {
-            title: 'Data Management',
-            export: 'Export My Data',
-            deleteAccount: 'Delete My Account',
         },
     },
     cameraAccessDenied: {
@@ -106,7 +101,7 @@ const translationsData: Record<Language, Translations> = {
     videos: 'Videos',
     settings: 'Configuración',
     account: 'Mi Cuenta',
-    users: 'Usuarios', // Changed from 'Usuarios de la Organización'
+    users: 'Usuarios', 
     systemAdministration: 'Administración del Sistema',
     organizations: 'Organizaciones', 
     servers: 'Servidores', 
@@ -142,11 +137,6 @@ const translationsData: Record<Language, Translations> = {
             darkMode: 'Modo Oscuro',
             language: 'Idioma',
             selectLanguage: 'Seleccionar Idioma',
-        },
-        data: {
-            title: 'Gestión de Datos',
-            export: 'Exportar Mis Datos',
-            deleteAccount: 'Eliminar Mi Cuenta',
         },
     },
     cameraAccessDenied: {
@@ -192,7 +182,7 @@ const translationsData: Record<Language, Translations> = {
     videos: 'Vídeos',
     settings: 'Configurações',
     account: 'Minha Conta',
-    users: 'Usuários', // Changed from 'Usuários da Organização'
+    users: 'Usuários', 
     systemAdministration: 'Administração do Sistema',
     organizations: 'Organizações', 
     servers: 'Servidores', 
@@ -228,11 +218,6 @@ const translationsData: Record<Language, Translations> = {
             darkMode: 'Modo Escuro',
             language: 'Idioma',
             selectLanguage: 'Selecionar Idioma',
-        },
-        data: {
-            title: 'Gerenciamento de Dados',
-            export: 'Exportar Meus Dados',
-            deleteAccount: 'Excluir Minha Conta',
         },
     },
     cameraAccessDenied: {

@@ -19,7 +19,7 @@ const SettingsPage: NextPage = () => {
       <div className="grid gap-6">
         <Card>
           <CardHeader className="border-b pb-4">
-            <CardTitle>{translate('settingsPage.notifications.title')}</CardTitle>
+            <CardTitle className="text-lg font-normal text-primary">{translate('settingsPage.notifications.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             <div className="flex items-center justify-between">
@@ -39,7 +39,7 @@ const SettingsPage: NextPage = () => {
 
         <Card>
           <CardHeader className="border-b pb-4">
-            <CardTitle>{translate('settingsPage.theme.title')}</CardTitle>
+            <CardTitle className="text-lg font-normal text-primary">{translate('settingsPage.theme.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
              <div className="flex items-center justify-between">
@@ -63,15 +63,6 @@ const SettingsPage: NextPage = () => {
           </CardContent>
         </Card>
 
-         <Card>
-          <CardHeader className="border-b pb-4">
-            <CardTitle>{translate('settingsPage.data.title')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-             <Button variant="outline">{translate('settingsPage.data.export')}</Button>
-             <Button variant="destructive">{translate('settingsPage.data.deleteAccount')}</Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
