@@ -307,6 +307,16 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
     
+    // Show an alert if the organization is not approved
+    if (isOrgApproved === false) {
+      toast({
+        variant: "default", // Use 'default' or 'warning' as appropriate
+        title: "Camera Setup Information",
+        description: "You can add this camera and set up its configuration. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.",
+        duration: 10000, // Show for 10 seconds
+      });
+    }
+    
     await new Promise(resolve => setTimeout(resolve, 1500)); 
     setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
     
@@ -455,7 +465,7 @@ const CamerasPage: NextPage = () => {
       url: step1Data.rtspUrl,
       protocol: "rtsp",
       currentConfigId: null, 
-      processingStatus: isOrgApproved ? "pending_setup" : "waiting_for_approval", 
+      processingStatus: "waiting_for_approval", 
       activeVssStreamId: null,
       historicalVssStreamIds: [],
     });
@@ -502,7 +512,7 @@ const CamerasPage: NextPage = () => {
       await batch.commit();
       toast({
         title: "Camera Saved",
-        description: `${step1Data.cameraName} has been added successfully.`,
+        description: `${step1Data.cameraName} has been added successfully. It is currently awaiting approval.`,
       });
       const newCamera: Camera = {
         id: cameraDocRef.id,
@@ -596,20 +606,9 @@ const CamerasPage: NextPage = () => {
 
   const renderDrawerContent = () => {
     if (drawerType === 'addCamera') {
-      const approvalAlert = !isLoadingOrgStatus && isOrgApproved === false && (
-        <Alert variant="destructive" className="mb-4">
-          <ShieldAlert className="h-4 w-4" />
-          <AlertTitle>Organization Approval Pending</AlertTitle>
-          <AlertDescription>
-            You can add cameras and set up configurations. However, camera processing will only begin after your organization&apos;s account is approved by an administrator and based on server space availability.
-          </AlertDescription>
-        </Alert>
-      );
-
       if (drawerStep === 1) {
         return (
           <div className="p-6">
-            {approvalAlert}
             <Form {...formStep1}>
             <form id="add-camera-form-step1" onSubmit={formStep1.handleSubmit(onSubmitStep1)} className="space-y-8">
                 <FormField
@@ -778,7 +777,6 @@ const CamerasPage: NextPage = () => {
         } else if (drawerStep === 2) {
         return (
           <div className="p-6">
-            {approvalAlert}
             <Form {...formStep2}>
                 <form id="add-camera-form-step2" onSubmit={formStep2.handleSubmit(onSubmitStep2)} className="space-y-6 text-center">
                 <div className="flex flex-col items-center space-y-2">
@@ -853,7 +851,6 @@ const CamerasPage: NextPage = () => {
         } else if (drawerStep === 3) {
             return (
               <div className="p-6">
-                {approvalAlert}
                 <Form {...formStep3}>
                     <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
                         <FormField
@@ -1175,9 +1172,6 @@ const CamerasPage: NextPage = () => {
         let title = drawerStep === 1 ? "Add New Camera - Details" : 
                drawerStep === 2 ? "Add New Camera - Scene Analysis" :
                "Add New Camera - AI Configuration";
-        if (!isLoadingOrgStatus && isOrgApproved === false) {
-            title += " (Approval Pending)";
-        }
         return title;
     }
     if (drawerType === 'chatCamera' && selectedCameraForChat) {
