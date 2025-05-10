@@ -12,7 +12,12 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader, // Added import
+  SheetTitle,  // Added import
+} from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -207,7 +212,7 @@ const Sidebar = React.forwardRef<
             data-sidebar="sidebar"
             data-mobile="true"
             className={cn(
-              "w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground dark:text-[hsl(var(--sidebar-foreground))] [&>button]:hidden",
+              "w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground dark:text-[hsl(var(--sidebar-foreground))]",
               className
             )}
             style={
@@ -216,12 +221,15 @@ const Sidebar = React.forwardRef<
               } as React.CSSProperties
             }
             side={side}
-            {...props}
           >
+            {/* Accessible title for the mobile sheet itself */}
+            <SheetHeader className="sr-only">
+              <SheetTitle>Main Navigation Menu</SheetTitle>
+            </SheetHeader>
             <div
               data-variant={variant}
               className="flex h-full flex-col"
-              ref={ref}
+              ref={ref} 
             >
               {children}
             </div>
@@ -282,7 +290,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar, state, isMobile } = useSidebarContextHook() 
+  const { toggleSidebar, state } = useSidebarContextHook() 
 
   return (
     <Button
@@ -297,8 +305,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      {/* {state === 'expanded' ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />} */}
-      {state === 'expanded' ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+       {state === 'expanded' ? <ArrowLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -548,7 +555,7 @@ const sidebarMenuButtonVariants = cva(
         default: "h-10 text-sm", 
         sm: "h-9 text-xs",
         lg: "h-12 text-sm",
-        icon: "h-8 w-8 justify-center items-center", 
+        icon: "h-8 w-8 justify-center items-center p-1.5", 
       },
     },
     defaultVariants: {
@@ -795,5 +802,6 @@ export {
   sidebarMenuButtonVariants,
   // useSidebar from context is already exported as useSidebarContextHook
 }
+
 
 
