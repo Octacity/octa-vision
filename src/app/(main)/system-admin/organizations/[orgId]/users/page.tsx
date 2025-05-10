@@ -66,6 +66,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<AddUserFormValues>({
@@ -79,8 +80,17 @@ const ManageOrganizationUsersPage: NextPage = () => {
 
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = auth.onAuthStateChanged(user => {
+    const unsubscribe = auth.onAuthStateChanged(async user => {
       setCurrentUser(user);
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setCurrentUserRole(userDocSnap.data().role);
+        }
+      } else {
+        setCurrentUserRole(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -101,22 +111,22 @@ const ManageOrganizationUsersPage: NextPage = () => {
         }
         setOrganization(orgDocSnap.data() as OrganizationData);
 
-        fetchOrgUsers(); // Call dedicated function to fetch users
+        fetchOrgUsers(); 
 
       } catch (error) {
         console.error("Error fetching organization data: ", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organization data.' });
       }
-      setLoading(false); // setLoading should be called after all data fetching attempts
+      setLoading(false); 
     };
 
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, toast, router]);
 
-  const fetchOrgUsers = async () => { // Renamed to avoid conflict and make specific
+  const fetchOrgUsers = async () => { 
     if (!orgId) return;
-    setLoading(true); // Set loading true at the start of user fetch
+    setLoading(true); 
     try {
       const usersQuery = query(collection(db, 'users'), where('organizationId', '==', orgId));
       const usersSnapshot = await getDocs(usersQuery);
@@ -130,12 +140,11 @@ const ManageOrganizationUsersPage: NextPage = () => {
       console.error("Error re-fetching users: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not refresh user list.' });
     }
-    setLoading(false); // Set loading false at the end of user fetch
+    setLoading(false); 
   };
 
 
   const handleEditUser = (userId: string) => {
-    // Placeholder for edit functionality
     const userToEdit = users.find(u => u.id === userId);
     if (userToEdit) {
         form.reset({ 
@@ -143,7 +152,6 @@ const ManageOrganizationUsersPage: NextPage = () => {
             name: userToEdit.name || '', 
             role: userToEdit.role as 'user' | 'user-admin' | 'system-admin' 
         });
-        // Set a state to indicate editing mode if needed, or handle update logic differently
         setIsDrawerOpen(true);
         toast({ title: 'Edit User', description: `Editing ${userToEdit.email}. (Save functionality not fully implemented).`});
     } else {
@@ -160,11 +168,29 @@ const ManageOrganizationUsersPage: NextPage = () => {
       });
       return;
     }
-    // Placeholder for delete confirmation and logic
+
+    const userToDelete = users.find(u => u.id === userId);
+    if (userToDelete && userToDelete.role === 'user-admin' && orgId) {
+        const adminUsersQuery = query(
+            collection(db, 'users'),
+            where('organizationId', '==', orgId),
+            where('role', '==', 'user-admin')
+        );
+        const adminUsersSnapshot = await getDocs(adminUsersQuery);
+        if (adminUsersSnapshot.size <= 1) {
+            toast({
+            variant: "destructive",
+            title: "Cannot Delete Last Admin",
+            description: "The organization must have at least one user-admin.",
+            });
+            return;
+        }
+    }
+    
     try {
       await deleteDoc(doc(db, "users", userId));
       toast({ title: 'User Deleted', description: `User has been removed from the organization.` });
-      fetchOrgUsers(); // Refresh list
+      fetchOrgUsers(); 
     } catch (error) {
       console.error("Error deleting user: ", error);
       toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete user. Please try again.' });
@@ -189,10 +215,9 @@ const ManageOrganizationUsersPage: NextPage = () => {
     const emailToCheck = data.email.toLowerCase().trim();
 
     try {
-       // Check if user with this email already exists in the organization
        const emailQuery = query(
         collection(db, 'users'),
-        where('organizationId', '==', orgId), // Use the current orgId from params
+        where('organizationId', '==', orgId), 
         where('email', '==', emailToCheck)
       );
       const emailQuerySnapshot = await getDocs(emailQuery);
@@ -207,19 +232,17 @@ const ManageOrganizationUsersPage: NextPage = () => {
         return;
       }
 
-      // Note: Actual Firebase Auth user creation (invite, password setup) is typically a backend/function task.
-      // This example focuses on Firestore record creation.
       await addDoc(collection(db, 'users'), {
         email: emailToCheck,
         name: data.name || null,
         role: data.role,
-        organizationId: orgId, // Assign to the current organization being managed
+        organizationId: orgId, 
         createdBy: currentUser.uid,
         createdAt: serverTimestamp(),
       });
 
       toast({ title: 'User Added', description: `${data.email} has been added to ${organization?.name}.` });
-      fetchOrgUsers(); // Refresh the list
+      fetchOrgUsers(); 
       handleDrawerClose();
     } catch (error) {
       console.error("Error adding user: ", error);
@@ -273,11 +296,9 @@ const ManageOrganizationUsersPage: NextPage = () => {
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="user-admin">Organization Admin</SelectItem>
-                     {/* System admin might be able to assign system-admin role,
-                         but typically this is done via a more secure, direct DB modification
-                         or a dedicated super-admin interface. For safety, keeping it simpler here.
-                         If needed, add: <SelectItem value="system-admin">System Admin</SelectItem>
-                     */}
+                     {currentUserRole === 'system-admin' && (
+                        <SelectItem value="system-admin">System Admin</SelectItem>
+                     )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -304,7 +325,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
   );
 
 
-  if (loading && !organization) { // Modified loading condition to check for organization too
+  if (loading && !organization) { 
     return (
       <div className="flex justify-center items-center p-8 h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -319,6 +340,22 @@ const ManageOrganizationUsersPage: NextPage = () => {
       </div>
     );
   }
+  
+  // Access control for the page itself
+  if (currentUserRole !== 'system-admin') {
+     return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center text-center py-12">
+            <UserPlus className="w-16 h-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">Access Denied</h3>
+            <p className="text-muted-foreground">You do not have permission to manage users for this organization.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
 
   return (
     <div>
@@ -338,7 +375,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
           </div>
         </CardHeader>
         <CardContent className="p-0"> 
-          {loading && users.length === 0 ? ( // Show loader if loading and no users yet
+          {loading && users.length === 0 ? ( 
              <div className="flex justify-center items-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>

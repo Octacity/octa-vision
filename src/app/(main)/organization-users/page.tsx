@@ -59,6 +59,7 @@ const OrganizationUsersPage: NextPage = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [currentUserOrgId, setCurrentUserOrgId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -80,6 +81,7 @@ const OrganizationUsersPage: NextPage = () => {
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
+          setCurrentUserRole(userData.role);
           if (userData.organizationId && userData.role === 'user-admin') {
             setCurrentUserOrgId(userData.organizationId);
             fetchUsers(userData.organizationId);
@@ -96,6 +98,7 @@ const OrganizationUsersPage: NextPage = () => {
         setUsers([]);
         setIsLoading(false);
         setCurrentUserOrgId(null);
+        setCurrentUserRole(null);
       }
     });
     return () => unsubscribe();
@@ -145,12 +148,29 @@ const OrganizationUsersPage: NextPage = () => {
       return;
     }
 
-    // Placeholder for delete confirmation and logic
+    const userToDelete = users.find(u => u.id === userId);
+    if (userToDelete && userToDelete.role === 'user-admin' && currentUserOrgId) {
+      const adminUsersQuery = query(
+        collection(db, 'users'),
+        where('organizationId', '==', currentUserOrgId),
+        where('role', '==', 'user-admin')
+      );
+      const adminUsersSnapshot = await getDocs(adminUsersQuery);
+      if (adminUsersSnapshot.size <= 1) {
+        toast({
+          variant: "destructive",
+          title: "Cannot Delete Last Admin",
+          description: "The organization must have at least one user-admin.",
+        });
+        return;
+      }
+    }
+
+
     try {
-      // Optional: Add a confirmation dialog before deleting
       await deleteDoc(doc(db, "users", userId));
       toast({ title: 'User Deleted', description: `User has been removed from the organization.` });
-      if(currentUserOrgId) fetchUsers(currentUserOrgId); // Refresh list
+      if(currentUserOrgId) fetchUsers(currentUserOrgId); 
     } catch (error) {
       console.error("Error deleting user: ", error);
       toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete user. Please try again.' });
@@ -193,22 +213,18 @@ const OrganizationUsersPage: NextPage = () => {
         return;
       }
 
-      // In a real app, you would typically trigger a Firebase Function to create the Auth user
-      // and then create the Firestore record. For now, we're just creating the Firestore record.
-      // It's crucial that the actual Firebase Auth user creation (with email/password or invite)
-      // is handled securely, often through a backend process.
 
       await addDoc(collection(db, 'users'), {
-        email: emailToCheck, // Store normalized email
-        name: data.name || null, // Store null if name is empty
+        email: emailToCheck, 
+        name: data.name || null, 
         role: data.role,
         organizationId: currentUserOrgId,
-        createdBy: currentUser.uid, // Track who created this user record
+        createdBy: currentUser.uid, 
         createdAt: serverTimestamp(),
       });
 
       toast({ title: 'User Added', description: `${data.email} has been added to your organization.` });
-      fetchUsers(currentUserOrgId); // Refresh the list
+      fetchUsers(currentUserOrgId); 
       handleDrawerClose();
     } catch (error) {
       console.error("Error adding user: ", error);
@@ -299,15 +315,15 @@ const OrganizationUsersPage: NextPage = () => {
     );
   }
 
-  // This check ensures only user-admins of an org can see this page
-  if (!currentUserOrgId) {
+  
+  if (!currentUserOrgId || currentUserRole !== 'user-admin') {
      return (
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center justify-center text-center py-12">
             <UserPlus className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">Access Denied</h3>
-            <p className="text-muted-foreground">You do not have permission to manage users or are not part of an organization.</p>
+            <p className="text-muted-foreground">You do not have permission to manage users for this organization.</p>
           </div>
         </CardContent>
       </Card>
@@ -326,9 +342,11 @@ const OrganizationUsersPage: NextPage = () => {
                 Add, remove, or update users within your organization.
               </CardDescription>
             </div>
-            <Button onClick={handleAddUserClick}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add User
-            </Button>
+             {currentUserRole === 'user-admin' && (
+              <Button onClick={handleAddUserClick}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add User
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -346,7 +364,9 @@ const OrganizationUsersPage: NextPage = () => {
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
-                      <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                      {currentUserRole === 'user-admin' && (
+                        <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -360,67 +380,69 @@ const OrganizationUsersPage: NextPage = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>{user.createdAt}</TableCell>
-                        <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
-                          <div className="flex justify-end items-center space-x-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={() => handleEditUser(user.id)} className="h-8 w-8">
-                                  <Edit3 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Edit User</p>
-                              </TooltipContent>
-                            </Tooltip>
-                            <AlertDialog>
+                        {currentUserRole === 'user-admin' && (
+                          <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                            <div className="flex justify-end items-center space-x-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
-                                    disabled={currentUser?.uid === user.id} // Disable if it's the current user
-                                    onClick={(e) => {
-                                      if (currentUser?.uid === user.id) {
-                                        e.preventDefault(); // Prevent dialog from opening if button is disabled
-                                        toast({
-                                          variant: "destructive",
-                                          title: "Cannot Delete Self",
-                                          description: "You cannot delete your own user account.",
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
+                                  <Button variant="outline" size="icon" onClick={() => handleEditUser(user.id)} className="h-8 w-8">
+                                    <Edit3 className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>{currentUser?.uid === user.id ? "Cannot delete self" : "Delete User"}</p>
+                                  <p>Edit User</p>
                                 </TooltipContent>
                               </Tooltip>
-                              {currentUser?.uid !== user.id && ( // Only render AlertDialogContent if not the current user
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the user account
-                                      for {user.email}.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteUser(user.id)}
-                                      className="bg-destructive hover:bg-destructive/90"
+                              <AlertDialog>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="icon" 
+                                      className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                                      disabled={currentUser?.uid === user.id} 
+                                      onClick={(e) => {
+                                        if (currentUser?.uid === user.id) {
+                                          e.preventDefault(); 
+                                          toast({
+                                            variant: "destructive",
+                                            title: "Cannot Delete Self",
+                                            description: "You cannot delete your own user account.",
+                                          });
+                                        }
+                                      }}
                                     >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              )}
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{currentUser?.uid === user.id ? "Cannot delete self" : "Delete User"}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                {currentUser?.uid !== user.id && ( 
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the user account
+                                        for {user.email}.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteUser(user.id)}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                )}
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
