@@ -85,7 +85,7 @@ body {
     --hover-foreground: 0 0% 98%; /* Light text for dark mode hover */
     
     /* Sidebar specific colors */
-    --sidebar-background: 240 5.9% 12%; /* Adjusted from 10% */
+    --sidebar-background: 240 5.9% 16%; /* Adjusted from 12% to 16% for a lighter dark sidebar */
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
