@@ -389,17 +389,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           </div>
         </div>
 
-        {isApproved === false && getAuth().currentUser && userRole !== 'system-admin' && (
-          <div className="p-4 md:p-8">
-            <Alert variant="destructive">
-              <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>{translate('orgApprovalPending.title')}</AlertTitle>
-              <AlertDescription>
-                {translate('orgApprovalPending.description')}
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
+        
         <main className="p-4 md:p-8 flex-1 overflow-y-auto relative">
          {isPageLoading && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -427,3 +417,4 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
+
