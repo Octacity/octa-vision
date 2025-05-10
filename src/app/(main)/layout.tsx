@@ -28,6 +28,7 @@ import {
   Server,
   Folder,
   DollarSign,
+  MoreVertical, // Added MoreVertical
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -157,6 +158,10 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
           setIsApproved(false);
           setUserRole(null);
           setCanAccessSystemAdminMenu(false);
+          // If user data not found, potentially sign them out or redirect to an error page
+          // This indicates a discrepancy between Auth and Firestore user records
+          await signOut(auth); // Consider signing out if critical user data is missing
+          router.push('/signin'); // Redirect to sign-in
         }
       } else {
         setIsApproved(null);
@@ -354,16 +359,9 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 rounded-md">
-                  <Avatar className="h-8 w-8 rounded-md">
-                    <AvatarImage
-                      src="https://picsum.photos/id/1005/50/50"
-                      alt="User Avatar"
-                      className="rounded-md"
-                      data-ai-hint="user avatar"
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
+                <Button variant="outline" size="icon" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                   <span className="sr-only">Open user menu</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
