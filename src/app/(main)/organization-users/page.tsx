@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { db } from '@/firebase/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, deleteDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,17 @@ import RightDrawer from '@/components/RightDrawer';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 interface UserData {
@@ -110,11 +121,40 @@ const OrganizationUsersPage: NextPage = () => {
 
 
   const handleEditUser = (userId: string) => {
-    toast({ title: 'Edit User', description: `Editing user ${userId} (not implemented).` });
+    // Placeholder for edit functionality
+    // You might want to open the drawer with the user's data pre-filled
+    // or navigate to a separate edit page
+    const userToEdit = users.find(u => u.id === userId);
+    if (userToEdit) {
+        form.reset({ email: userToEdit.email, name: userToEdit.name || '', role: userToEdit.role as 'user' | 'user-admin' });
+        // Set a state to indicate editing mode if needed, or handle update logic differently
+        setIsDrawerOpen(true);
+        toast({ title: 'Edit User', description: `Editing ${userToEdit.email}. (Save functionality not fully implemented).`});
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: 'User not found.'});
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    toast({ variant: 'destructive', title: 'Delete User', description: `Deleting user ${userId} (not implemented).` });
+  const handleDeleteUser = async (userId: string) => {
+    if (currentUser && currentUser.uid === userId) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Self",
+        description: "You cannot delete your own user account.",
+      });
+      return;
+    }
+
+    // Placeholder for delete confirmation and logic
+    try {
+      // Optional: Add a confirmation dialog before deleting
+      await deleteDoc(doc(db, "users", userId));
+      toast({ title: 'User Deleted', description: `User has been removed from the organization.` });
+      if(currentUserOrgId) fetchUsers(currentUserOrgId); // Refresh list
+    } catch (error) {
+      console.error("Error deleting user: ", error);
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete user. Please try again.' });
+    }
   };
 
   const handleAddUserClick = () => {
@@ -259,6 +299,7 @@ const OrganizationUsersPage: NextPage = () => {
     );
   }
 
+  // This check ensures only user-admins of an org can see this page
   if (!currentUserOrgId) {
      return (
       <Card>
@@ -331,16 +372,53 @@ const OrganizationUsersPage: NextPage = () => {
                                 <p>Edit User</p>
                               </TooltipContent>
                             </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Delete User</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <AlertDialog>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                                    disabled={currentUser?.uid === user.id} // Disable if it's the current user
+                                    onClick={(e) => {
+                                      if (currentUser?.uid === user.id) {
+                                        e.preventDefault(); // Prevent dialog from opening if button is disabled
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Cannot Delete Self",
+                                          description: "You cannot delete your own user account.",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{currentUser?.uid === user.id ? "Cannot delete self" : "Delete User"}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              {currentUser?.uid !== user.id && ( // Only render AlertDialogContent if not the current user
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the user account
+                                      for {user.email}.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteUser(user.id)}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              )}
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>

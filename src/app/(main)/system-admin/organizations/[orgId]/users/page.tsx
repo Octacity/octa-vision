@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { getAuth, type User as FirebaseUser } from 'firebase/auth';
 
@@ -22,6 +22,17 @@ import RightDrawer from '@/components/RightDrawer';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 interface UserData {
@@ -90,28 +101,22 @@ const ManageOrganizationUsersPage: NextPage = () => {
         }
         setOrganization(orgDocSnap.data() as OrganizationData);
 
-        const usersQuery = query(collection(db, 'users'), where('organizationId', '==', orgId));
-        const usersSnapshot = await getDocs(usersQuery);
-        const usersData = usersSnapshot.docs.map(docSnapshot => ({
-          id: docSnapshot.id,
-          ...docSnapshot.data(),
-          createdAt: docSnapshot.data().createdAt?.toDate ? docSnapshot.data().createdAt.toDate().toLocaleDateString() : 'N/A',
-        })) as UserData[];
-        setUsers(usersData);
+        fetchOrgUsers(); // Call dedicated function to fetch users
 
       } catch (error) {
-        console.error("Error fetching data: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organization or user data.' });
+        console.error("Error fetching organization data: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organization data.' });
       }
-      setLoading(false);
+      setLoading(false); // setLoading should be called after all data fetching attempts
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, toast, router]);
 
-  const fetchUsers = async () => { // Renamed to avoid conflict with outer scope fetchUsers
+  const fetchOrgUsers = async () => { // Renamed to avoid conflict and make specific
     if (!orgId) return;
-    // Duplicates logic from useEffect for now, can be refactored
+    setLoading(true); // Set loading true at the start of user fetch
     try {
       const usersQuery = query(collection(db, 'users'), where('organizationId', '==', orgId));
       const usersSnapshot = await getDocs(usersQuery);
@@ -125,15 +130,45 @@ const ManageOrganizationUsersPage: NextPage = () => {
       console.error("Error re-fetching users: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not refresh user list.' });
     }
+    setLoading(false); // Set loading false at the end of user fetch
   };
 
 
   const handleEditUser = (userId: string) => {
-    toast({ title: 'Edit User', description: `Editing user ${userId} (not implemented).` });
+    // Placeholder for edit functionality
+    const userToEdit = users.find(u => u.id === userId);
+    if (userToEdit) {
+        form.reset({ 
+            email: userToEdit.email, 
+            name: userToEdit.name || '', 
+            role: userToEdit.role as 'user' | 'user-admin' | 'system-admin' 
+        });
+        // Set a state to indicate editing mode if needed, or handle update logic differently
+        setIsDrawerOpen(true);
+        toast({ title: 'Edit User', description: `Editing ${userToEdit.email}. (Save functionality not fully implemented).`});
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: 'User not found.'});
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    toast({ variant: 'destructive', title: 'Delete User', description: `Deleting user ${userId} (not implemented).` });
+  const handleDeleteUser = async (userId: string) => {
+     if (currentUser && currentUser.uid === userId) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Self",
+        description: "You cannot delete your own user account.",
+      });
+      return;
+    }
+    // Placeholder for delete confirmation and logic
+    try {
+      await deleteDoc(doc(db, "users", userId));
+      toast({ title: 'User Deleted', description: `User has been removed from the organization.` });
+      fetchOrgUsers(); // Refresh list
+    } catch (error) {
+      console.error("Error deleting user: ", error);
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete user. Please try again.' });
+    }
   };
   
   const handleAddUserClick = () => {
@@ -184,7 +219,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
       });
 
       toast({ title: 'User Added', description: `${data.email} has been added to ${organization?.name}.` });
-      fetchUsers(); // Refresh the list
+      fetchOrgUsers(); // Refresh the list
       handleDrawerClose();
     } catch (error) {
       console.error("Error adding user: ", error);
@@ -269,7 +304,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
   );
 
 
-  if (loading) {
+  if (loading && !organization) { // Modified loading condition to check for organization too
     return (
       <div className="flex justify-center items-center p-8 h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -303,7 +338,11 @@ const ManageOrganizationUsersPage: NextPage = () => {
           </div>
         </CardHeader>
         <CardContent className="p-0"> 
-          {users.length > 0 ? (
+          {loading && users.length === 0 ? ( // Show loader if loading and no users yet
+             <div className="flex justify-center items-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : users.length > 0 ? (
             <div className="overflow-x-auto">
               <TooltipProvider>
                 <Table>
@@ -343,16 +382,53 @@ const ManageOrganizationUsersPage: NextPage = () => {
                                 <p>Edit User</p>
                               </TooltipContent>
                             </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={() => handleDeleteUser(user.id)} className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Delete User</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <AlertDialog>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                   <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                                    disabled={currentUser?.uid === user.id}
+                                     onClick={(e) => {
+                                      if (currentUser?.uid === user.id) {
+                                        e.preventDefault();
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Cannot Delete Self",
+                                          description: "You cannot delete your own user account.",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                 <p>{currentUser?.uid === user.id ? "Cannot delete self" : "Delete User"}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              {currentUser?.uid !== user.id && (
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the user account
+                                      for {user.email}.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteUser(user.id)}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              )}
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>
