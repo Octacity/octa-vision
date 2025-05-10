@@ -336,12 +336,12 @@ const OrganizationUsersPage: NextPage = () => {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="user-admin">Organization Admin</SelectItem>
+                    <SelectItem value="user-admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Users can access features, Organization Admins can also manage users.
-                  {editingUser?.id === currentUser?.uid && editingUser?.role === 'user-admin' && " You cannot change your own role as an organization admin."}
+                  Users can access features, Admins can also manage users.
+                  {editingUser?.id === currentUser?.uid && editingUser?.role === 'user-admin' && " You cannot change your own role as an admin."}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -436,7 +436,7 @@ const OrganizationUsersPage: NextPage = () => {
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
                           <Badge variant={user.role === 'user-admin' ? 'default' : user.role === 'system-admin' ? 'destructive' : 'secondary'}>
-                            {user.role === 'user-admin' ? 'Org Admin' : user.role === 'system-admin' ? 'System Admin': 'User'}
+                            {user.role === 'user-admin' ? 'Admin' : user.role === 'system-admin' ? 'System Admin': 'User'}
                           </Badge>
                         </TableCell>
                         <TableCell>{user.createdAt}</TableCell>

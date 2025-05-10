@@ -372,7 +372,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="user-admin">Organization Admin</SelectItem>
+                    <SelectItem value="user-admin">Admin</SelectItem>
                      {currentUserRole === 'system-admin' && ( // Only system admin can assign system-admin role
                         <SelectItem value="system-admin">System Admin</SelectItem>
                      )}
@@ -446,8 +446,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
         <CardHeader className="border-b">
           <div className="flex flex-row justify-between items-center">
             <div>
-                <CardTitle className="text-lg font-normal text-primary">Manage Users for <strong className="text-foreground">{organization.name}</strong></CardTitle>
-                <CardDescription className="text-xs mt-1 text-muted-foreground">View, add, or modify users for this organization.</CardDescription>
+                <CardTitle className="text-lg font-normal text-primary">View, add, or modify users for <strong className="text-foreground">{organization.name}</strong></CardTitle>
             </div>
            <Button onClick={handleAddUserClick}>
             <UserPlus className="mr-2 h-4 w-4" /> Add User
@@ -483,7 +482,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
                             user.role === 'user-admin' ? 'default' : 'secondary'
                           }>
                             {user.role === 'system-admin' ? 'System Admin' :
-                             user.role === 'user-admin' ? 'Org Admin' : 'User'}
+                             user.role === 'user-admin' ? 'Admin' : 'User'}
                           </Badge>
                         </TableCell>
                         <TableCell>{user.createdAt}</TableCell>
