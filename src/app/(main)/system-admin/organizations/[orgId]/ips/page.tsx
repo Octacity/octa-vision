@@ -99,15 +99,18 @@ const ManageOrganizationIPsPage: NextPage = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>
-        <CardHeader className="flex flex-row justify-between items-center border-b">
-          <div>
-            <CardDescription className="text-xs">
-              View and manage camera RTSP URLs for <strong className="text-foreground">{organization.name}</strong>.
-            </CardDescription>
+        <CardHeader className="border-b">
+          <div className="flex flex-row justify-between items-center">
+            <div>
+              <CardTitle className="text-base">Manage Camera IPs</CardTitle>
+              <CardDescription className="text-xs mt-1">
+                View and manage camera RTSP URLs for <strong className="text-foreground">{organization.name}</strong>.
+              </CardDescription>
+            </div>
+            <Button onClick={handleAddIp}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add IP / Camera
+            </Button>
           </div>
-          <Button onClick={handleAddIp}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add IP / Camera
-          </Button>
         </CardHeader>
         <CardContent className="p-0"> {/* Removed sm:p-6 sm:pt-0 */}
           {cameras.length > 0 ? (
@@ -159,4 +162,3 @@ const ManageOrganizationIPsPage: NextPage = () => {
 };
 
 export default ManageOrganizationIPsPage;
-

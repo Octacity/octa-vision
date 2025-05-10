@@ -105,13 +105,16 @@ const ManageOrganizationUsersPage: NextPage = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>
-        <CardHeader className="flex flex-row justify-between items-center border-b">
-          <div>
-            <CardDescription className="text-xs">View, add, or modify users for <strong className="text-foreground">{organization.name}</strong>.</CardDescription>
-          </div>
+        <CardHeader className="border-b">
+          <div className="flex flex-row justify-between items-center">
+            <div>
+                <CardTitle className="text-base">Manage Users</CardTitle>
+                <CardDescription className="text-xs mt-1">View, add, or modify users for <strong className="text-foreground">{organization.name}</strong>.</CardDescription>
+            </div>
            <Button onClick={handleAddUser}>
             <UserPlus className="mr-2 h-4 w-4" /> Add User
           </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0"> {/* Removed sm:p-6 sm:pt-0 */}
           {users.length > 0 ? (
@@ -182,4 +185,3 @@ const ManageOrganizationUsersPage: NextPage = () => {
 };
 
 export default ManageOrganizationUsersPage;
-

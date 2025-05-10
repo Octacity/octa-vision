@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
-import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card'; // Removed CardTitle
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, ArrowLeft, Edit3, PlusCircle, Settings, ShieldAlert } from 'lucide-react';
@@ -57,8 +57,8 @@ const ManageOrganizationCamerasPage: NextPage = () => {
 
         const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgId));
         const camerasSnapshot = await getDocs(camerasQuery);
-        const camerasData = camerasSnapshot.docs.map(docSnapshot => ({ // Renamed doc to docSnapshot
-          id: docSnapshot.id, // Use docSnapshot.id
+        const camerasData = camerasSnapshot.docs.map(docSnapshot => ({ 
+          id: docSnapshot.id, 
           cameraName: docSnapshot.data().cameraName,
           url: docSnapshot.data().url,
           processingStatus: docSnapshot.data().processingStatus || 'unknown',
@@ -124,15 +124,18 @@ const ManageOrganizationCamerasPage: NextPage = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>
-        <CardHeader className="flex flex-row justify-between items-center border-b">
-          <div>
-            <CardDescription className="text-xs">
-              {translate('manageOrgCameras.description', { orgName: organization.name })}
-            </CardDescription>
+        <CardHeader className="border-b">
+          <div className="flex flex-row justify-between items-center">
+            <div>
+              <CardTitle className="text-base">Manage Cameras</CardTitle>
+              <CardDescription className="text-xs mt-1">
+                {translate('manageOrgCameras.description', { orgName: organization.name })}
+              </CardDescription>
+            </div>
+            <Button onClick={handleAddCamera} disabled>
+              <PlusCircle className="mr-2 h-4 w-4" /> {translate('manageOrgCameras.addCamera')}
+            </Button>
           </div>
-          <Button onClick={handleAddCamera} disabled>
-            <PlusCircle className="mr-2 h-4 w-4" /> {translate('manageOrgCameras.addCamera')}
-          </Button>
         </CardHeader>
         <CardContent className="p-0">
           {cameras.length > 0 ? (
@@ -189,4 +192,3 @@ const ManageOrganizationCamerasPage: NextPage = () => {
 };
 
 export default ManageOrganizationCamerasPage;
-

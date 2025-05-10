@@ -36,14 +36,16 @@ const OrganizationUsersPage: NextPage = () => {
   return (
     <div>
       <Card>
-        <CardHeader className="flex flex-row justify-between items-center border-b">
-          <div>
-            {/* <CardTitle>Manage Users</CardTitle> Removed for consistency, appbar has title */}
-            <CardDescription className="text-xs">Add, remove, or update users within your organization.</CardDescription>
+        <CardHeader className="border-b">
+          <div className="flex flex-row justify-between items-center">
+            <div>
+              <CardTitle className="text-base">Manage Users</CardTitle>
+              <CardDescription className="text-xs mt-1">Add, remove, or update users within your organization.</CardDescription>
+            </div>
+            <Button onClick={handleAddUser}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add User
+            </Button>
           </div>
-          <Button onClick={handleAddUser}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add User
-          </Button>
         </CardHeader>
         <CardContent className="p-0"> {/* Removed sm:p-6 sm:pt-0 */}
           {users.length > 0 ? (

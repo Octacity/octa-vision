@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
-import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -74,10 +74,10 @@ const ManageOrganizationBillingPage: NextPage = () => {
       </Button>
       <Card>
         <CardHeader className="border-b">
-          {/* CardTitle is handled by app bar */}
-          <CardDescription className="text-xs">
-            {translate('manageBilling.description', { orgName: organization.name })}
-          </CardDescription>
+            <CardTitle className="text-base">{translate('manageBilling.pageTitle')}</CardTitle>
+            <CardDescription className="text-xs mt-1">
+                {translate('manageBilling.description', { orgName: organization.name })}
+            </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center justify-center text-center py-12">
