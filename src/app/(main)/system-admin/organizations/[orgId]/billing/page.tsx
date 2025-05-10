@@ -74,7 +74,7 @@ const ManageOrganizationBillingPage: NextPage = () => {
       </Button>
       <Card>
         <CardHeader className="border-b">
-            <CardTitle className="text-base">{translate('manageBilling.pageTitle')}</CardTitle>
+            <CardTitle>{translate('manageBilling.pageTitle')}</CardTitle>
             <CardDescription className="text-xs mt-1">
                 {translate('manageBilling.description', { orgName: organization.name })}
             </CardDescription>

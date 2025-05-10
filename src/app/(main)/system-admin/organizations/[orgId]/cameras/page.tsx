@@ -127,7 +127,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
         <CardHeader className="border-b">
           <div className="flex flex-row justify-between items-center">
             <div>
-              <CardTitle className="text-base">Manage Cameras</CardTitle>
+              <CardTitle>Manage Cameras</CardTitle>
               <CardDescription className="text-xs mt-1">
                 {translate('manageOrgCameras.description', { orgName: organization.name })}
               </CardDescription>

@@ -180,7 +180,7 @@ const AdminOrganizationsPage: NextPage = () => {
         <CardHeader className="border-b p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle className="text-base">{translate('manageOrgsTitle')}</CardTitle>
+              <CardTitle>{translate('manageOrgsTitle')}</CardTitle>
               <CardDescription className="text-xs mt-1">View all organizations, approve new ones, and manage their settings.</CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">

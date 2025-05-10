@@ -108,7 +108,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
         <CardHeader className="border-b">
           <div className="flex flex-row justify-between items-center">
             <div>
-                <CardTitle className="text-base">Manage Users</CardTitle>
+                <CardTitle>Manage Users</CardTitle>
                 <CardDescription className="text-xs mt-1">View, add, or modify users for <strong className="text-foreground">{organization.name}</strong>.</CardDescription>
             </div>
            <Button onClick={handleAddUser}>
