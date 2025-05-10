@@ -132,14 +132,34 @@ const OrganizationUsersPage: NextPage = () => {
       return;
     }
     setIsSubmitting(true);
+    const emailToCheck = data.email.toLowerCase().trim();
+
     try {
+      // Check if user with this email already exists in the organization
+      const emailQuery = query(
+        collection(db, 'users'),
+        where('organizationId', '==', currentUserOrgId),
+        where('email', '==', emailToCheck)
+      );
+      const emailQuerySnapshot = await getDocs(emailQuery);
+
+      if (!emailQuerySnapshot.empty) {
+        toast({
+          variant: 'destructive',
+          title: 'User Exists',
+          description: 'A user with this email already exists in your organization.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // In a real app, you would typically trigger a Firebase Function to create the Auth user
       // and then create the Firestore record. For now, we're just creating the Firestore record.
       // It's crucial that the actual Firebase Auth user creation (with email/password or invite)
       // is handled securely, often through a backend process.
 
       await addDoc(collection(db, 'users'), {
-        email: data.email,
+        email: emailToCheck, // Store normalized email
         name: data.name || null, // Store null if name is empty
         role: data.role,
         organizationId: currentUserOrgId,
@@ -160,7 +180,7 @@ const OrganizationUsersPage: NextPage = () => {
   const renderDrawerContent = () => (
     <div className="p-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmitAddUser)} className="space-y-6">
+        <form id="add-user-form" onSubmit={form.handleSubmit(onSubmitAddUser)} className="space-y-6">
           <FormField
             control={form.control}
             name="email"
@@ -221,8 +241,7 @@ const OrganizationUsersPage: NextPage = () => {
       <Button variant="outline" onClick={handleDrawerClose} disabled={isSubmitting}>Cancel</Button>
       <Button
         type="submit"
-        form="add-user-form" // Link to the form inside renderDrawerContent
-        onClick={form.handleSubmit(onSubmitAddUser)} // Ensure this triggers the form submission
+        form="add-user-form" 
         disabled={isSubmitting || !form.formState.isValid}
       >
         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -286,7 +305,7 @@ const OrganizationUsersPage: NextPage = () => {
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
-                      <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                      <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -300,7 +319,7 @@ const OrganizationUsersPage: NextPage = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>{user.createdAt}</TableCell>
-                        <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                        <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
                           <div className="flex justify-end items-center space-x-1">
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -350,3 +369,4 @@ const OrganizationUsersPage: NextPage = () => {
 };
 
 export default OrganizationUsersPage;
+
