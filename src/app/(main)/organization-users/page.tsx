@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { db } from '@/firebase/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 
@@ -42,14 +41,15 @@ interface UserData {
   role: 'system-admin' | 'user-admin' | 'user';
   createdAt: any; // Firestore Timestamp or string after formatting
   name?: string; // Optional name field
+  organizationId?: string;
 }
 
-const addUserSchema = z.object({
+const userFormSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }).min(1, "Email is required."),
-  name: z.string().optional(), // Name is optional for now
-  role: z.enum(['user', 'user-admin']).default('user'), // user-admin can only add 'user' or another 'user-admin' for their org
+  name: z.string().optional(),
+  role: z.enum(['user', 'user-admin']).default('user'),
 });
-type AddUserFormValues = z.infer<typeof addUserSchema>;
+type UserFormValues = z.infer<typeof userFormSchema>;
 
 const OrganizationUsersPage: NextPage = () => {
   const { toast } = useToast();
@@ -61,10 +61,10 @@ const OrganizationUsersPage: NextPage = () => {
   const [currentUserOrgId, setCurrentUserOrgId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
 
-
-  const form = useForm<AddUserFormValues>({
-    resolver: zodResolver(addUserSchema),
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userFormSchema),
     defaultValues: {
       email: '',
       name: '',
@@ -86,7 +86,6 @@ const OrganizationUsersPage: NextPage = () => {
             setCurrentUserOrgId(userData.organizationId);
             fetchUsers(userData.organizationId);
           } else {
-            // Handle case where user is not a user-admin or has no orgId
             setUsers([]);
             setIsLoading(false);
           }
@@ -124,15 +123,11 @@ const OrganizationUsersPage: NextPage = () => {
 
 
   const handleEditUser = (userId: string) => {
-    // Placeholder for edit functionality
-    // You might want to open the drawer with the user's data pre-filled
-    // or navigate to a separate edit page
     const userToEdit = users.find(u => u.id === userId);
     if (userToEdit) {
+        setEditingUser(userToEdit);
         form.reset({ email: userToEdit.email, name: userToEdit.name || '', role: userToEdit.role as 'user' | 'user-admin' });
-        // Set a state to indicate editing mode if needed, or handle update logic differently
         setIsDrawerOpen(true);
-        toast({ title: 'Edit User', description: `Editing ${userToEdit.email}. (Save functionality not fully implemented).`});
     } else {
         toast({ variant: 'destructive', title: 'Error', description: 'User not found.'});
     }
@@ -170,7 +165,7 @@ const OrganizationUsersPage: NextPage = () => {
     try {
       await deleteDoc(doc(db, "users", userId));
       toast({ title: 'User Deleted', description: `User has been removed from the organization.` });
-      if(currentUserOrgId) fetchUsers(currentUserOrgId); 
+      if(currentUserOrgId) fetchUsers(currentUserOrgId);
     } catch (error) {
       console.error("Error deleting user: ", error);
       toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete user. Please try again.' });
@@ -178,15 +173,17 @@ const OrganizationUsersPage: NextPage = () => {
   };
 
   const handleAddUserClick = () => {
+    setEditingUser(null);
     form.reset();
     setIsDrawerOpen(true);
   };
 
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
+    setEditingUser(null);
   };
 
-  const onSubmitAddUser: SubmitHandler<AddUserFormValues> = async (data) => {
+  const onSubmitUserForm: SubmitHandler<UserFormValues> = async (data) => {
     if (!currentUserOrgId || !currentUser) {
       toast({ variant: 'destructive', title: 'Error', description: 'Organization context not found.' });
       return;
@@ -195,40 +192,98 @@ const OrganizationUsersPage: NextPage = () => {
     const emailToCheck = data.email.toLowerCase().trim();
 
     try {
-      // Check if user with this email already exists in the organization
-      const emailQuery = query(
-        collection(db, 'users'),
-        where('organizationId', '==', currentUserOrgId),
-        where('email', '==', emailToCheck)
-      );
-      const emailQuerySnapshot = await getDocs(emailQuery);
+      if (editingUser) {
+        // Edit existing user
+        const userToUpdateRef = doc(db, 'users', editingUser.id);
+        const userToUpdateSnap = await getDoc(userToUpdateRef);
+        if (!userToUpdateSnap.exists()) {
+          toast({ variant: 'destructive', title: 'Error', description: 'User not found for update.' });
+          setIsSubmitting(false);
+          return;
+        }
+        const currentData = userToUpdateSnap.data();
 
-      if (!emailQuerySnapshot.empty) {
-        toast({
-          variant: 'destructive',
-          title: 'User Exists',
-          description: 'A user with this email already exists in your organization.',
+        // Prevent user-admin from changing their own role to non-admin if they are the last admin
+        if (editingUser.id === currentUser.uid && editingUser.role === 'user-admin' && data.role !== 'user-admin') {
+            const adminUsersQuery = query(
+                collection(db, 'users'),
+                where('organizationId', '==', currentUserOrgId),
+                where('role', '==', 'user-admin')
+            );
+            const adminUsersSnapshot = await getDocs(adminUsersQuery);
+            if (adminUsersSnapshot.docs.filter(doc => doc.id !== editingUser.id).length === 0) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Action Denied',
+                    description: 'Cannot change your role as you are the last organization admin.',
+                });
+                setIsSubmitting(false);
+                return;
+            }
+        }
+         // Prevent changing role of the last user-admin in the organization to 'user'
+        if (editingUser.role === 'user-admin' && data.role === 'user') {
+            const adminUsersQuery = query(
+                collection(db, 'users'),
+                where('organizationId', '==', editingUser.organizationId),
+                where('role', '==', 'user-admin')
+            );
+            const adminUsersSnapshot = await getDocs(adminUsersQuery);
+            if (adminUsersSnapshot.docs.filter(d => d.id !== editingUser.id).length === 0) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Action Denied',
+                    description: 'This is the last organization admin. Cannot change their role to user.',
+                });
+                setIsSubmitting(false);
+                return;
+            }
+        }
+
+
+        await updateDoc(userToUpdateRef, {
+          email: emailToCheck,
+          name: data.name || currentData?.name || null,
+          role: data.role,
+          updatedAt: serverTimestamp(),
         });
-        setIsSubmitting(false);
-        return;
+        toast({ title: 'User Updated', description: `${emailToCheck} has been updated.` });
+      } else {
+        // Add new user
+        const emailQuery = query(
+          collection(db, 'users'),
+          where('organizationId', '==', currentUserOrgId),
+          where('email', '==', emailToCheck)
+        );
+        const emailQuerySnapshot = await getDocs(emailQuery);
+
+        if (!emailQuerySnapshot.empty) {
+          toast({
+            variant: 'destructive',
+            title: 'User Exists',
+            description: 'A user with this email already exists in your organization.',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        await addDoc(collection(db, 'users'), {
+          email: emailToCheck,
+          name: data.name || null,
+          role: data.role,
+          organizationId: currentUserOrgId,
+          createdBy: currentUser.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        toast({ title: 'User Added', description: `${data.email} has been added to your organization.` });
       }
 
-
-      await addDoc(collection(db, 'users'), {
-        email: emailToCheck, 
-        name: data.name || null, 
-        role: data.role,
-        organizationId: currentUserOrgId,
-        createdBy: currentUser.uid, 
-        createdAt: serverTimestamp(),
-      });
-
-      toast({ title: 'User Added', description: `${data.email} has been added to your organization.` });
-      fetchUsers(currentUserOrgId); 
+      fetchUsers(currentUserOrgId);
       handleDrawerClose();
     } catch (error) {
-      console.error("Error adding user: ", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not add user. Please try again.' });
+      console.error("Error processing user form: ", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not process user data. Please try again.' });
     }
     setIsSubmitting(false);
   };
@@ -236,7 +291,7 @@ const OrganizationUsersPage: NextPage = () => {
   const renderDrawerContent = () => (
     <div className="p-6">
       <Form {...form}>
-        <form id="add-user-form" onSubmit={form.handleSubmit(onSubmitAddUser)} className="space-y-6">
+        <form id="user-form" onSubmit={form.handleSubmit(onSubmitUserForm)} className="space-y-6">
           <FormField
             control={form.control}
             name="email"
@@ -269,7 +324,11 @@ const OrganizationUsersPage: NextPage = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Role</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  disabled={editingUser?.id === currentUser?.uid && editingUser?.role === 'user-admin'}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
@@ -282,6 +341,7 @@ const OrganizationUsersPage: NextPage = () => {
                 </Select>
                 <FormDescription>
                   Users can access features, Organization Admins can also manage users.
+                  {editingUser?.id === currentUser?.uid && editingUser?.role === 'user-admin' && " You cannot change your own role as an organization admin."}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -297,11 +357,11 @@ const OrganizationUsersPage: NextPage = () => {
       <Button variant="outline" onClick={handleDrawerClose} disabled={isSubmitting}>Cancel</Button>
       <Button
         type="submit"
-        form="add-user-form" 
+        form="user-form"
         disabled={isSubmitting || !form.formState.isValid}
       >
         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Add User
+        {editingUser ? "Save Changes" : "Add User"}
       </Button>
     </div>
   );
@@ -315,7 +375,7 @@ const OrganizationUsersPage: NextPage = () => {
     );
   }
 
-  
+
   if (!currentUserOrgId || currentUserRole !== 'user-admin') {
      return (
       <Card>
@@ -396,14 +456,14 @@ const OrganizationUsersPage: NextPage = () => {
                               <AlertDialog>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="outline" 
-                                      size="icon" 
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
                                       className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
-                                      disabled={currentUser?.uid === user.id} 
+                                      disabled={currentUser?.uid === user.id}
                                       onClick={(e) => {
                                         if (currentUser?.uid === user.id) {
-                                          e.preventDefault(); 
+                                          e.preventDefault();
                                           toast({
                                             variant: "destructive",
                                             title: "Cannot Delete Self",
@@ -419,7 +479,7 @@ const OrganizationUsersPage: NextPage = () => {
                                     <p>{currentUser?.uid === user.id ? "Cannot delete self" : "Delete User"}</p>
                                   </TooltipContent>
                                 </Tooltip>
-                                {currentUser?.uid !== user.id && ( 
+                                {currentUser?.uid !== user.id && (
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -459,7 +519,7 @@ const OrganizationUsersPage: NextPage = () => {
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={handleDrawerClose}
-        title="Add New User"
+        title={editingUser ? "Edit User" : "Add New User"}
         footerContent={drawerFooter()}
       >
         {renderDrawerContent()}
