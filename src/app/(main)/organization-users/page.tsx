@@ -403,7 +403,7 @@ const OrganizationUsersPage: NextPage = () => {
               </CardDescription>
             </div>
              {currentUserRole === 'user-admin' && (
-              <Button onClick={handleAddUserClick}>
+              <Button size="sm" onClick={handleAddUserClick}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add User
               </Button>
             )}

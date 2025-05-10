@@ -127,12 +127,12 @@ const ManageOrganizationCamerasPage: NextPage = () => {
         <CardHeader className="border-b">
           <div className="flex flex-row justify-between items-center">
             <div>
-              <CardTitle>Manage Cameras</CardTitle>
-              <CardDescription className="text-xs mt-1">
+              <CardTitle className="text-lg font-normal text-primary">Manage Cameras</CardTitle>
+              <CardDescription className="text-xs mt-1 text-muted-foreground">
                 {translate('manageOrgCameras.description', { orgName: organization.name })}
               </CardDescription>
             </div>
-            <Button onClick={handleAddCamera} disabled>
+            <Button size="sm" onClick={handleAddCamera} disabled>
               <PlusCircle className="mr-2 h-4 w-4" /> {translate('manageOrgCameras.addCamera')}
             </Button>
           </div>
@@ -147,7 +147,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
                       <TableHead>{translate('manageOrgCameras.cameraName')}</TableHead>
                       <TableHead>{translate('manageOrgCameras.rtspUrl')}</TableHead>
                       <TableHead>{translate('manageOrgCameras.status')}</TableHead>
-                      <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">{translate('actions')}</TableHead>
+                      <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">{translate('actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -160,7 +160,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
                             {translate(`cameraStatus.${camera.processingStatus}`, {}, camera.processingStatus)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                        <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
                            <div className="flex justify-end items-center space-x-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>

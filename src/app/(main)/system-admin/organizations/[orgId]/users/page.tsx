@@ -448,7 +448,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
             <div>
                 <CardTitle className="text-lg font-normal text-primary">View, add, or modify users for <strong className="text-foreground">{organization.name}</strong></CardTitle>
             </div>
-           <Button onClick={handleAddUserClick}>
+           <Button size="sm" onClick={handleAddUserClick}>
             <UserPlus className="mr-2 h-4 w-4" /> Add User
           </Button>
           </div>

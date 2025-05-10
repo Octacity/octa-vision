@@ -102,12 +102,12 @@ const ManageOrganizationIPsPage: NextPage = () => {
         <CardHeader className="border-b">
           <div className="flex flex-row justify-between items-center">
             <div>
-              <CardTitle>Manage Camera IPs</CardTitle>
-              <CardDescription className="text-xs mt-1">
+              <CardTitle className="text-lg font-normal text-primary">Manage Camera IPs</CardTitle>
+              <CardDescription className="text-xs mt-1 text-muted-foreground">
                 View and manage camera RTSP URLs for <strong className="text-foreground">{organization.name}</strong>.
               </CardDescription>
             </div>
-            <Button onClick={handleAddIp}>
+            <Button size="sm" onClick={handleAddIp}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add IP / Camera
             </Button>
           </div>
@@ -121,7 +121,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
                     <TableRow>
                       <TableHead>Camera Name</TableHead>
                       <TableHead>RTSP URL / IP Address</TableHead>
-                      <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                      <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -129,7 +129,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
                       <TableRow key={camera.id}>
                         <TableCell className="font-medium">{camera.name || 'Unnamed Camera'}</TableCell>
                         <TableCell>{camera.rtspUrl || 'N/A'}</TableCell>
-                        <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                        <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
                            <div className="flex justify-end items-center space-x-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
