@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Service for interacting with external VSS (Video Search and Summarization) APIs.
- * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, and content retrieval.
+ * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, content retrieval, and health checks.
  */
 
 export interface VssFile {
@@ -30,8 +30,8 @@ export interface VssFileUploadResponse {
 }
 
 export interface VssApiErrorResponse {
-  code: string;
-  message: string;
+  code: string; // e.g., "ErrorCode"
+  message: string; // e.g., "Detailed error message"
 }
 
 const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
@@ -43,17 +43,33 @@ const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
  */
 async function parseApiError(response: Response): Promise<Error> {
   let errorData: VssApiErrorResponse | { message: string } | string;
-  try {
-    errorData = await response.json();
-  } catch (e) {
-    console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Error response body was not valid JSON.`);
-    return new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
+  const contentType = response.headers.get("content-type");
+
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Error response body was valid JSON but failed to parse or structure was unexpected.`, e);
+      // Fallback to statusText if JSON parsing of error fails or if errorData is not as expected
+      return new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
+    }
+  } else {
+    // If not JSON, try to get text, or default to statusText
+    try {
+      const textError = await response.text();
+      console.error(`VSS API request failed with status ${response.status}. Response: ${textError}`);
+      return new Error(textError || `VSS API request failed with status ${response.status}: ${response.statusText}`);
+    } catch (textErrorErr) {
+        console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Could not parse response body as text.`);
+        return new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
+    }
   }
+
 
   const errorMessage = typeof errorData === 'string'
     ? errorData
     : (errorData as VssApiErrorResponse).message || (errorData as { message: string }).message || `VSS API request failed with status ${response.status}`;
-  const errorCode = typeof errorData === 'object' && 'code' in errorData ? (errorData as VssApiErrorResponse).code : 'UnknownError';
+  const errorCode = typeof errorData === 'object' && errorData !== null && 'code' in errorData ? (errorData as VssApiErrorResponse).code : 'UnknownError';
 
   console.error(`VSS API Error (${response.status} - Code: ${errorCode}): ${errorMessage}`, JSON.stringify(errorData, null, 2));
   return new Error(`VSS API Error (${response.status} - Code: ${errorCode}): ${errorMessage}`);
@@ -226,14 +242,6 @@ export async function getVssFileContent(fileId: string): Promise<Blob> {
   }
 }
 
-// Other VSS API client functions can be added here as needed based on other screenshots.
-// For example:
-// export async function createVssAlert(alertData: any): Promise<any> { ... }
-// export async function getVssJobStatus(jobId: string): Promise<any> { ... }
-// export async function getVssFileMetadata(fileId: string): Promise<VssFile> { ... } // Based on page 6
-// The `getVssFileMetadata` would be similar to `getVssFiles` but for a single file ID and returning VssFile.
-// Let's add getVssFileMetadata based on page 6 details.
-
 /**
  * Retrieves metadata for a specific file from the VSS API.
  * @param fileId The ID of the file for which to retrieve metadata.
@@ -272,3 +280,50 @@ export async function getVssFileMetadata(fileId: string): Promise<VssFile> {
     throw new Error(`Failed to parse VSS API file metadata response: ${jsonParseError.message}`);
   }
 }
+
+/**
+ * Checks the VSS API health status.
+ * @returns A promise that resolves with a string indicating the health status (e.g., "OK").
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function checkVssApiHealth(): Promise<string> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/health/ready`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error("Network error when calling VSS /health/ready API:", networkError);
+    throw new Error(`Network error during VSS API health check: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    // The health check API returns a plain text string according to screenshot page 8
+    return await vssApiResponse.text();
+  } catch (textParseError: any) {
+    console.error("Failed to parse VSS API success response text for health check:", textParseError);
+    throw new Error(`Failed to parse VSS API health check response: ${textParseError.message}`);
+  }
+}
+
+
+// TODO: Implement functions for VSS Alert APIs based on pages 3, 4, 5
+// Example stubs:
+// export async function createVssAlert(alertData: any): Promise<any> { /* ... */ }
+// export async function getVssAlerts(filters?: any): Promise<any[]> { /* ... */ }
+// export async function getVssAlertById(alertId: string): Promise<any> { /* ... */ }
+// export async function updateVssAlert(alertId: string, updateData: any): Promise<any> { /* ... */ }
+// export async function deleteVssAlert(alertId: string): Promise<void> { /* ... */ }
+
+// TODO: Implement functions for VSS Job APIs if needed (e.g. page 7 shows /jobs/{job_id})
+// export async function getVssJobStatus(jobId: string): Promise<any> { /* ... */ }
