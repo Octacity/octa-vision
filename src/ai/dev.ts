@@ -1,2 +1,4 @@
+
 import '@/ai/flows/analyze-camera-feed.ts';
 import '@/ai/flows/generate-group-alert-events.ts';
+import '@/ai/flows/fetch-alerts-flow.ts';
