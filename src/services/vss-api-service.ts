@@ -80,6 +80,17 @@ export interface VssModelListResponse {
   data: VssModel[];
 }
 
+export interface VssRecommendedConfigRequest {
+  video_length: number;
+  target_response_time: number;
+  max_event_duration: number;
+}
+
+export interface VssRecommendedConfigResponse {
+  chunk_size: number;
+  text: string; // "Recommendation text"
+}
+
 
 const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
 
@@ -590,6 +601,45 @@ export async function getVssModels(): Promise<VssModelListResponse> {
   } catch (jsonParseError: any) {
     console.error("Failed to parse VSS API success response JSON for model list:", jsonParseError);
     throw new Error(`Failed to parse VSS API model list response: ${jsonParseError.message}`);
+  }
+}
+
+/**
+ * Recommends a configuration for a video based on its properties.
+ * @param requestBody The request body containing video_length, target_response_time, and max_event_duration.
+ * @returns A promise that resolves with the recommended configuration.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssRecommendedConfig(requestBody: VssRecommendedConfigRequest): Promise<VssRecommendedConfigResponse> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/recommended_config`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${process.env.VSS_API_KEY}` // If API key needed
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (networkError: any) {
+    console.error("Network error when calling VSS /recommended_config API:", networkError);
+    throw new Error(`Network error during VSS recommended config retrieval: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssRecommendedConfigResponse;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for recommended config:", jsonParseError);
+    throw new Error(`Failed to parse VSS API recommended config response: ${jsonParseError.message}`);
   }
 }
 
