@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Service for interacting with external VSS (Video Search and Summarization) APIs.
- * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, content retrieval, health checks, and live stream management.
+ * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, content retrieval, health checks, live stream management, and model listing.
  */
 
 export interface VssFile {
@@ -66,6 +66,20 @@ export interface VssLiveStreamDeletionResponse {
   message: string; // e.g., "Livestream {id} and associated resources deleted successfully"
 }
 
+export interface VssModel {
+  id: string;
+  object: 'model'; // Literal type based on screenshot
+  created: number; // Timestamp
+  owned_by: string; // e.g., "NVIDIA"
+  api_type: string; // e.g., "internal"
+  // Potentially other fields not visible in the screenshot
+}
+
+export interface VssModelListResponse {
+  object: 'list'; // Literal type based on screenshot
+  data: VssModel[];
+}
+
 
 const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
 
@@ -77,31 +91,31 @@ const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
 async function parseApiError(response: Response): Promise<Error> {
   let errorData: VssApiErrorResponse | { message: string } | string;
   const contentType = response.headers.get("content-type");
+  let rawErrorText: string | null = null;
 
   if (contentType && contentType.includes("application/json")) {
     try {
-      errorData = await response.json();
+      const text = await response.text(); // Read as text first to avoid consuming the stream
+      rawErrorText = text;
+      errorData = JSON.parse(text);
     } catch (e) {
-      console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Error response body was valid JSON but failed to parse or structure was unexpected.`, e);
-      // Fallback to statusText if JSON parsing of error fails or if errorData is not as expected
-      return new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
+      console.error(`VSS API request failed with status ${response.status}. Error response body was application/json but failed to parse or structure was unexpected. Raw: ${rawErrorText || 'Failed to read raw text'}. Error:`, e);
+      return new Error(rawErrorText || `VSS API request failed with status ${response.status}: ${response.statusText}. Invalid JSON response.`);
     }
   } else {
-    // If not JSON, try to get text, or default to statusText
     try {
-      const textError = await response.text();
-      console.error(`VSS API request failed with status ${response.status}. Response: ${textError}`);
-      return new Error(textError || `VSS API request failed with status ${response.status}: ${response.statusText}`);
+      rawErrorText = await response.text();
+      errorData = rawErrorText;
+      console.error(`VSS API request failed with status ${response.status}. Response: ${rawErrorText}`);
     } catch (textErrorErr) {
         console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Could not parse response body as text.`);
         return new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
     }
   }
 
-
   const errorMessage = typeof errorData === 'string'
     ? errorData
-    : (errorData as VssApiErrorResponse).message || (errorData as { message: string }).message || `VSS API request failed with status ${response.status}`;
+    : (errorData as VssApiErrorResponse).message || (errorData as { message: string }).message || rawErrorText || `VSS API request failed with status ${response.status}`;
   const errorCode = typeof errorData === 'object' && errorData !== null && 'code' in errorData ? (errorData as VssApiErrorResponse).code : 'UnknownError';
 
   console.error(`VSS API Error (${response.status} - Code: ${errorCode}): ${errorMessage}`, JSON.stringify(errorData, null, 2));
@@ -542,6 +556,40 @@ export async function getVssMetrics(): Promise<string> {
   } catch (textParseError: any) {
     console.error("Failed to parse VSS API success response text for metrics:", textParseError);
     throw new Error(`Failed to parse VSS API metrics response: ${textParseError.message}`);
+  }
+}
+
+/**
+ * Retrieves a list of available models from the VSS API.
+ * @returns A promise that resolves with a list of models.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssModels(): Promise<VssModelListResponse> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/models`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error("Network error when calling VSS /models API:", networkError);
+    throw new Error(`Network error during VSS model listing: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssModelListResponse;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for model list:", jsonParseError);
+    throw new Error(`Failed to parse VSS API model list response: ${jsonParseError.message}`);
   }
 }
 
