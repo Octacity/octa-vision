@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Service for interacting with external VSS (Video Search and Summarization) APIs.
- * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, content retrieval, and health checks.
+ * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, content retrieval, health checks, and live stream management.
  */
 
 export interface VssFile {
@@ -38,10 +38,26 @@ export interface VssApiErrorResponse {
 export interface VssStreamDetails {
   id: string;
   status: 'processing' | 'completed' | 'failed' | 'pending';
-  cameraId?: string; 
+  cameraId?: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
-  outputUrl?: string; 
+  outputUrl?: string;
+}
+
+export interface VssLiveStream {
+  id: string;
+  livestreamUrl: string;
+  description?: string;
+  chunk_duration: number;
+  summary_duration: number;
+  // Potentially other fields like createdAt, updatedAt, status etc.
+}
+
+export interface VssLiveStreamListResponse {
+  // Assuming the API returns an array of live streams directly,
+  // or an object with a 'data' property like other list responses.
+  // Based on page 10, it seems to be a direct array.
+  data: VssLiveStream[]; // If it's wrapped, adjust accordingly
 }
 
 
@@ -128,7 +144,7 @@ export async function uploadFileToVss(
   if (!vssApiResponse.ok) {
     throw await parseApiError(vssApiResponse);
   }
-  
+
   try {
     return await vssApiResponse.json() as VssFileUploadResponse;
   } catch (jsonParseError: any) {
@@ -209,7 +225,7 @@ export async function deleteVssFile(fileId: string): Promise<void> {
   if (vssApiResponse.status === 200 || vssApiResponse.status === 204) {
     return; // Successfully deleted
   }
-  
+
   // If not 200/204, then treat as an error.
   throw await parseApiError(vssApiResponse);
 }
@@ -366,6 +382,45 @@ export async function getVssStreamDetails(streamId: string): Promise<VssStreamDe
     throw new Error(`Failed to parse VSS API stream details response: ${jsonParseError.message}`);
   }
 }
+
+/**
+ * Retrieves a list of all live streams from the VSS API.
+ * @returns A promise that resolves with a list of live streams.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssLiveStreams(): Promise<VssLiveStreamListResponse> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/live-stream`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error("Network error when calling VSS /live-stream API (list):", networkError);
+    throw new Error(`Network error during VSS live stream listing: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    // Page 10 shows the response as a direct array of live stream objects.
+    const liveStreamsArray = await vssApiResponse.json() as VssLiveStream[];
+    return { data: liveStreamsArray }; // Wrap it in 'data' to match VssLiveStreamListResponse
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for live stream list:", jsonParseError);
+    throw new Error(`Failed to parse VSS API live stream list response: ${jsonParseError.message}`);
+  }
+}
+
+// TODO: Implement POST /live-stream - Add a live stream (details for request body needed from next screenshot)
+// export async function addVssLiveStream(streamData: any): Promise<VssLiveStream> { /* ... */ }
 
 
 // TODO: Implement functions for VSS Alert APIs based on pages 3, 4, 5
