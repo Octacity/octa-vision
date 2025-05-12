@@ -91,6 +91,46 @@ export interface VssRecommendedConfigResponse {
   text: string; // "Recommendation text"
 }
 
+export interface VssSummarizeRequest {
+  id: string; // "3fa85f64-5717-4562-b3fc-2c963f66afa6" - Seems like a video ID or job ID
+  prompt: string; // "Write a concise and clear dense caption for the provided warehouse video"
+  model: string; // "vila-1.5"
+  api_type?: "internal" | string; // "internal"
+  response_format?: { type: "text" | string }; // { "type": "text" }
+  stream?: boolean; // false
+  stream_options?: { include_usage: boolean }; // { "include_usage": false }
+  max_tokens?: number; // 512
+  temperature?: number; // 0.2
+  top_p?: number; // 1
+  top_k?: number; // 300
+  seed?: number; // 10
+  chunk_duration?: number; // 30,
+  chunk_overlap_duration?: number; // 10,
+  summary_duration?: number; // 90,
+  media_info?: { type: "offset", start_offset: number, end_offset: number }; // { "type": "offset", "start_offset": 0, "end_offset": 4000000000 }
+  user?: string; // "user-123"
+  caption_summarization_prompt?: string; // "Prompt for caption summarization"
+}
+
+export interface VssSummarizeResponseChoiceMessage {
+  content: string; // "Some summary of the video"
+  tool_calls: any[]; // []
+  role: "assistant" | string; // "assistant"
+}
+
+export interface VssSummarizeResponseChoice {
+  finish_reason: "stop" | string; // "stop"
+  index: number; // 1
+  message: VssSummarizeResponseChoiceMessage;
+}
+
+export interface VssSummarizeResponse {
+  id: string; // "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  choices: VssSummarizeResponseChoice[];
+  created: number; // 1717405636 (timestamp)
+  model: string; // "vila-1.5"
+}
+
 
 const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
 
@@ -643,6 +683,45 @@ export async function getVssRecommendedConfig(requestBody: VssRecommendedConfigR
   }
 }
 
+/**
+ * Summarizes a video using the VSS /summarize endpoint.
+ * @param requestBody The request body for the summarization task.
+ * @returns A promise that resolves with the summarization response.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function summarizeVssVideo(requestBody: VssSummarizeRequest): Promise<VssSummarizeResponse> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/summarize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${process.env.VSS_API_KEY}` // If API key needed
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (networkError: any) {
+    console.error("Network error when calling VSS /summarize API:", networkError);
+    throw new Error(`Network error during VSS video summarization: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssSummarizeResponse;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for video summarization:", jsonParseError);
+    throw new Error(`Failed to parse VSS API video summarization response: ${jsonParseError.message}`);
+  }
+}
+
 
 // TODO: Implement POST /live-stream - Add a live stream (details for request body needed from next screenshot)
 // export async function addVssLiveStream(streamData: any): Promise<VssLiveStream> { /* ... */ }
@@ -658,4 +737,5 @@ export async function getVssRecommendedConfig(requestBody: VssRecommendedConfigR
 
 // TODO: Implement functions for VSS Job APIs if needed (e.g. page 7 shows /jobs/{job_id})
 // export async function getVssJobStatus(jobId: string): Promise<any> { /* ... */ }
+
 
