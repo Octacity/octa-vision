@@ -48,16 +48,22 @@ export interface VssLiveStream {
   id: string;
   livestreamUrl: string;
   description?: string;
-  chunk_duration: number;
-  summary_duration: number;
-  // Potentially other fields like createdAt, updatedAt, status etc.
+  chunk_duration: number; // Assuming this is always a number
+  summary_duration: number; // Assuming this is always a number
+  // Page 11 shows more fields for GET /live-stream/{id} response:
+  status?: 'active' | 'inactive' | 'error';
+  created_at?: string; // ISO date string
+  updated_at?: string; // ISO date string
+  // Potentially other fields like processing_details, etc.
 }
 
+
 export interface VssLiveStreamListResponse {
-  // Assuming the API returns an array of live streams directly,
-  // or an object with a 'data' property like other list responses.
-  // Based on page 10, it seems to be a direct array.
-  data: VssLiveStream[]; // If it's wrapped, adjust accordingly
+  data: VssLiveStream[];
+}
+
+export interface VssLiveStreamDeletionResponse {
+  message: string; // e.g., "Livestream {id} and associated resources deleted successfully"
 }
 
 
@@ -344,7 +350,7 @@ export async function checkVssApiHealth(): Promise<string> {
 }
 
 /**
- * Retrieves details for a specific VSS stream.
+ * Retrieves details for a specific VSS stream (job stream, not live stream).
  * @param streamId The ID of the VSS stream.
  * @returns A promise that resolves with the stream details.
  * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
@@ -361,7 +367,7 @@ export async function getVssStreamDetails(streamId: string): Promise<VssStreamDe
 
   let vssApiResponse;
   try {
-    // Assuming an endpoint like /streams/{streamId} based on common API patterns
+    // Assuming an endpoint like /streams/{streamId} based on common API patterns (page 6)
     vssApiResponse = await fetch(`${VSS_API_BASE_URL}/streams/${streamId}`, {
       method: 'GET',
       // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
@@ -418,6 +424,91 @@ export async function getVssLiveStreams(): Promise<VssLiveStreamListResponse> {
     throw new Error(`Failed to parse VSS API live stream list response: ${jsonParseError.message}`);
   }
 }
+
+/**
+ * Retrieves details for a specific live stream from the VSS API.
+ * @param streamId The ID of the live stream.
+ * @returns A promise that resolves with the live stream details.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssLiveStreamById(streamId: string): Promise<VssLiveStream> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  if (!streamId) {
+    throw new Error("Live stream ID is required to get its details.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/live-stream/${streamId}`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error(`Network error when calling VSS /live-stream/${streamId} API:`, networkError);
+    throw new Error(`Network error during VSS live stream details retrieval: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssLiveStream;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for live stream details:", jsonParseError);
+    throw new Error(`Failed to parse VSS API live stream details response: ${jsonParseError.message}`);
+  }
+}
+
+/**
+ * Deletes a specific live stream from the VSS API.
+ * @param streamId The ID of the live stream to delete.
+ * @returns A promise that resolves with the deletion confirmation message.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function deleteVssLiveStream(streamId: string): Promise<VssLiveStreamDeletionResponse> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  if (!streamId) {
+    throw new Error("Live stream ID is required for deletion.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/live-stream/${streamId}`, {
+      method: 'DELETE',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error(`Network error when calling VSS /live-stream/${streamId} API (delete):`, networkError);
+    throw new Error(`Network error during VSS live stream deletion: ${networkError.message}`);
+  }
+
+  if (vssApiResponse.status === 200 || vssApiResponse.status === 204) {
+    // Page 11 shows a JSON response body for successful DELETE
+    try {
+        if (vssApiResponse.status === 204) { // No content, but API might still send a message if we decide to in future
+            return { message: `Livestream ${streamId} and associated resources deleted successfully.` };
+        }
+        return await vssApiResponse.json() as VssLiveStreamDeletionResponse;
+    } catch (jsonParseError: any) {
+        console.warn("VSS API live stream deletion successful, but failed to parse response body (or body was empty):", jsonParseError);
+        // Fallback to a generic success message if parsing fails or if status is 204
+        return { message: `Livestream ${streamId} and associated resources deleted successfully.` };
+    }
+  }
+  
+  // If not 200/204, then treat as an error.
+  throw await parseApiError(vssApiResponse);
+}
+
 
 // TODO: Implement POST /live-stream - Add a live stream (details for request body needed from next screenshot)
 // export async function addVssLiveStream(streamData: any): Promise<VssLiveStream> { /* ... */ }
