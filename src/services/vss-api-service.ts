@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Service for interacting with external VSS (Video Search and Summarization) APIs.
- * This module provides functions to call VSS endpoints, such as file uploading, listing, and deletion.
+ * This module provides functions to call VSS endpoints, such as file uploading, listing, deletion, and content retrieval.
  */
 
 export interface VssFile {
@@ -24,6 +24,9 @@ export interface VssFileUploadResponse {
   filename: string;
   purpose: string;
   media_type: 'image' | 'video';
+  // The screenshot for POST /files (page 2) shows a more detailed response, including 'id', 'bytes', 'filename', 'purpose'.
+  // Let's assume the response for upload might be similar to VssFile.
+  bytes?: number;
 }
 
 export interface VssApiErrorResponse {
@@ -34,37 +37,26 @@ export interface VssApiErrorResponse {
 const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
 
 /**
- * Helper function to handle API responses and errors.
+ * Helper function to parse API error responses.
  * @param response The fetch API Response object.
- * @returns The JSON parsed response.
- * @throws Will throw an error if the API request failed.
+ * @returns A promise that resolves with an Error object.
  */
-async function handleApiResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    let errorData: VssApiErrorResponse | { message: string } | string;
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Error response body was not valid JSON.`);
-      throw new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
-    }
-
-    const errorMessage = typeof errorData === 'string'
-      ? errorData
-      : (errorData as VssApiErrorResponse).message || (errorData as { message: string }).message || `VSS API request failed with status ${response.status}`;
-    const errorCode = typeof errorData === 'object' && 'code' in errorData ? (errorData as VssApiErrorResponse).code : 'UnknownError';
-
-    console.error(`VSS API Error (${response.status} - ${errorCode}): ${errorMessage}`, errorData);
-    throw new Error(`VSS API Error (${response.status} - ${errorCode}): ${errorMessage}`);
-  }
-
+async function parseApiError(response: Response): Promise<Error> {
+  let errorData: VssApiErrorResponse | { message: string } | string;
   try {
-    const responseData: T = await response.json();
-    return responseData;
-  } catch (jsonParseError: any) {
-    console.error("Failed to parse VSS API success response JSON:", jsonParseError);
-    throw new Error(`Failed to parse VSS API response: ${jsonParseError.message}`);
+    errorData = await response.json();
+  } catch (e) {
+    console.error(`VSS API request failed with status ${response.status}: ${response.statusText}. Error response body was not valid JSON.`);
+    return new Error(`VSS API request failed with status ${response.status}: ${response.statusText}`);
   }
+
+  const errorMessage = typeof errorData === 'string'
+    ? errorData
+    : (errorData as VssApiErrorResponse).message || (errorData as { message: string }).message || `VSS API request failed with status ${response.status}`;
+  const errorCode = typeof errorData === 'object' && 'code' in errorData ? (errorData as VssApiErrorResponse).code : 'UnknownError';
+
+  console.error(`VSS API Error (${response.status} - Code: ${errorCode}): ${errorMessage}`, JSON.stringify(errorData, null, 2));
+  return new Error(`VSS API Error (${response.status} - Code: ${errorCode}): ${errorMessage}`);
 }
 
 
@@ -92,7 +84,7 @@ export async function uploadFileToVss(
   formData.append('purpose', purpose);
   formData.append('media_type', mediaType);
   formData.append('file', new Blob([fileBuffer]), filename);
-  formData.append('filename', filename);
+  formData.append('filename', filename); // filename is also expected in the form data as per page 1
 
   let vssApiResponse;
   try {
@@ -106,7 +98,16 @@ export async function uploadFileToVss(
     throw new Error(`Network error during VSS file upload: ${networkError.message}`);
   }
 
-  return handleApiResponse<VssFileUploadResponse>(vssApiResponse);
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+  
+  try {
+    return await vssApiResponse.json() as VssFileUploadResponse;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for upload:", jsonParseError);
+    throw new Error(`Failed to parse VSS API upload response: ${jsonParseError.message}`);
+  }
 }
 
 
@@ -138,16 +139,25 @@ export async function getVssFiles(purpose?: string): Promise<VssFileListResponse
     throw new Error(`Network error during VSS file listing: ${networkError.message}`);
   }
 
-  return handleApiResponse<VssFileListResponse>(vssApiResponse);
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssFileListResponse;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for file list:", jsonParseError);
+    throw new Error(`Failed to parse VSS API file list response: ${jsonParseError.message}`);
+  }
 }
 
 /**
  * Deletes a specific file from the VSS API.
  * @param fileId The ID of the file to delete.
- * @returns A promise that resolves when the file is successfully deleted (typically an empty response or a success message).
+ * @returns A promise that resolves when the file is successfully deleted.
  * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
  */
-export async function deleteVssFile(fileId: string): Promise<void> { // Assuming DELETE returns no significant content on 200/204
+export async function deleteVssFile(fileId: string): Promise<void> {
   if (!VSS_API_BASE_URL) {
     console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
     throw new Error("VSS_API_BASE_URL is not configured.");
@@ -169,17 +179,96 @@ export async function deleteVssFile(fileId: string): Promise<void> { // Assuming
   }
 
   // For DELETE, a 200 or 204 No Content is typical for success.
-  // The handleApiResponse might need adjustment if DELETE success isn't JSON.
   if (vssApiResponse.status === 200 || vssApiResponse.status === 204) {
     return; // Successfully deleted
   }
   
-  // If not 200/204, then treat as an error and try to parse JSON error.
-  await handleApiResponse<any>(vssApiResponse); // This will throw if it's an error status with JSON body
+  // If not 200/204, then treat as an error.
+  throw await parseApiError(vssApiResponse);
 }
 
+/**
+ * Retrieves the content of a specific file from the VSS API.
+ * @param fileId The ID of the file whose content is to be retrieved.
+ * @returns A promise that resolves with a Blob containing the file content.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssFileContent(fileId: string): Promise<Blob> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  if (!fileId) {
+    throw new Error("File ID is required to get content.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/files/${fileId}/content`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error(`Network error when calling VSS /files/${fileId}/content API:`, networkError);
+    throw new Error(`Network error during VSS file content retrieval: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.blob();
+  } catch (blobError: any) {
+    console.error("Failed to get VSS API file content as Blob:", blobError);
+    throw new Error(`Failed to retrieve VSS API file content: ${blobError.message}`);
+  }
+}
 
 // Other VSS API client functions can be added here as needed based on other screenshots.
 // For example:
-// export async function createAlertWithVss(alertData: any): Promise<any> { ... }
+// export async function createVssAlert(alertData: any): Promise<any> { ... }
 // export async function getVssJobStatus(jobId: string): Promise<any> { ... }
+// export async function getVssFileMetadata(fileId: string): Promise<VssFile> { ... } // Based on page 6
+// The `getVssFileMetadata` would be similar to `getVssFiles` but for a single file ID and returning VssFile.
+// Let's add getVssFileMetadata based on page 6 details.
+
+/**
+ * Retrieves metadata for a specific file from the VSS API.
+ * @param fileId The ID of the file for which to retrieve metadata.
+ * @returns A promise that resolves with the file metadata.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssFileMetadata(fileId: string): Promise<VssFile> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  if (!fileId) {
+    throw new Error("File ID is required for metadata retrieval.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/files/${fileId}`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error(`Network error when calling VSS /files/${fileId} API (metadata):`, networkError);
+    throw new Error(`Network error during VSS file metadata retrieval: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssFile;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for file metadata:", jsonParseError);
+    throw new Error(`Failed to parse VSS API file metadata response: ${jsonParseError.message}`);
+  }
+}
