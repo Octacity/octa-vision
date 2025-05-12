@@ -1,3 +1,4 @@
+
 // src/services/vss-api-service.ts
 
 /**
@@ -33,6 +34,16 @@ export interface VssApiErrorResponse {
   code: string; // e.g., "ErrorCode"
   message: string; // e.g., "Detailed error message"
 }
+
+export interface VssStreamDetails {
+  id: string;
+  status: 'processing' | 'completed' | 'failed' | 'pending';
+  cameraId?: string; 
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  outputUrl?: string; 
+}
+
 
 const VSS_API_BASE_URL = process.env.NEXT_PUBLIC_VSS_API_BASE_URL;
 
@@ -316,6 +327,46 @@ export async function checkVssApiHealth(): Promise<string> {
   }
 }
 
+/**
+ * Retrieves details for a specific VSS stream.
+ * @param streamId The ID of the VSS stream.
+ * @returns A promise that resolves with the stream details.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssStreamDetails(streamId: string): Promise<VssStreamDetails> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  if (!streamId) {
+    throw new Error("Stream ID is required to get stream details.");
+  }
+
+  let vssApiResponse;
+  try {
+    // Assuming an endpoint like /streams/{streamId} based on common API patterns
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/streams/${streamId}`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error(`Network error when calling VSS /streams/${streamId} API:`, networkError);
+    throw new Error(`Network error during VSS stream details retrieval: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    return await vssApiResponse.json() as VssStreamDetails;
+  } catch (jsonParseError: any) {
+    console.error("Failed to parse VSS API success response JSON for stream details:", jsonParseError);
+    throw new Error(`Failed to parse VSS API stream details response: ${jsonParseError.message}`);
+  }
+}
+
 
 // TODO: Implement functions for VSS Alert APIs based on pages 3, 4, 5
 // Example stubs:
@@ -327,3 +378,4 @@ export async function checkVssApiHealth(): Promise<string> {
 
 // TODO: Implement functions for VSS Job APIs if needed (e.g. page 7 shows /jobs/{job_id})
 // export async function getVssJobStatus(jobId: string): Promise<any> { /* ... */ }
+
