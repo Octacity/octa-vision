@@ -491,22 +491,58 @@ export async function deleteVssLiveStream(streamId: string): Promise<VssLiveStre
     throw new Error(`Network error during VSS live stream deletion: ${networkError.message}`);
   }
 
-  if (vssApiResponse.status === 200 || vssApiResponse.status === 204) {
-    // Page 11 shows a JSON response body for successful DELETE
+  if (vssApiResponse.status === 200) {
+    // Page 12 shows a 200 OK with a plain string response for successful DELETE
     try {
-        if (vssApiResponse.status === 204) { // No content, but API might still send a message if we decide to in future
-            return { message: `Livestream ${streamId} and associated resources deleted successfully.` };
-        }
-        return await vssApiResponse.json() as VssLiveStreamDeletionResponse;
-    } catch (jsonParseError: any) {
-        console.warn("VSS API live stream deletion successful, but failed to parse response body (or body was empty):", jsonParseError);
-        // Fallback to a generic success message if parsing fails or if status is 204
+        const message = await vssApiResponse.text();
+        return { message }; // Wrap it in the expected response object
+    } catch (textParseError: any) {
+        console.warn("VSS API live stream deletion successful (200 OK), but failed to parse response text:", textParseError);
+        // Fallback to a generic success message if parsing fails
         return { message: `Livestream ${streamId} and associated resources deleted successfully.` };
     }
+  } else if (vssApiResponse.status === 204) { // No content
+    return { message: `Livestream ${streamId} and associated resources deleted successfully.` };
   }
   
   // If not 200/204, then treat as an error.
   throw await parseApiError(vssApiResponse);
+}
+
+/**
+ * Retrieves VIA metrics in Prometheus format from the VSS API.
+ * @returns A promise that resolves with a string containing the metrics in Prometheus format.
+ * @throws Will throw an error if the VSS_API_BASE_URL is not configured or if the API request fails.
+ */
+export async function getVssMetrics(): Promise<string> {
+  if (!VSS_API_BASE_URL) {
+    console.error("VSS_API_BASE_URL is not configured. VSS API calls will fail.");
+    throw new Error("VSS_API_BASE_URL is not configured.");
+  }
+
+  let vssApiResponse;
+  try {
+    vssApiResponse = await fetch(`${VSS_API_BASE_URL}/metrics`, {
+      method: 'GET',
+      // headers: { 'Authorization': `Bearer ${process.env.VSS_API_KEY}` } // If API key needed
+    });
+  } catch (networkError: any) {
+    console.error("Network error when calling VSS /metrics API:", networkError);
+    throw new Error(`Network error during VSS metrics retrieval: ${networkError.message}`);
+  }
+
+  if (!vssApiResponse.ok) {
+    // Assuming error responses are JSON, parseApiError should handle them
+    throw await parseApiError(vssApiResponse);
+  }
+
+  try {
+    // The /metrics endpoint returns plain text (Prometheus format)
+    return await vssApiResponse.text();
+  } catch (textParseError: any) {
+    console.error("Failed to parse VSS API success response text for metrics:", textParseError);
+    throw new Error(`Failed to parse VSS API metrics response: ${textParseError.message}`);
+  }
 }
 
 
