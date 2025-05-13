@@ -8,7 +8,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch, arrayUnion, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch, arrayUnion, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,7 +26,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIcon, Diamond, Bot, Send, Camera as CameraIconLucide, Server, Sparkles } from 'lucide-react'; 
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIconLucide, Diamond, Bot, Send, Camera as CameraIconLucide, Server, Sparkles } from 'lucide-react'; 
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -54,18 +54,21 @@ interface ChatMessage {
 export interface Group {
   id: string;
   name: string;
-  cameras?: string[];
-  videos?: string[];
-  defaultCameraSceneContext?: string;
-  defaultAiDetectionTarget?: string;
-  defaultAlertEvents?: string[];
-  defaultVideoChunks?: { value: number; unit: 'seconds' | 'minutes' };
-  defaultNumFrames?: number;
-  defaultVideoOverlap?: { value: number; unit: 'seconds' | 'minutes' };
+  cameras?: string[]; // List of camera IDs
+  videos?: string[];  // List of video IDs
+  defaultCameraSceneContext?: string | null; // Optional: Default scene context for cameras in this group
+  defaultAiDetectionTarget?: string | null;    // Optional: Default AI detection target
+  defaultAlertEvents?: string[] | null;        // Optional: Default alert events (comma-separated string or array)
+  // Default video processing configurations for the group
+  defaultVideoChunks?: { value: number; unit: 'seconds' | 'minutes' } | null;
+  defaultNumFrames?: number | null;
+  defaultVideoOverlap?: { value: number; unit: 'seconds' | 'minutes' } | null;
+  // Timestamps and user info
+  orgId?: string;
+  userId?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
-
-
-const initialGroups: Group[] = [];
 
 
 const addCameraStep1Schema = z.object({
@@ -127,13 +130,12 @@ const CamerasPage: NextPage = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
   const { openNotificationDrawer } = useNotificationDrawer();
-  const [isOrgApproved, setIsOrgApproved] = useState<boolean | null>(null);
-  const [isLoadingOrgStatus, setIsLoadingOrgStatus] = useState(true);
+  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
 
   const [cameras, setCameras] = useState<Camera[]>([]);
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
+  const [groups, setGroups] = useState<Group[]>([]);
   const { toast } = useToast();
   const [isGeneratingAlerts, setIsGeneratingAlerts] = useState(false);
   const { language, translate } = useLanguage();
@@ -150,28 +152,31 @@ const CamerasPage: NextPage = () => {
           const userData = userDocSnap.data();
           const organizationId = userData?.organizationId;
           setOrgId(organizationId);
+          // Fetch groups if orgId is available
           if (organizationId) {
-            const orgDocRef = doc(db, 'organizations', organizationId);
-            const orgDocSnap = await getDoc(orgDocRef);
-            if (orgDocSnap.exists()) {
-              setIsOrgApproved(orgDocSnap.data()?.approved || false);
-            } else {
-              setIsOrgApproved(false);
-            }
-          } else {
-            setIsOrgApproved(false);
+             fetchGroupsForOrg(organizationId); // You'll need to implement this function
           }
         } else {
-          setIsOrgApproved(false);
+           setOrgId(null);
         }
       } else {
-        setIsOrgApproved(false);
         setOrgId(null);
       }
-      setIsLoadingOrgStatus(false);
     });
     return () => unsubscribe();
   }, []);
+  
+  const fetchGroupsForOrg = async (currentOrgId: string) => {
+    try {
+      const q = query(collection(db, "groups"), where("orgId", "==", currentOrgId));
+      const querySnapshot = await getDocs(q);
+      const fetchedGroups = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
+      setGroups(fetchedGroups);
+    } catch (error) {
+      console.error("Error fetching groups for org:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not fetch camera groups." });
+    }
+  };
 
 
   const formStep1 = useForm<AddCameraStep1Values>({
@@ -307,13 +312,26 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
     
-    // Show an alert if the organization is not approved
-    if (isOrgApproved === false) {
+    const userDocRef = doc(db, 'users', currentUser!.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    let isOrgApproved = false;
+    if (userDocSnap.exists()) {
+        const orgId = userDocSnap.data()?.organizationId;
+        if (orgId) {
+            const orgDocRef = doc(db, 'organizations', orgId);
+            const orgDocSnap = await getDoc(orgDocRef);
+            if (orgDocSnap.exists()) {
+                isOrgApproved = orgDocSnap.data()?.approved || false;
+            }
+        }
+    }
+
+    if (!isOrgApproved) {
       toast({
-        variant: "default", // Use 'default' or 'warning' as appropriate
+        variant: "default", 
         title: "Camera Setup Information",
         description: "You can add this camera and set up its configuration. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.",
-        duration: 10000, // Show for 10 seconds
+        duration: 10000, 
       });
     }
     
@@ -414,7 +432,7 @@ const CamerasPage: NextPage = () => {
     const step2Data = formStep2.getValues(); 
 
     const batch = writeBatch(db);
-    const now = serverTimestamp();
+    const now = serverTimestamp() as Timestamp;
     let finalGroupId: string | null = null;
 
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
@@ -472,6 +490,7 @@ const CamerasPage: NextPage = () => {
 
     const configDocRef = doc(collection(db, 'camera_configurations')); 
     batch.set(configDocRef, {
+      configId: configDocRef.id, // Storing the ID within the document itself
       cameraId: cameraDocRef.id,
       serverIpAddress: configData.serverIpAddress,
       createdAt: now,
@@ -989,7 +1008,7 @@ const CamerasPage: NextPage = () => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="flex items-center">
-                                                <AlertCircleIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                                                <AlertCircleIconLucide className="w-4 h-4 mr-2 text-muted-foreground" />
                                                 Video Overlap
                                             </FormLabel>
                                             <FormControl>
@@ -1292,9 +1311,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
-    
-
-    
-
-    
