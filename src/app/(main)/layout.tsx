@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -28,7 +27,7 @@ import {
   Server,
   Folder,
   DollarSign,
-  MoreVertical, // Added MoreVertical
+  MoreVertical, 
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -64,7 +63,6 @@ interface MainLayoutProps {
 }
 
 const MainLayoutContent = ({ children }: MainLayoutProps) => {
-  const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
@@ -127,23 +125,15 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             const orgDoc = await getDoc(doc(db, 'organizations', organizationId));
             if (orgDoc.exists()) {
               const orgData = orgDoc.data();
-              setIsApproved(orgData?.approved || false);
               if (orgData?.admin === true) {
                 orgHasAdminPrivileges = true;
               }
             } else {
               console.error('Organization not found.');
-              setIsApproved(false);
             }
           } else {
-             // If user has no organizationId, they are either 'system-admin' or their org setup is incomplete
              if (currentRole !== 'system-admin') {
-                // This case (no orgId and not system-admin) might indicate an issue or a specific user type
                 console.error('Organization ID not found for non-system-admin user.');
-                setIsApproved(false); 
-             } else {
-                // System admins are considered 'approved' for UI purposes and don't need an org approval banner
-                setIsApproved(true); 
              }
           }
 
@@ -155,19 +145,15 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
 
         } else {
           console.error('User data not found.');
-          setIsApproved(false);
           setUserRole(null);
           setCanAccessSystemAdminMenu(false);
-          // If user data not found, potentially sign them out or redirect to an error page
-          // This indicates a discrepancy between Auth and Firestore user records
-          await signOut(auth); // Consider signing out if critical user data is missing
-          router.push('/signin'); // Redirect to sign-in
+          await signOut(auth); 
+          router.push('/signin'); 
         }
       } else {
-        setIsApproved(null);
         setUserRole(null);
         setCanAccessSystemAdminMenu(false);
-        if (pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
+        if (pathname !== '/signin' && pathname !== '/signup' && !pathname.startsWith('/join/') && pathname !== '/') {
           router.push('/signin');
         }
       }
@@ -178,7 +164,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   }, [router, pathname]);
   
   useEffect(() => {
-    setIsPageLoading(false); // Hide loader when pathname changes (new page "loaded")
+    setIsPageLoading(false); 
   }, [pathname]);
 
 
@@ -188,7 +174,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     try {
       await signOut(auth);
       toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') });
-      router.push('/signin');
+      router.push('/'); // Redirect to landing page on sign out
     } catch (error) {
       console.error("Error signing out: ", error);
       toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') });
@@ -213,7 +199,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     );
   }
 
-  if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && pathname !== '/') {
+  if (isLoading === false && !getAuth().currentUser && pathname !== '/signin' && pathname !== '/signup' && !pathname.startsWith('/join/') && pathname !== '/') {
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -228,7 +214,8 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
         <SidebarHeader className="h-16 border-b border-border flex items-center justify-center px-4 py-5">
           <Link
             href="/dashboard"
-            className="text-lg font-semibold text-foreground"
+            className="text-lg font-semibold"
+            style={{ color: "rgb(var(--octaview-primary))" }}
             onClick={() => handleMenuItemClick("/dashboard")}
           >
             {sidebarState === 'collapsed' && !isMobile ? 'OV' : translate('octaVision')}
@@ -245,7 +232,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
               </Link>
             </SidebarMenuItem>
 
-            {/* Standard User Menus - Always visible for authenticated users */}
             <>
               <SidebarMenuItem>
                 <Link href="/cameras" passHref legacyBehavior>
@@ -296,7 +282,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
                 </Link>
               </SidebarMenuItem>
 
-              {/* User Admin Specific Menu */}
               {userRole === 'user-admin' && (
                 <SidebarMenuItem>
                   <Link href="/organization-users" passHref legacyBehavior>
@@ -310,7 +295,6 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
             </>
 
 
-            {/* System Admin Specific Menus */}
             {canAccessSystemAdminMenu && (
               <SidebarGroup>
                 <SidebarGroupLabel>{translate('systemAdministration')}</SidebarGroupLabel>
@@ -415,4 +399,3 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 };
 
 export default MainLayout;
-
