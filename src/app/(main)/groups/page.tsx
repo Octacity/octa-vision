@@ -13,6 +13,7 @@ import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label'; // Added import
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Folder as FolderIcon, Loader2, Sparkles, HelpCircle, Settings2, ShieldAlert, Film, BarChart, AlertCircle as AlertCircleIconLucide } from 'lucide-react';
@@ -188,7 +189,7 @@ const GroupsPage: NextPage = () => {
     }
     setIsSubmittingGroup(true);
     try {
-      const newGroupData = {
+      const newGroupData: Omit<Group, 'id'> = { // Use Omit to exclude id as it's auto-generated
         name: data.groupName,
         orgId: orgId,
         userId: currentUser.uid,
@@ -198,7 +199,7 @@ const GroupsPage: NextPage = () => {
         videos: [],
         defaultCameraSceneContext: data.defaultCameraSceneContext || null,
         defaultAiDetectionTarget: data.defaultAiDetectionTarget || null,
-        defaultAlertEvents: data.defaultAlertEvents ? data.defaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : [],
+        defaultAlertEvents: data.defaultAlertEvents ? data.defaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
         defaultVideoChunks: data.defaultVideoChunksValue ? { value: parseFloat(data.defaultVideoChunksValue), unit: data.defaultVideoChunksUnit || 'seconds' } : null,
         defaultNumFrames: data.defaultNumFrames ? parseInt(data.defaultNumFrames, 10) : null,
         defaultVideoOverlap: data.defaultVideoOverlapValue ? { value: parseFloat(data.defaultVideoOverlapValue), unit: data.defaultVideoOverlapUnit || 'seconds' } : null,
@@ -335,47 +336,64 @@ const GroupsPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <Button onClick={handleAddGroupClick}>
-          <Plus className="mr-2 h-4 w-4" /> Add Group
-        </Button>
-      </div>
-
-      {isLoadingGroups ? (
-        <div className="flex justify-center items-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : groups.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center justify-center text-center py-12">
-              <FolderIcon className="w-16 h-16 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">No Camera Groups Yet</h3>
-              <p className="text-muted-foreground mb-6">Organize your cameras by creating groups for easier management and monitoring.</p>
-              <Button onClick={handleAddGroupClick}>
-                <Plus className="mr-2 h-4 w-4" /> Create Your First Group
-              </Button>
+      <Card>
+        <CardHeader className="border-b">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <CardTitle className="text-lg font-normal text-primary">{translate('groups')}</CardTitle>
+                    <CardDescription className="text-xs mt-1 text-muted-foreground">
+                    Manage and organize your camera groups.
+                    </CardDescription>
+                </div>
+                <Button size="sm" onClick={handleAddGroupClick}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Group
+                </Button>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {groups.map(group => (
-            <Card key={group.id}>
-              <CardHeader>
-                <CardTitle className="text-base">{group.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {group.cameras?.length || 0} cameras, {group.videos?.length || 0} videos
-                </p>
-                {/* Add more group details or actions here */}
-                 <Button variant="outline" size="sm" className="mt-4 text-xs">View Details</Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+        </CardHeader>
+        <CardContent className="p-0">
+            {isLoadingGroups ? (
+                <div className="flex justify-center items-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : groups.length === 0 ? (
+                <div className="mt-4 p-4 border rounded-md bg-muted text-center">
+                    <FolderIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-md font-semibold text-foreground mb-1">No Camera Groups Yet</h3>
+                    <p className="text-sm text-muted-foreground">Organize your cameras by creating groups for easier management and monitoring.</p>
+                    <Button variant="link" onClick={handleAddGroupClick} className="mt-2 text-sm">
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Create Your First Group
+                    </Button>
+                </div>
+
+            ) : (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Cameras</TableHead>
+                                <TableHead>Videos</TableHead>
+                                <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {groups.map(group => (
+                            <TableRow key={group.id}>
+                            <TableCell className="font-medium">{group.name}</TableCell>
+                            <TableCell>{group.cameras?.length || 0}</TableCell>
+                            <TableCell>{group.videos?.length || 0}</TableCell>
+                            <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                                <Button variant="outline" size="sm" className="text-xs">View Details</Button>
+                            </TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+        </CardContent>
+      </Card>
+
 
       <RightDrawer
         isOpen={isAddGroupDrawerOpen}
@@ -390,3 +408,4 @@ const GroupsPage: NextPage = () => {
 };
 
 export default GroupsPage;
+
