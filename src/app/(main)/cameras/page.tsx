@@ -54,16 +54,14 @@ interface ChatMessage {
 export interface Group {
   id: string;
   name: string;
-  cameras?: string[]; // List of camera IDs
-  videos?: string[];  // List of video IDs
-  defaultCameraSceneContext?: string | null; // Optional: Default scene context for cameras in this group
-  defaultAiDetectionTarget?: string | null;    // Optional: Default AI detection target
-  defaultAlertEvents?: string[] | null;        // Optional: Default alert events (comma-separated string or array)
-  // Default video processing configurations for the group
+  cameras?: string[];
+  videos?: string[];
+  defaultCameraSceneContext?: string | null;
+  defaultAiDetectionTarget?: string | null;
+  defaultAlertEvents?: string[] | null;
   defaultVideoChunks?: { value: number; unit: 'seconds' | 'minutes' } | null;
   defaultNumFrames?: number | null;
   defaultVideoOverlap?: { value: number; unit: 'seconds' | 'minutes' } | null;
-  // Timestamps and user info
   orgId?: string;
   userId?: string;
   createdAt?: Timestamp;
@@ -217,7 +215,7 @@ const CamerasPage: NextPage = () => {
         numFrames: '5',
         videoOverlapValue: '2',
         videoOverlapUnit: 'seconds',
-        serverIpAddress: '',
+        serverIpAddress: '', // Initialize with empty string or a default IP if applicable
     }
   });
 
@@ -270,7 +268,7 @@ const CamerasPage: NextPage = () => {
     setSelectedGroup(value);
     formStep1.setValue('group', value);
     formStep2.resetField('sceneDescription');
-    formStep3.reset();
+    formStep3.reset(); // Reset step 3 including serverIpAddress
 
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
@@ -279,7 +277,7 @@ const CamerasPage: NextPage = () => {
       formStep1.setValue('groupDefaultNumFrames', '5');
       formStep1.setValue('groupDefaultVideoOverlapValue', '2');
       formStep1.setValue('groupDefaultVideoOverlapUnit', 'seconds');
-
+      formStep3.setValue('serverIpAddress', ''); // Clear for new group or set a sensible default
     } else {
       setShowNewGroupForm(false);
       formStep1.setValue('newGroupName', '');
@@ -302,6 +300,10 @@ const CamerasPage: NextPage = () => {
         formStep3.setValue('numFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
         formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
+        // Potentially set a default server IP based on the group if groups have associated IPs
+        formStep3.setValue('serverIpAddress', ''); // Or a group-specific default
+      } else {
+        formStep3.setValue('serverIpAddress', ''); // Clear if group not found
       }
     }
   };
@@ -311,7 +313,6 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
 
-    // Show toast about camera approval
     toast({
       variant: "default",
       title: "Camera Setup Information",
@@ -319,12 +320,12 @@ const CamerasPage: NextPage = () => {
       duration: 10000,
     });
 
-    // Simulate snapshot and scene description generation (replace with actual API calls later)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); // Placeholder
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    let sceneDescToSet = 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.'; // Placeholder
+    // Skipping actual snapshot and VSS API calls for now as per instructions.
+    // We'll use placeholders for UI flow.
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate some delay
+    setSnapshotUrl('https://placehold.co/400x300.png'); // Placeholder image
+    
+    let sceneDescToSet = 'Placeholder: AI-generated scene description would appear here based on the snapshot.'; 
     formStep2.setValue('sceneDescription', sceneDescToSet);
 
     setIsProcessingStep2(false);
@@ -352,6 +353,8 @@ const CamerasPage: NextPage = () => {
     let finalNumFrames = '5';
     let finalVideoOverlapValue = '2';
     let finalVideoOverlapUnit: 'seconds' | 'minutes' = 'seconds';
+    // Set a default or leave empty for serverIpAddress - user will fill this
+    let finalServerIpAddress = ''; // Or a default like '192.168.1.100'
 
 
     if (step1Values.group && step1Values.group !== 'add_new_group') {
@@ -371,6 +374,7 @@ const CamerasPage: NextPage = () => {
                 finalVideoOverlapValue = selectedGroupData.defaultVideoOverlap.value.toString();
                 finalVideoOverlapUnit = selectedGroupData.defaultVideoOverlap.unit;
             }
+            // Potentially inherit server IP from group if applicable
         }
     } else if (step1Values.group === 'add_new_group') {
         if(step1Values.groupDefaultCameraSceneContext) finalCameraContext = step1Values.groupDefaultCameraSceneContext;
@@ -393,6 +397,7 @@ const CamerasPage: NextPage = () => {
     formStep3.setValue('numFrames', finalNumFrames);
     formStep3.setValue('videoOverlapValue', finalVideoOverlapValue);
     formStep3.setValue('videoOverlapUnit', finalVideoOverlapUnit);
+    formStep3.setValue('serverIpAddress', finalServerIpAddress);
 
     setDrawerStep(3);
   };
@@ -416,10 +421,9 @@ const CamerasPage: NextPage = () => {
     const step2Data = formStep2.getValues();
 
     const batch = writeBatch(db);
-    const now = serverTimestamp() as Timestamp; // Ensure 'now' is correctly typed as Timestamp
+    const now = serverTimestamp() as Timestamp;
     let finalGroupId: string | null = null;
 
-    // Create Group if 'add_new_group' was selected
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
@@ -433,18 +437,17 @@ const CamerasPage: NextPage = () => {
             videos: [],
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
-            defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : [],
+            defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
             defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
             defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
             defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
         });
-        // Update local state for groups
         const newGroupForState: Group = {
           id: groupDocRef.id,
           name: step1Data.newGroupName,
           orgId: orgId,
           userId: currentUser.uid,
-          createdAt: now, // This will be a ServerTimestamp object, Firestore handles conversion
+          createdAt: now, 
           updatedAt: now,
           cameras: [],
           videos: [],
@@ -460,10 +463,8 @@ const CamerasPage: NextPage = () => {
         finalGroupId = step1Data.group;
     }
 
-    // Create Camera Document
     const cameraDocRef = doc(collection(db, 'cameras'));
     batch.set(cameraDocRef, {
-      // cameraId: cameraDocRef.id, // Not needed, ID is inherent to the ref
       cameraName: step1Data.cameraName,
       groupId: finalGroupId,
       userId: currentUser.uid,
@@ -472,19 +473,17 @@ const CamerasPage: NextPage = () => {
       updatedAt: now,
       url: step1Data.rtspUrl,
       protocol: "rtsp",
-      activeVSSId: null, // Will be set after approval
+      activeVSSId: null, 
       historicalVSSIds: [],
-      processingStatus: "waiting_for_approval",
+      processingStatus: "waiting_for_approval", // Set initial status
       // currentConfigId will be set after config creation
     });
 
-    // Create Configuration Document
     const configDocRef = doc(collection(db, 'configurations'));
     batch.set(configDocRef, {
-      // configId: configDocRef.id, // Not needed
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: configData.serverIpAddress,
+      serverIpAddress: configData.serverIpAddress, // Save server IP
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -503,17 +502,14 @@ const CamerasPage: NextPage = () => {
       previousConfigId: null,
     });
 
-    // Link Camera to its Configuration
     batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
-    // Update Group if a group was involved
     if (finalGroupId) {
         const groupRefToUpdate = doc(db, 'groups', finalGroupId);
         batch.update(groupRefToUpdate, {
             cameras: arrayUnion(cameraDocRef.id),
             updatedAt: now,
         });
-        // Update local state for the specific group
         setGroups(prevGroups => prevGroups.map(g =>
             g.id === finalGroupId
             ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id], updatedAt: now }
@@ -527,11 +523,10 @@ const CamerasPage: NextPage = () => {
         title: "Camera Saved",
         description: `${step1Data.cameraName} has been added. It is awaiting approval by an administrator.`,
       });
-      // Update local state for cameras
-      const newCameraForState: Camera = { // This Camera interface is for UI, not DB
+      const newCameraForState: Camera = { 
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://picsum.photos/seed/newcam/400/300', // Use actual snapshot if available
+        imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', 
         dataAiHint: 'newly added camera',
       };
       setCameras(prevCameras => [...prevCameras, newCameraForState]);
@@ -554,14 +549,13 @@ const CamerasPage: NextPage = () => {
       sender: 'user',
       text: currentChatMessage,
       timestamp: new Date(),
-      avatar: 'https://picsum.photos/id/1005/50/50',
+      avatar: 'https://placehold.co/50x50.png',
     };
 
     setChatMessages(prev => [...prev, userMessage]);
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
-    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
@@ -1167,7 +1161,7 @@ const CamerasPage: NextPage = () => {
         return (
             <div className="p-4 border-t flex items-center space-x-2">
                 <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://picsum.photos/id/1005/50/50" alt="User" data-ai-hint="user avatar" />
+                    <AvatarImage src="https://placehold.co/50x50.png" alt="User" data-ai-hint="user avatar" />
                     <AvatarFallback>U</AvatarFallback>
                 </Avatar>
                 <Input
@@ -1313,3 +1307,4 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
