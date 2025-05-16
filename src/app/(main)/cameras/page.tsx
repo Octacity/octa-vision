@@ -8,7 +8,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch, arrayUnion, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch, arrayUnion, updateDoc, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,7 +26,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIconLucide, Diamond, Bot, Send, Camera as CameraIconLucide, Server, Sparkles } from 'lucide-react'; 
+import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, ArrowDown, Wand2, Mic, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIconLucide, Diamond, Bot, Send, Camera as CameraIconLucide, Server, Sparkles } from 'lucide-react';
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -36,9 +36,9 @@ import { generateGroupAlertEvents } from '@/ai/flows/generate-group-alert-events
 import { useLanguage } from '@/contexts/LanguageContext';
 
 
-export interface Camera { 
+export interface Camera {
   id: string;
-  cameraName: string; 
+  cameraName: string;
   imageUrl: string;
   dataAiHint: string;
 }
@@ -76,9 +76,9 @@ const addCameraStep1Schema = z.object({
   cameraName: z.string().min(1, "Camera name is required."),
   group: z.string().optional(),
   newGroupName: z.string().optional(),
-  groupDefaultCameraSceneContext: z.string().optional(), 
-  groupDefaultAiDetectionTarget: z.string().optional(), 
-  groupDefaultAlertEvents: z.string().optional(), 
+  groupDefaultCameraSceneContext: z.string().optional(),
+  groupDefaultAiDetectionTarget: z.string().optional(),
+  groupDefaultAlertEvents: z.string().optional(),
   groupDefaultVideoChunksValue: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
   groupDefaultVideoChunksUnit: z.enum(['seconds', 'minutes']).optional(),
   groupDefaultNumFrames: z.string().optional().refine(val => val === undefined || val === '' || !isNaN(parseFloat(val)), {message: "Must be a number"}),
@@ -102,9 +102,9 @@ const addCameraStep2Schema = z.object({
 type AddCameraStep2Values = z.infer<typeof addCameraStep2Schema>;
 
 const addCameraStep3Schema = z.object({
-    cameraSceneContext: z.string().min(1, "This field is required."), 
-    aiDetectionTarget: z.string().min(1, "AI detection target is required."), 
-    alertEvents: z.string().min(1, "Alert events are required."), 
+    cameraSceneContext: z.string().min(1, "This field is required."),
+    aiDetectionTarget: z.string().min(1, "AI detection target is required."),
+    alertEvents: z.string().min(1, "Alert events are required."),
     videoChunksValue: z.string().min(1, "Video chunks value is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoChunksUnit: z.enum(['seconds', 'minutes']).default('seconds'),
     numFrames: z.string().min(1, "Number of frames is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
@@ -130,7 +130,7 @@ const CamerasPage: NextPage = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
   const { openNotificationDrawer } = useNotificationDrawer();
-  
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
 
@@ -152,9 +152,8 @@ const CamerasPage: NextPage = () => {
           const userData = userDocSnap.data();
           const organizationId = userData?.organizationId;
           setOrgId(organizationId);
-          // Fetch groups if orgId is available
           if (organizationId) {
-             fetchGroupsForOrg(organizationId); // You'll need to implement this function
+             fetchGroupsForOrg(organizationId);
           }
         } else {
            setOrgId(null);
@@ -165,7 +164,7 @@ const CamerasPage: NextPage = () => {
     });
     return () => unsubscribe();
   }, []);
-  
+
   const fetchGroupsForOrg = async (currentOrgId: string) => {
     try {
       const q = query(collection(db, "groups"), where("orgId", "==", currentOrgId));
@@ -181,7 +180,7 @@ const CamerasPage: NextPage = () => {
 
   const formStep1 = useForm<AddCameraStep1Values>({
     resolver: zodResolver(addCameraStep1Schema),
-    mode: "onChange", 
+    mode: "onChange",
     defaultValues: {
       rtspUrl: '',
       cameraName: '',
@@ -213,10 +212,10 @@ const CamerasPage: NextPage = () => {
         cameraSceneContext: '',
         aiDetectionTarget: '',
         alertEvents: '',
-        videoChunksValue: '10', 
+        videoChunksValue: '10',
         videoChunksUnit: 'seconds',
-        numFrames: '5', 
-        videoOverlapValue: '2', 
+        numFrames: '5',
+        videoOverlapValue: '2',
         videoOverlapUnit: 'seconds',
         serverIpAddress: '',
     }
@@ -242,9 +241,9 @@ const CamerasPage: NextPage = () => {
       {
         id: 'ai-initial-' + camera.id,
         sender: 'ai',
-        text: translate('chat.initialMessage', { cameraName: camera.cameraName }), 
+        text: translate('chat.initialMessage', { cameraName: camera.cameraName }),
         timestamp: new Date(),
-        avatar: undefined, 
+        avatar: undefined,
       }
     ]);
     setCurrentChatMessage('');
@@ -259,19 +258,19 @@ const CamerasPage: NextPage = () => {
     setIsDrawerOpen(false);
     setDrawerType(null);
     setShowNewGroupForm(false);
-    setDrawerStep(1); 
+    setDrawerStep(1);
     formStep1.reset();
     formStep2.reset();
     formStep3.reset();
     setSelectedCameraForChat(null);
     setChatMessages([]);
   };
-  
+
   const handleGroupChange = (value: string) => {
     setSelectedGroup(value);
     formStep1.setValue('group', value);
-    formStep2.resetField('sceneDescription'); 
-    formStep3.reset(); 
+    formStep2.resetField('sceneDescription');
+    formStep3.reset();
 
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
@@ -283,7 +282,7 @@ const CamerasPage: NextPage = () => {
 
     } else {
       setShowNewGroupForm(false);
-      formStep1.setValue('newGroupName', ''); 
+      formStep1.setValue('newGroupName', '');
       formStep1.resetField('groupDefaultCameraSceneContext');
       formStep1.resetField('groupDefaultAiDetectionTarget');
       formStep1.resetField('groupDefaultAlertEvents');
@@ -292,7 +291,7 @@ const CamerasPage: NextPage = () => {
       formStep1.resetField('groupDefaultNumFrames');
       formStep1.resetField('groupDefaultVideoOverlapValue');
       formStep1.resetField('groupDefaultVideoOverlapUnit');
-      
+
       const selectedGroupData = groups.find(g => g.id === value);
       if (selectedGroupData) {
         formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
@@ -311,38 +310,23 @@ const CamerasPage: NextPage = () => {
     console.log("Step 1 Data:", data);
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
-    
-    const userDocRef = doc(db, 'users', currentUser!.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    let isOrgApproved = false;
-    if (userDocSnap.exists()) {
-        const orgId = userDocSnap.data()?.organizationId;
-        if (orgId) {
-            const orgDocRef = doc(db, 'organizations', orgId);
-            const orgDocSnap = await getDoc(orgDocRef);
-            if (orgDocSnap.exists()) {
-                isOrgApproved = orgDocSnap.data()?.approved || false;
-            }
-        }
-    }
 
-    if (!isOrgApproved) {
-      toast({
-        variant: "default", 
-        title: "Camera Setup Information",
-        description: "You can add this camera and set up its configuration. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.",
-        duration: 10000, 
-      });
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-    setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); 
-    
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
-    
-    let sceneDescToSet = 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.'; 
+    // Show toast about camera approval
+    toast({
+      variant: "default",
+      title: "Camera Setup Information",
+      description: "You can add this camera and set up its configuration. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.",
+      duration: 10000,
+    });
+
+    // Simulate snapshot and scene description generation (replace with actual API calls later)
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setSnapshotUrl('https://picsum.photos/seed/step2snapshot/400/300'); // Placeholder
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    let sceneDescToSet = 'This is an art gallery with various paintings on display. Several visitors are admiring the artwork. The lighting is bright and even.'; // Placeholder
     formStep2.setValue('sceneDescription', sceneDescToSet);
-    
+
     setIsProcessingStep2(false);
     setDrawerStep(2);
   };
@@ -357,11 +341,11 @@ const CamerasPage: NextPage = () => {
     if (!formStep2.formState.isValid) return;
 
     const step1Values = formStep1.getValues();
-    const currentSceneDesc = data.sceneDescription; 
+    const currentSceneDesc = data.sceneDescription;
 
     let baseCameraContext = `The camera is observing: "${currentSceneDesc}".`;
     let finalCameraContext = baseCameraContext;
-    let finalAiTarget = 'Focus on detecting...'; 
+    let finalAiTarget = 'Focus on detecting...';
     let finalAlertEvents = '';
     let finalVideoChunksValue = '10';
     let finalVideoChunksUnit: 'seconds' | 'minutes' = 'seconds';
@@ -375,7 +359,7 @@ const CamerasPage: NextPage = () => {
         if (selectedGroupData) {
             if(selectedGroupData.defaultCameraSceneContext) finalCameraContext = selectedGroupData.defaultCameraSceneContext;
             else if (selectedGroupData.name) finalCameraContext = `${baseCameraContext} It is part of the "${selectedGroupData.name}" group.`;
-            
+
             if(selectedGroupData.defaultAiDetectionTarget) finalAiTarget = selectedGroupData.defaultAiDetectionTarget;
             if(selectedGroupData.defaultAlertEvents) finalAlertEvents = selectedGroupData.defaultAlertEvents.join(', ');
             if(selectedGroupData.defaultVideoChunks) {
@@ -391,16 +375,16 @@ const CamerasPage: NextPage = () => {
     } else if (step1Values.group === 'add_new_group') {
         if(step1Values.groupDefaultCameraSceneContext) finalCameraContext = step1Values.groupDefaultCameraSceneContext;
         else if (step1Values.newGroupName) finalCameraContext = `${baseCameraContext} It will be part of the new group "${step1Values.newGroupName}".`;
-        
+
         if(step1Values.groupDefaultAiDetectionTarget) finalAiTarget = step1Values.groupDefaultAiDetectionTarget;
-        if(step1Values.groupDefaultAlertEvents) finalAlertEvents = step1Values.groupDefaultAlertEvents; 
+        if(step1Values.groupDefaultAlertEvents) finalAlertEvents = step1Values.groupDefaultAlertEvents;
         if(step1Values.groupDefaultVideoChunksValue) finalVideoChunksValue = step1Values.groupDefaultVideoChunksValue;
         if(step1Values.groupDefaultVideoChunksUnit) finalVideoChunksUnit = step1Values.groupDefaultVideoChunksUnit;
         if(step1Values.groupDefaultNumFrames) finalNumFrames = step1Values.groupDefaultNumFrames;
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
     }
-    
+
     formStep3.setValue('cameraSceneContext', finalCameraContext);
     formStep3.setValue('aiDetectionTarget', finalAiTarget);
     formStep3.setValue('alertEvents', finalAlertEvents);
@@ -409,10 +393,10 @@ const CamerasPage: NextPage = () => {
     formStep3.setValue('numFrames', finalNumFrames);
     formStep3.setValue('videoOverlapValue', finalVideoOverlapValue);
     formStep3.setValue('videoOverlapUnit', finalVideoOverlapUnit);
-    
+
     setDrawerStep(3);
   };
-  
+
   const handleStep3Back = () => {
       setDrawerStep(2);
   };
@@ -429,12 +413,13 @@ const CamerasPage: NextPage = () => {
     }
 
     const step1Data = formStep1.getValues();
-    const step2Data = formStep2.getValues(); 
+    const step2Data = formStep2.getValues();
 
     const batch = writeBatch(db);
-    const now = serverTimestamp() as Timestamp;
+    const now = serverTimestamp() as Timestamp; // Ensure 'now' is correctly typed as Timestamp
     let finalGroupId: string | null = null;
 
+    // Create Group if 'add_new_group' was selected
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
@@ -444,8 +429,8 @@ const CamerasPage: NextPage = () => {
             userId: currentUser.uid,
             createdAt: now,
             updatedAt: now,
-            cameras: [], 
-            videos: [], 
+            cameras: [],
+            videos: [],
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : [],
@@ -453,45 +438,52 @@ const CamerasPage: NextPage = () => {
             defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
             defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
         });
+        // Update local state for groups
         const newGroupForState: Group = {
           id: groupDocRef.id,
           name: step1Data.newGroupName,
+          orgId: orgId,
+          userId: currentUser.uid,
+          createdAt: now, // This will be a ServerTimestamp object, Firestore handles conversion
+          updatedAt: now,
           cameras: [],
           videos: [],
-          defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext,
-          defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget,
-          defaultAlertEvents: step1Data.groupDefaultAlertEvents?.split(',').map(ae => ae.trim()).filter(ae => ae),
-          defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : undefined,
-          defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : undefined,
-          defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : undefined,
+          defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
+          defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
+          defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
+          defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
+          defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
+          defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
         };
         setGroups(prev => [...prev, newGroupForState]);
-
     } else if (step1Data.group) {
         finalGroupId = step1Data.group;
     }
 
-
-    const cameraDocRef = doc(collection(db, 'cameras')); 
+    // Create Camera Document
+    const cameraDocRef = doc(collection(db, 'cameras'));
     batch.set(cameraDocRef, {
+      // cameraId: cameraDocRef.id, // Not needed, ID is inherent to the ref
       cameraName: step1Data.cameraName,
-      groupId: finalGroupId, 
+      groupId: finalGroupId,
       userId: currentUser.uid,
       orgId: orgId,
       createdAt: now,
       updatedAt: now,
       url: step1Data.rtspUrl,
       protocol: "rtsp",
-      currentConfigId: null, 
-      processingStatus: "waiting_for_approval", 
-      activeVssStreamId: null,
-      historicalVssStreamIds: [],
+      activeVSSId: null, // Will be set after approval
+      historicalVSSIds: [],
+      processingStatus: "waiting_for_approval",
+      // currentConfigId will be set after config creation
     });
 
-    const configDocRef = doc(collection(db, 'camera_configurations')); 
+    // Create Configuration Document
+    const configDocRef = doc(collection(db, 'configurations'));
     batch.set(configDocRef, {
-      configId: configDocRef.id, // Storing the ID within the document itself
-      cameraId: cameraDocRef.id,
+      // configId: configDocRef.id, // Not needed
+      sourceId: cameraDocRef.id,
+      sourceType: "camera",
       serverIpAddress: configData.serverIpAddress,
       createdAt: now,
       videoChunks: {
@@ -505,41 +497,44 @@ const CamerasPage: NextPage = () => {
       },
       cameraSceneContext: configData.cameraSceneContext,
       aiDetectionTarget: configData.aiDetectionTarget,
-      alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae), 
-      sceneDescription: step2Data.sceneDescription, 
-      userId: currentUser.uid, 
-      previousConfigId: null, 
+      alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae),
+      sceneDescription: step2Data.sceneDescription,
+      userId: currentUser.uid,
+      previousConfigId: null,
     });
-    
+
+    // Link Camera to its Configuration
     batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
+    // Update Group if a group was involved
     if (finalGroupId) {
         const groupRefToUpdate = doc(db, 'groups', finalGroupId);
         batch.update(groupRefToUpdate, {
             cameras: arrayUnion(cameraDocRef.id),
             updatedAt: now,
         });
-        setGroups(prevGroups => prevGroups.map(g => 
-            g.id === finalGroupId 
-            ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id] } 
+        // Update local state for the specific group
+        setGroups(prevGroups => prevGroups.map(g =>
+            g.id === finalGroupId
+            ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id], updatedAt: now }
             : g
         ));
     }
-
 
     try {
       await batch.commit();
       toast({
         title: "Camera Saved",
-        description: `${step1Data.cameraName} has been added successfully. It is currently awaiting approval.`,
+        description: `${step1Data.cameraName} has been added. It is awaiting approval by an administrator.`,
       });
-      const newCamera: Camera = {
+      // Update local state for cameras
+      const newCameraForState: Camera = { // This Camera interface is for UI, not DB
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://picsum.photos/seed/newcam/400/300', 
+        imageUrl: snapshotUrl || 'https://picsum.photos/seed/newcam/400/300', // Use actual snapshot if available
         dataAiHint: 'newly added camera',
       };
-      setCameras(prevCameras => [...prevCameras, newCamera]);
+      setCameras(prevCameras => [...prevCameras, newCameraForState]);
       handleDrawerClose();
     } catch (error) {
       console.error("Error saving camera and configuration: ", error);
@@ -559,13 +554,14 @@ const CamerasPage: NextPage = () => {
       sender: 'user',
       text: currentChatMessage,
       timestamp: new Date(),
-      avatar: 'https://picsum.photos/id/1005/50/50', 
+      avatar: 'https://picsum.photos/id/1005/50/50',
     };
 
     setChatMessages(prev => [...prev, userMessage]);
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
+    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
@@ -578,7 +574,7 @@ const CamerasPage: NextPage = () => {
   };
 
   useEffect(() => {
-    const scrollElement = chatScrollAreaRef.current; 
+    const scrollElement = chatScrollAreaRef.current;
     if (scrollElement) {
       scrollElement.scrollTop = scrollElement.scrollHeight;
     }
@@ -610,12 +606,18 @@ const CamerasPage: NextPage = () => {
                 description: response.suggestedAlertEvents || "Could not generate alert events. Please try again.",
             });
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating group alert events:", error);
+        let description = "An unexpected error occurred while generating alert events.";
+        if (error.message && error.message.includes('API key not valid')) {
+            description = "Generation failed: API key is not valid. Please check your configuration.";
+        } else if (error.message) {
+            description = `Generation failed: ${error.message}`;
+        }
         toast({
             variant: "destructive",
             title: "Error",
-            description: "An unexpected error occurred while generating alert events.",
+            description: description,
         });
     } finally {
         setIsGeneratingAlerts(false);
@@ -715,7 +717,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep1.control}
-                            name="groupDefaultCameraSceneContext" 
+                            name="groupDefaultCameraSceneContext"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -730,7 +732,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep1.control}
-                            name="groupDefaultAiDetectionTarget" 
+                            name="groupDefaultAiDetectionTarget"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center mb-1.5">
@@ -745,7 +747,7 @@ const CamerasPage: NextPage = () => {
                             />
                         <FormField
                             control={formStep1.control}
-                            name="groupDefaultAlertEvents" 
+                            name="groupDefaultAlertEvents"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center justify-between mb-1.5">
@@ -804,7 +806,7 @@ const CamerasPage: NextPage = () => {
                     {snapshotUrl && <CheckCircle className="h-5 w-5 text-green-500" />}
                 </div>
                 <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
-                
+
                 <div className="flex flex-col items-center space-y-2">
                     <p className="text-sm text-muted-foreground">Getting Snapshot...</p>
                     {!snapshotUrl && isProcessingStep2 && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
@@ -829,7 +831,7 @@ const CamerasPage: NextPage = () => {
 
 
                 <ArrowDown className="h-5 w-5 text-muted-foreground mx-auto" />
-                
+
                 <div className="flex flex-col items-center space-y-2">
                     <p className="text-sm text-muted-foreground">Generating Scene Dense Description (for prompt)</p>
                     {isProcessingStep2 && !formStep2.getValues('sceneDescription') && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
@@ -838,7 +840,7 @@ const CamerasPage: NextPage = () => {
 
                 <FormField
                     control={formStep2.control}
-                    name="sceneDescription" 
+                    name="sceneDescription"
                     render={({ field }) => (
                         <FormItem className="text-left">
                             <FormLabel className="flex items-center">
@@ -874,7 +876,7 @@ const CamerasPage: NextPage = () => {
                     <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
                         <FormField
                             control={formStep3.control}
-                            name="cameraSceneContext" 
+                            name="cameraSceneContext"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
@@ -883,9 +885,9 @@ const CamerasPage: NextPage = () => {
                                     </FormLabel>
                                     <FormControl>
                                         <div className="relative">
-                                            <Textarea 
-                                                placeholder="Based on the dense description and the group's description, generate the detailed scene" 
-                                                {...field} 
+                                            <Textarea
+                                                placeholder="Based on the dense description and the group's description, generate the detailed scene"
+                                                {...field}
                                                 rows={3}
                                                 className="pr-10"
                                             />
@@ -900,7 +902,7 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep3.control}
-                            name="aiDetectionTarget" 
+                            name="aiDetectionTarget"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
@@ -909,9 +911,9 @@ const CamerasPage: NextPage = () => {
                                     </FormLabel>
                                     <FormControl>
                                         <div className="relative">
-                                            <Textarea 
-                                                placeholder="If there is Group value + any specific value." 
-                                                {...field} 
+                                            <Textarea
+                                                placeholder="If there is Group value + any specific value."
+                                                {...field}
                                                 rows={3}
                                                 className="pr-10"
                                             />
@@ -926,17 +928,17 @@ const CamerasPage: NextPage = () => {
                         />
                         <FormField
                             control={formStep3.control}
-                            name="alertEvents" 
+                            name="alertEvents"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="flex items-center">
-                                        <Diamond className="w-4 h-4 mr-2 text-muted-foreground" /> 
+                                        <Diamond className="w-4 h-4 mr-2 text-muted-foreground" />
                                         Alert Events
                                     </FormLabel>
                                     <FormControl>
-                                        <Input 
-                                            placeholder="e.g., safety: worker not wearing ppe, safety: worker not wearing helmet, safety: unlit work area" 
-                                            {...field} 
+                                        <Input
+                                            placeholder="e.g., safety: worker not wearing ppe, safety: worker not wearing helmet, safety: unlit work area"
+                                            {...field}
                                         />
                                     </FormControl>
                                     <p className="text-xs text-muted-foreground mt-1">Enter comma-separated alert events for this camera.</p>
@@ -1000,7 +1002,7 @@ const CamerasPage: NextPage = () => {
                                     )}
                                 />
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-x-4">
                                 <FormField
                                     control={formStep3.control}
@@ -1067,7 +1069,7 @@ const CamerasPage: NextPage = () => {
         }
     } else if (drawerType === 'chatCamera' && selectedCameraForChat) {
         return (
-            <div className="flex flex-col h-full p-4 space-y-4" ref={chatScrollAreaRef}> 
+            <div className="flex flex-col h-full p-4 space-y-4" ref={chatScrollAreaRef}>
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
                     <div className="flex items-end space-x-2 max-w-[80%]">
@@ -1122,9 +1124,9 @@ const CamerasPage: NextPage = () => {
         return (
             <div className="flex justify-between p-4 border-t">
                 <Button variant="outline" onClick={handleDrawerClose}>Cancel</Button>
-                <Button 
-                    type="submit" 
-                    form="add-camera-form-step1" 
+                <Button
+                    type="submit"
+                    form="add-camera-form-step1"
                     disabled={formStep1.formState.isSubmitting || !formStep1.formState.isValid || isProcessingStep2}
                 >
                     {formStep1.formState.isSubmitting || isProcessingStep2 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -1136,9 +1138,9 @@ const CamerasPage: NextPage = () => {
         return (
             <div className="flex justify-between p-4 border-t">
                 <Button variant="outline" onClick={handleStep2Back}>Back</Button>
-                <Button 
-                    type="submit" 
-                    form="add-camera-form-step2" 
+                <Button
+                    type="submit"
+                    form="add-camera-form-step2"
                     disabled={isProcessingStep2 || formStep2.formState.isSubmitting || !formStep2.formState.isValid}
                 >
                     {(isProcessingStep2 || formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -1150,9 +1152,9 @@ const CamerasPage: NextPage = () => {
             return (
                 <div className="flex justify-between p-4 border-t">
                     <Button variant="outline" onClick={handleStep3Back}>Back</Button>
-                    <Button 
-                        type="submit" 
-                        form="add-camera-form-step3" 
+                    <Button
+                        type="submit"
+                        form="add-camera-form-step3"
                         disabled={formStep3.formState.isSubmitting || !formStep3.formState.isValid}
                     >
                         {formStep3.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -1188,7 +1190,7 @@ const CamerasPage: NextPage = () => {
 
   const getDrawerTitle = () => {
     if (drawerType === 'addCamera') {
-        let title = drawerStep === 1 ? "Add New Camera - Details" : 
+        let title = drawerStep === 1 ? "Add New Camera - Details" :
                drawerStep === 2 ? "Add New Camera - Scene Analysis" :
                "Add New Camera - AI Configuration";
         return title;
