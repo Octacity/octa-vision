@@ -8,21 +8,34 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getAuth, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { db } from '@/firebase/firebase';
-import { collection, addDoc, serverTimestamp, query, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, getDocs, Timestamp, doc, updateDoc, writeBatch } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Loader2, Edit3, Trash2, ServerIcon } from 'lucide-react';
+import { PlusCircle, Loader2, Edit3, Trash2, ServerIcon, CheckCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import RightDrawer from '@/components/RightDrawer';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePageLoading } from '@/contexts/LoadingContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 interface ServerData {
   id: string;
@@ -30,7 +43,8 @@ interface ServerData {
   ipAddressWithPort: string;
   remarks?: string;
   status: 'online' | 'offline' | 'maintenance';
-  createdAt: any; // Firestore Timestamp or string after formatting
+  isDefault?: boolean;
+  createdAt: any; 
   createdBy: string;
 }
 
@@ -40,18 +54,20 @@ const serverFormSchema = z.object({
     .regex(/^(\d{1,3}\.){3}\d{1,3}:\d{1,5}$/, "Invalid IP:Port format (e.g., 192.168.1.1:8000)"),
   remarks: z.string().optional(),
   status: z.enum(['online', 'offline', 'maintenance']).default('online'),
+  isDefault: z.boolean().optional().default(false),
 });
 type ServerFormValues = z.infer<typeof serverFormSchema>;
 
 const AdminServersPage: NextPage = () => {
   const { toast } = useToast();
   const { translate } = useLanguage();
+  const { setIsPageLoading } = usePageLoading();
   const [servers, setServers] = useState<ServerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingServer, setEditingServer] = useState<ServerData | null>(null); // For future edit functionality
+  const [editingServer, setEditingServer] = useState<ServerData | null>(null); 
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverFormSchema),
@@ -60,6 +76,7 @@ const AdminServersPage: NextPage = () => {
       ipAddressWithPort: '',
       remarks: '',
       status: 'online',
+      isDefault: false,
     },
   });
 
@@ -97,7 +114,13 @@ const AdminServersPage: NextPage = () => {
 
   const handleAddServerClick = () => {
     setEditingServer(null);
-    form.reset();
+    form.reset({
+      name: '',
+      ipAddressWithPort: '',
+      remarks: '',
+      status: 'online',
+      isDefault: false,
+    });
     setIsDrawerOpen(true);
   };
 
@@ -105,6 +128,39 @@ const AdminServersPage: NextPage = () => {
     setIsDrawerOpen(false);
     setEditingServer(null);
   };
+
+  const handleSetDefaultServer = async (serverIdToSetAsDefault: string) => {
+    const batch = writeBatch(db);
+    let currentDefaultServerExists = false;
+    servers.forEach(server => {
+      const serverRef = doc(db, 'servers', server.id);
+      if (server.id === serverIdToSetAsDefault) {
+        batch.update(serverRef, { isDefault: true });
+      } else if (server.isDefault) {
+        currentDefaultServerExists = true;
+        batch.update(serverRef, { isDefault: false });
+      }
+    });
+
+    // If no server was default before, or if we are changing default, it's fine.
+    // If we are trying to uncheck the *only* default server (which isn't directly possible with this button, but good for future edit logic)
+    const serverBeingSet = servers.find(s => s.id === serverIdToSetAsDefault);
+    if (serverBeingSet && serverBeingSet.isDefault && servers.filter(s => s.isDefault).length === 1) {
+        // This case is more for an "unset default" button, which we don't have directly for the "Set as Default" action.
+        // The "Set as Default" button inherently ensures one is default.
+    }
+
+
+    try {
+      await batch.commit();
+      toast({ title: 'Default Server Updated', description: 'The default server has been successfully set.' });
+      fetchServers(); // Refresh the list
+    } catch (error) {
+      console.error("Error setting default server: ", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not set default server.' });
+    }
+  };
+
 
   const onSubmitServerForm: SubmitHandler<ServerFormValues> = async (data) => {
     if (!currentUser) {
@@ -115,18 +171,54 @@ const AdminServersPage: NextPage = () => {
 
     try {
       if (editingServer) {
-        // Update existing server (Future implementation)
-        // const serverRef = doc(db, 'servers', editingServer.id);
-        // await updateDoc(serverRef, { ...data, updatedAt: serverTimestamp() });
-        // toast({ title: 'Server Updated', description: `${data.name} has been updated.` });
-      } else {
-        // Add new server
-        await addDoc(collection(db, 'servers'), {
+        const serverRef = doc(db, 'servers', editingServer.id);
+        if (data.isDefault) {
+          // If setting this edited server as default, first unset any other default server
+          const batch = writeBatch(db);
+          servers.forEach(s => {
+            if (s.id !== editingServer.id && s.isDefault) {
+              const otherServerRef = doc(db, 'servers', s.id);
+              batch.update(otherServerRef, { isDefault: false });
+            }
+          });
+          await batch.commit();
+        } else {
+          // If unchecking default on the server being edited, ensure at least one other default exists
+          const otherDefaultServers = servers.filter(s => s.id !== editingServer.id && s.isDefault);
+          if (editingServer.isDefault && !otherDefaultServers.length && servers.length > 1) {
+             toast({ variant: 'destructive', title: 'Action Denied', description: 'Cannot unset the only default server. Set another server as default first.' });
+             setIsSubmitting(false);
+             return;
+          }
+        }
+        await updateDoc(serverRef, { ...data, updatedAt: serverTimestamp() });
+        toast({ title: 'Server Updated', description: `${data.name} has been updated.` });
+
+      } else { // Adding new server
+        const newServerData: Omit<ServerData, 'id' | 'createdAt' | 'createdBy'> & { createdAt: Timestamp, createdBy: string, updatedAt: Timestamp} = {
           ...data,
           createdBy: currentUser.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+          createdAt: serverTimestamp() as Timestamp,
+          updatedAt: serverTimestamp() as Timestamp,
+        };
+
+        if (data.isDefault) {
+            // If this new server is set as default, unset any existing default server
+            const batch = writeBatch(db);
+            servers.forEach(s => {
+                if (s.isDefault) {
+                const otherServerRef = doc(db, 'servers', s.id);
+                batch.update(otherServerRef, { isDefault: false });
+                }
+            });
+            await batch.commit();
+        } else if (!data.isDefault && servers.length === 0) {
+            // If this is the first server being added and it's not set to default, automatically make it default.
+            newServerData.isDefault = true;
+        }
+
+
+        await addDoc(collection(db, 'servers'), newServerData);
         toast({ title: 'Server Added', description: `${data.name} has been added successfully.` });
       }
       fetchServers();
@@ -137,6 +229,30 @@ const AdminServersPage: NextPage = () => {
     }
     setIsSubmitting(false);
   };
+
+  const handleEditServer = (server: ServerData) => {
+    setEditingServer(server);
+    form.reset({
+        name: server.name,
+        ipAddressWithPort: server.ipAddressWithPort,
+        remarks: server.remarks || '',
+        status: server.status,
+        isDefault: server.isDefault || false,
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const handleDeleteServer = async (serverId: string) => {
+    const serverToDelete = servers.find(s => s.id === serverId);
+    if (serverToDelete?.isDefault && servers.filter(s => s.isDefault).length <= 1) {
+        toast({ variant: 'destructive', title: 'Action Denied', description: 'Cannot delete the only default server. Set another server as default first.' });
+        return;
+    }
+    // Implement actual delete logic here (e.g., call deleteDoc)
+    // For now, it's just a placeholder
+    toast({title: "Delete Server", description: "Delete functionality not fully implemented yet."});
+  };
+
 
   const renderDrawerContent = () => (
     <div className="p-6">
@@ -203,6 +319,30 @@ const AdminServersPage: NextPage = () => {
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="isDefault"
+            render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 shadow-sm">
+                    <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={editingServer?.isDefault && servers.filter(s => s.isDefault && s.id !== editingServer.id).length === 0 && servers.length > 1 && !field.value}
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                        Set as Default Server
+                        </FormLabel>
+                        <FormDescription>
+                        Only one server can be the default. If checked, any other default server will be unset.
+                        {editingServer?.isDefault && servers.filter(s => s.isDefault && s.id !== editingServer.id).length === 0 && servers.length > 1 && !field.value && " Cannot unset the only default server." }
+                        </FormDescription>
+                    </div>
+                </FormItem>
+            )}
+           />
         </form>
       </Form>
     </div>
@@ -222,8 +362,8 @@ const AdminServersPage: NextPage = () => {
     </div>
   );
 
-  if (!currentUser) { // Basic check, proper role check would be in layout or via rules
-    return <p>Loading user data...</p>;
+  if (!currentUser) { 
+    return <div className="flex justify-center items-center p-8 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
 
@@ -235,7 +375,7 @@ const AdminServersPage: NextPage = () => {
             <div>
               <CardTitle className="text-lg font-normal text-primary">Manage Servers</CardTitle>
               <CardDescription className="text-xs mt-1 text-muted-foreground">
-                View, add, or modify system servers.
+                View, add, or modify system servers for VSS processing.
               </CardDescription>
             </div>
             <Button size="sm" onClick={handleAddServerClick}>
@@ -257,9 +397,10 @@ const AdminServersPage: NextPage = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>IP Address:Port</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Default</TableHead>
                       <TableHead>Remarks</TableHead>
                       <TableHead>Created At</TableHead>
-                      <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">Actions</TableHead>
+                      <TableHead className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[120px] min-w-[120px] border-l border-border">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -273,35 +414,71 @@ const AdminServersPage: NextPage = () => {
                             server.status === 'offline' ? 'destructive' : 'secondary'
                           } className={`${
                             server.status === 'online' ? 'bg-green-500 hover:bg-green-600' :
-                            server.status === 'offline' ? '' : '' // Destructive badge has its own colors
+                            server.status === 'offline' ? '' : '' 
                           } text-white`}>
                             {server.status.charAt(0).toUpperCase() + server.status.slice(1)}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-center">
+                            {server.isDefault && <CheckCircle className="h-5 w-5 text-green-500" />}
+                        </TableCell>
                         <TableCell className="max-w-xs truncate">{server.remarks || 'N/A'}</TableCell>
                         <TableCell>{server.createdAt}</TableCell>
-                        <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
+                        <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[120px] min-w-[120px] border-l border-border">
                           <div className="flex justify-end items-center space-x-1">
                             <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={() => handleSetDefaultServer(server.id)} disabled={server.isDefault} className="h-8 text-xs">
+                                        Set Default
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Set as Default Server</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" onClick={() => { /* handleEditServer(server.id) */ }} className="h-8 w-8" disabled>
+                                <Button variant="outline" size="icon" onClick={() => handleEditServer(server) } className="h-8 w-8">
                                   <Edit3 className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Edit Server (Not Implemented)</p>
+                                <p>Edit Server</p>
                               </TooltipContent>
                             </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8" disabled>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Delete Server (Not Implemented)</p>
-                              </TooltipContent>
-                            </Tooltip>
+                             <AlertDialog>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                                     disabled={server.isDefault && servers.filter(s => s.isDefault).length <= 1}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{(server.isDefault && servers.filter(s => s.isDefault).length <= 1) ? "Cannot delete default server" : "Delete Server"}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                {!(server.isDefault && servers.filter(s => s.isDefault).length <= 1) && (
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the server: <strong>{server.name}</strong>.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => handleDeleteServer(server.id)}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                                )}
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -332,3 +509,4 @@ const AdminServersPage: NextPage = () => {
 };
 
 export default AdminServersPage;
+
