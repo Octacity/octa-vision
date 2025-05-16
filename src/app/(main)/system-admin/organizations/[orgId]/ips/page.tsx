@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -13,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageLoading } from '@/contexts/LoadingContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge'; // Added Badge import
+import { Badge } from '@/components/ui/badge';
 
 interface CameraData {
   id: string;
@@ -30,7 +31,7 @@ interface ServerInfo {
     id: string;
     name: string;
     ipAddressWithPort: string;
-    isDefault?: boolean; // Added to match server data structure
+    isDefault?: boolean;
 }
 
 interface CameraConfig {
@@ -55,8 +56,7 @@ const AssignServersToCamerasPage: NextPage = () => {
   const fetchCameraConfig = useCallback(async (cameraId: string, configId?: string): Promise<CameraConfig | null> => {
     if (!configId) return null;
     try {
-      // Ensure the collection name matches your Firestore setup, likely 'camera_configurations' or 'configurations'
-      const configDocRef = doc(db, 'configurations', configId); // Assuming 'configurations' based on prior context
+      const configDocRef = doc(db, 'camera_configurations', configId); // Changed to camera_configurations
       const configDocSnap = await getDoc(configDocRef);
       if (configDocSnap.exists()) {
         return configDocSnap.data() as CameraConfig;
@@ -116,11 +116,7 @@ const AssignServersToCamerasPage: NextPage = () => {
             const config = await fetchCameraConfig(cam.id, cam.currentConfigId);
             if (config) {
               configs[cam.id] = config;
-              if (config.serverIpAddress) {
-                initialSelected[cam.id] = config.serverIpAddress;
-              } else {
-                 initialSelected[cam.id] = undefined; // Explicitly undefined for "None"
-              }
+              initialSelected[cam.id] = config.serverIpAddress || undefined;
             } else {
                  initialSelected[cam.id] = undefined;
             }
@@ -140,37 +136,41 @@ const AssignServersToCamerasPage: NextPage = () => {
 
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, toast, router, fetchCameraConfig]); // Removed setIsPageLoading from deps as it's stable
+  }, [orgId, toast, router, fetchCameraConfig]);
 
   const handleAssignServer = async (cameraId: string) => {
     const camera = cameras.find(c => c.id === cameraId);
-    const selectedServerIp = selectedServers[cameraId]; // This will be undefined if "None" is selected
+    const selectedServerIpOrNone = selectedServers[cameraId];
 
-    if (!camera || !camera.currentConfigId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Missing camera configuration ID.' });
+    if (!camera) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Camera not found.' });
+      return;
+    }
+    if (!camera.currentConfigId) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Configuration Missing', 
+        description: `Camera ${camera.cameraName} does not have an active configuration ID. Please check camera setup.` 
+      });
       return;
     }
     
-    // serverIpToSave will be the actual IP string or null
-    const serverIpToSave = selectedServerIp === undefined ? null : selectedServerIp;
-
+    const serverIpToSave = selectedServerIpOrNone === undefined ? null : selectedServerIpOrNone;
 
     setIsPageLoading(true);
     try {
-      const configDocRef = doc(db, 'configurations', camera.currentConfigId);
+      const configDocRef = doc(db, 'camera_configurations', camera.currentConfigId); // Changed to camera_configurations
       await updateDoc(configDocRef, { serverIpAddress: serverIpToSave });
       toast({ title: 'Server Assigned', description: `Server assignment updated for ${camera.cameraName}.` });
       
-      // Refresh local config state for this specific camera
       const updatedConfig = await fetchCameraConfig(cameraId, camera.currentConfigId);
       if(updatedConfig) {
         setCameraConfigs(prev => ({ ...prev, [cameraId]: updatedConfig }));
-        // Also update selectedServers state to reflect the change or removal
         setSelectedServers(prev => ({...prev, [cameraId]: updatedConfig.serverIpAddress || undefined}));
       }
     } catch (error) {
       console.error("Error assigning server: ", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update server assignment.' });
+      toast({ variant: 'destructive', title: 'Error assigning server', description: (error as Error).message });
     }
     setIsPageLoading(false);
   };
@@ -241,7 +241,7 @@ const AssignServersToCamerasPage: NextPage = () => {
                               <SelectContent>
                                 <SelectItem value="__SELECT_NONE__">None</SelectItem>
                                 {servers
-                                  .filter(server => server.ipAddressWithPort && server.ipAddressWithPort.trim() !== "") // Filter out servers with empty IP
+                                  .filter(server => server.ipAddressWithPort && server.ipAddressWithPort.trim() !== "")
                                   .map((server) => (
                                   <SelectItem key={server.id} value={server.ipAddressWithPort}>
                                     {server.name} ({server.ipAddressWithPort})
@@ -260,7 +260,6 @@ const AssignServersToCamerasPage: NextPage = () => {
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => handleAssignServer(camera.id)}
-                                // Disable if current selection matches what's in config (or both are 'None')
                                 disabled={
                                   (selectedServers[camera.id] === undefined && (cameraConfigs[camera.id]?.serverIpAddress === null || cameraConfigs[camera.id]?.serverIpAddress === undefined)) ||
                                   selectedServers[camera.id] === cameraConfigs[camera.id]?.serverIpAddress
