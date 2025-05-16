@@ -108,7 +108,6 @@ const addCameraStep3Schema = z.object({
     numFrames: z.string().min(1, "Number of frames is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoOverlapValue: z.string().min(1, "Video overlap value is required.").refine(val => !isNaN(parseFloat(val)), {message: "Must be a number"}),
     videoOverlapUnit: z.enum(['seconds', 'minutes']).default('seconds'),
-    serverIpAddress: z.string().ip({ message: "Invalid IP address format."}).min(1, "Server IP address is required."),
 });
 type AddCameraStep3Values = z.infer<typeof addCameraStep3Schema>;
 
@@ -215,7 +214,6 @@ const CamerasPage: NextPage = () => {
         numFrames: '5',
         videoOverlapValue: '2',
         videoOverlapUnit: 'seconds',
-        serverIpAddress: '', // Initialize with empty string or a default IP if applicable
     }
   });
 
@@ -268,7 +266,7 @@ const CamerasPage: NextPage = () => {
     setSelectedGroup(value);
     formStep1.setValue('group', value);
     formStep2.resetField('sceneDescription');
-    formStep3.reset(); // Reset step 3 including serverIpAddress
+    formStep3.reset();
 
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
@@ -277,7 +275,6 @@ const CamerasPage: NextPage = () => {
       formStep1.setValue('groupDefaultNumFrames', '5');
       formStep1.setValue('groupDefaultVideoOverlapValue', '2');
       formStep1.setValue('groupDefaultVideoOverlapUnit', 'seconds');
-      formStep3.setValue('serverIpAddress', ''); // Clear for new group or set a sensible default
     } else {
       setShowNewGroupForm(false);
       formStep1.setValue('newGroupName', '');
@@ -300,10 +297,6 @@ const CamerasPage: NextPage = () => {
         formStep3.setValue('numFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
         formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
-        // Potentially set a default server IP based on the group if groups have associated IPs
-        formStep3.setValue('serverIpAddress', ''); // Or a group-specific default
-      } else {
-        formStep3.setValue('serverIpAddress', ''); // Clear if group not found
       }
     }
   };
@@ -353,8 +346,6 @@ const CamerasPage: NextPage = () => {
     let finalNumFrames = '5';
     let finalVideoOverlapValue = '2';
     let finalVideoOverlapUnit: 'seconds' | 'minutes' = 'seconds';
-    // Set a default or leave empty for serverIpAddress - user will fill this
-    let finalServerIpAddress = ''; // Or a default like '192.168.1.100'
 
 
     if (step1Values.group && step1Values.group !== 'add_new_group') {
@@ -374,7 +365,6 @@ const CamerasPage: NextPage = () => {
                 finalVideoOverlapValue = selectedGroupData.defaultVideoOverlap.value.toString();
                 finalVideoOverlapUnit = selectedGroupData.defaultVideoOverlap.unit;
             }
-            // Potentially inherit server IP from group if applicable
         }
     } else if (step1Values.group === 'add_new_group') {
         if(step1Values.groupDefaultCameraSceneContext) finalCameraContext = step1Values.groupDefaultCameraSceneContext;
@@ -397,7 +387,6 @@ const CamerasPage: NextPage = () => {
     formStep3.setValue('numFrames', finalNumFrames);
     formStep3.setValue('videoOverlapValue', finalVideoOverlapValue);
     formStep3.setValue('videoOverlapUnit', finalVideoOverlapUnit);
-    formStep3.setValue('serverIpAddress', finalServerIpAddress);
 
     setDrawerStep(3);
   };
@@ -475,15 +464,14 @@ const CamerasPage: NextPage = () => {
       protocol: "rtsp",
       activeVSSId: null, 
       historicalVSSIds: [],
-      processingStatus: "waiting_for_approval", // Set initial status
-      // currentConfigId will be set after config creation
+      processingStatus: "waiting_for_approval",
     });
 
     const configDocRef = doc(collection(db, 'configurations'));
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: configData.serverIpAddress, // Save server IP
+      serverIpAddress: null, // Server IP will be set by admin later
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -940,23 +928,6 @@ const CamerasPage: NextPage = () => {
                                 </FormItem>
                             )}
                         />
-                         <FormField
-                            control={formStep3.control}
-                            name="serverIpAddress"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel className="flex items-center mb-1.5">
-                                    <Server className="w-4 h-4 mr-2 text-muted-foreground"/> Server IP Address
-                                </FormLabel>
-                                <FormControl>
-                                    <Input placeholder="e.g., 192.168.1.100" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-
                         <div className="grid grid-cols-1 gap-y-6">
                             <div className="grid grid-cols-2 gap-x-4">
                                 <FormField
