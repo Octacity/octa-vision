@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -28,6 +29,7 @@ service cloud.firestore {
     }
 
     // Helper function to check if the requesting user belongs to a specific organization
+    // Takes orgId as a parameter.
     function belongsToOrg(orgId) {
       let userData = getUserData();
       return userData != null && userData.organizationId == orgId;
@@ -56,7 +58,7 @@ service cloud.firestore {
       allow create: if (
                       // Initial signup: user-admin for a new org
                       (request.auth != null &&
-                       incomingData().email == request.auth.token.email &&
+                       incomingData().email == request.auth.token.email && // Ensure email matches token during signup
                        incomingData().role == 'user-admin' &&
                        incomingData().organizationId != null &&
                        incomingData().createdBy == request.auth.uid
@@ -67,7 +69,7 @@ service cloud.firestore {
                       (isUserAdmin() &&
                        incomingData().organizationId == getUserData().organizationId &&
                        (incomingData().role == 'user' || incomingData().role == 'user-admin') &&
-                       incomingData().createdBy == request.auth.uid
+                       incomingData().createdBy == request.auth.uid // User-admin must be the creator
                       )
                     );
 
@@ -75,26 +77,27 @@ service cloud.firestore {
       // 1. The user is reading their own document.
       // 2. The user is a system-admin.
       // 3. The user is a user-admin and the document being read belongs to their organization.
-      allow read, list: if request.auth != null && (  // Added 'list' for system admins
+      allow read: if request.auth != null && (
                       isOwner(userId) ||
                       isSystemAdmin() ||
                       (isUserAdmin() && belongsToOrg(existingData().organizationId))
                     );
+      allow list: if request.auth != null && (isSystemAdmin() || isUserAdmin()); // User admins can list users in their org, system admins all
 
       // Allow update if:
-      // 1. The user is updating their own document (but cannot change orgId or role).
-      // 2. The user is a system-admin.
+      // 1. The user is updating their own document (but cannot change orgId or critical role aspects without admin).
+      // 2. The user is a system-admin (can change anything).
       // 3. The user is a user-admin updating a user within their org (cannot change orgId, can change role to 'user' or 'user-admin').
       allow update: if request.auth != null && (
                       (isOwner(userId) &&
-                       incomingData().organizationId == existingData().organizationId &&
-                       incomingData().role == existingData().role // Prevent self-role/org change
+                       incomingData().organizationId == existingData().organizationId && // Cannot change own org
+                       ( (existingData().role == 'system-admin' || existingData().role == 'user-admin') ? incomingData().role == existingData().role : true ) // Admins cannot change their own role to less privileged
                       ) ||
                       isSystemAdmin() ||
                       (isUserAdmin() &&
                        belongsToOrg(existingData().organizationId) && // target user is in their org
                        incomingData().organizationId == existingData().organizationId && // cannot change target user's org
-                       (incomingData().role == 'user' || incomingData().role == 'user-admin')
+                       (incomingData().role == 'user' || incomingData().role == 'user-admin') // can set to user or user-admin
                       )
                     );
 
@@ -117,11 +120,11 @@ service cloud.firestore {
       // Allow read if:
       // 1. The user is a system-admin.
       // 2. The user belongs to the organization (either user or user-admin).
-      // Allow list if system-admin
-      allow read, list: if request.auth != null && (
+      allow read: if request.auth != null && (
                       isSystemAdmin() ||
                       belongsToOrg(orgId)
                     );
+      allow list: if request.auth != null && isSystemAdmin(); // Only system admins can list all orgs
 
       // Allow update if:
       // 1. The user is a system-admin.
@@ -132,73 +135,78 @@ service cloud.firestore {
                     );
 
       // System admin can delete organizations
-      allow delete: if isSystemAdmin();
+      allow delete: if request.auth != null && isSystemAdmin();
     }
 
     match /groups/{groupId} {
-      // Check existingData only if it's not a create operation or list
-      function isRelevantOrgForGroup() {
-        if (request.method == 'create') {
-          return belongsToOrg(incomingData().orgId);
-        }
-        // For read, update, delete, list, existingData().orgId should be valid if document exists
-        return resource == null || (resource != null && belongsToOrg(existingData().orgId));
+      function getOrgIdForGroup() {
+        return request.method == 'create' ? incomingData().orgId : existingData().orgId;
       }
-      allow read, write: if request.auth != null && (isSystemAdmin() || isRelevantOrgForGroup());
+      allow create: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForGroup())));
+      allow read, list: if request.auth != null && (isSystemAdmin() || belongsToOrg(getOrgIdForGroup()));
+      allow update: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForGroup()) && incomingData().orgId == existingData().orgId ));
+      allow delete: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForGroup())));
     }
 
-    match /camera_configurations/{configId} {
-       // Check existingData/incomingData carefully
-      function isRelevantOrgForConfig() {
-        let targetSourceId = request.method == 'create' ? incomingData().sourceId : existingData().sourceId;
-        let sourceType = request.method == 'create' ? incomingData().sourceType : existingData().sourceType;
-        
-        if (targetSourceId == null || sourceType == null) return false; // Invalid state
-
-        if (sourceType == 'camera') {
-            return exists(/databases/$(database)/documents/cameras/$(targetSourceId)) &&
-                   belongsToOrg(get(/databases/$(database)/documents/cameras/$(targetSourceId)).data.orgId);
-        } else if (sourceType == 'video') {
-            // Assuming a 'videos' collection exists with an 'orgId' field
-             return exists(/databases/$(database)/documents/videos/$(targetSourceId)) &&
-                    belongsToOrg(get(/databases/$(database)/documents/videos/$(targetSourceId)).data.orgId);
-        }
-        return false;
+    match /configurations/{configId} {
+      // Helper to get the orgId of the source (camera/video) this configuration belongs to
+      function getConfigOwningOrgId() {
+        let sourceData = request.method == 'create' ? incomingData() : existingData();
+        let docPathPrefix = /databases/$(database)/documents/;
+        let sourcePath = sourceData.sourceType == 'camera' ? string(docPathPrefix) + 'cameras/' + string(sourceData.sourceId)
+                                                          : string(docPathPrefix) + 'videos/' + string(sourceData.sourceId);
+        // Check existence before get to avoid errors on list/non-existent doc reads
+        return exists(path(sourcePath)) ? get(path(sourcePath)).data.orgId : null;
       }
-      allow read, write: if request.auth != null && (isSystemAdmin() || isRelevantOrgForConfig());
+
+      allow create: if request.auth != null && (
+                        isSystemAdmin() ||
+                        ( (isUserAdmin() || isUser()) && getConfigOwningOrgId() != null && belongsToOrg(getConfigOwningOrgId()) )
+                      );
+      allow read, list: if request.auth != null && (
+                        isSystemAdmin() ||
+                        ( getConfigOwningOrgId() != null && belongsToOrg(getConfigOwningOrgId()) )
+                      );
+      allow update: if request.auth != null && (
+                        isSystemAdmin() ||
+                        ( (isUserAdmin() || isUser()) && getConfigOwningOrgId() != null && belongsToOrg(getConfigOwningOrgId()) &&
+                          incomingData().sourceId == existingData().sourceId &&
+                          incomingData().sourceType == existingData().sourceType // Cannot change source association
+                        )
+                      );
+      allow delete: if request.auth != null && (
+                        isSystemAdmin() ||
+                        ( isUserAdmin() && getConfigOwningOrgId() != null && belongsToOrg(getConfigOwningOrgId()) )
+                      );
     }
 
-     match /cameras/{cameraId} {
-        // Check existingData only if it's not a create operation or list
-        function isRelevantOrgForCamera() {
-            if (request.method == 'create') {
-                return belongsToOrg(incomingData().orgId);
-            }
-            return resource == null || (resource != null && belongsToOrg(existingData().orgId));
-        }
-        allow read, write: if request.auth != null && (isSystemAdmin() || isRelevantOrgForCamera());
-     }
+    match /cameras/{cameraId} {
+      function getOrgIdForCamera() {
+        return request.method == 'create' ? incomingData().orgId : existingData().orgId;
+      }
+      allow create: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForCamera())));
+      allow read, list: if request.auth != null && (isSystemAdmin() || belongsToOrg(getOrgIdForCamera()));
+      allow update: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForCamera()) && incomingData().orgId == existingData().orgId ));
+      allow delete: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForCamera())));
+    }
 
-     match /videos/{videoId} { // Basic rules for videos, similar to cameras
-        function isRelevantOrgForVideo() {
-            if (request.method == 'create') {
-                return belongsToOrg(incomingData().orgId);
-            }
-            return resource == null || (resource != null && belongsToOrg(existingData().orgId));
-        }
-        allow read, write: if request.auth != null && (isSystemAdmin() || isRelevantOrgForVideo());
-     }
-     
-     match /servers/{serverId} {
-        // Only system admins can manage servers
-        allow read, list, write, delete: if request.auth != null && isSystemAdmin();
-     }
+    match /videos/{videoId} {
+      function getOrgIdForVideo() {
+        return request.method == 'create' ? incomingData().orgId : existingData().orgId;
+      }
+      allow create: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForVideo())));
+      allow read, list: if request.auth != null && (isSystemAdmin() || belongsToOrg(getOrgIdForVideo()));
+      allow update: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForVideo()) && incomingData().orgId == existingData().orgId ));
+      allow delete: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(getOrgIdForVideo())));
+    }
 
-
-    // Fallback: Deny all other paths by default if not explicitly matched
-    // This is safer than a broad allow for system admins.
-    // match /{path=**} {
-    //  allow read, write: if false;
-    // }
+    match /servers/{serverId} {
+      // Only system admins can manage servers
+      allow read, write, list, create, update, delete: if request.auth != null && isSystemAdmin();
+    }
+    // No broad fallback rule by default for better security.
+    // Add explicit rules for any other collections.
   }
 }
+
+    
