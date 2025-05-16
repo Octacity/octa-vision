@@ -313,10 +313,8 @@ const CamerasPage: NextPage = () => {
       duration: 10000,
     });
 
-    // Skipping actual snapshot and VSS API calls for now as per instructions.
-    // We'll use placeholders for UI flow.
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate some delay
-    setSnapshotUrl('https://placehold.co/400x300.png'); // Placeholder image
+    await new Promise(resolve => setTimeout(resolve, 500)); 
+    setSnapshotUrl('https://placehold.co/400x300.png'); 
     
     let sceneDescToSet = 'Placeholder: AI-generated scene description would appear here based on the snapshot.'; 
     formStep2.setValue('sceneDescription', sceneDescToSet);
@@ -413,15 +411,14 @@ const CamerasPage: NextPage = () => {
     const now = serverTimestamp() as Timestamp;
     let finalGroupId: string | null = null;
 
+    // Handle group creation or selection
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
-        batch.set(groupDocRef, {
+        const newGroup: Omit<Group, 'id'| 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp } = { // Ensure Timestamp type for serverTimestamp
             name: step1Data.newGroupName,
             orgId: orgId,
             userId: currentUser.uid,
-            createdAt: now,
-            updatedAt: now,
             cameras: [],
             videos: [],
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
@@ -430,28 +427,17 @@ const CamerasPage: NextPage = () => {
             defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
             defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
             defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
-        });
-        const newGroupForState: Group = {
-          id: groupDocRef.id,
-          name: step1Data.newGroupName,
-          orgId: orgId,
-          userId: currentUser.uid,
-          createdAt: now, 
-          updatedAt: now,
-          cameras: [],
-          videos: [],
-          defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
-          defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
-          defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
-          defaultVideoChunks: step1Data.groupDefaultVideoChunksValue ? { value: parseFloat(step1Data.groupDefaultVideoChunksValue), unit: step1Data.groupDefaultVideoChunksUnit || 'seconds' } : null,
-          defaultNumFrames: step1Data.groupDefaultNumFrames ? parseInt(step1Data.groupDefaultNumFrames, 10) : null,
-          defaultVideoOverlap: step1Data.groupDefaultVideoOverlapValue ? { value: parseFloat(step1Data.groupDefaultVideoOverlapValue), unit: step1Data.groupDefaultVideoOverlapUnit || 'seconds' } : null,
+            createdAt: now,
+            updatedAt: now,
         };
-        setGroups(prev => [...prev, newGroupForState]);
+        batch.set(groupDocRef, newGroup);
+        // Optimistically update local state for groups
+        setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id }]);
     } else if (step1Data.group) {
         finalGroupId = step1Data.group;
     }
 
+    // Create camera document
     const cameraDocRef = doc(collection(db, 'cameras'));
     batch.set(cameraDocRef, {
       cameraName: step1Data.cameraName,
@@ -464,14 +450,16 @@ const CamerasPage: NextPage = () => {
       protocol: "rtsp",
       activeVSSId: null, 
       historicalVSSIds: [],
-      processingStatus: "waiting_for_approval",
+      processingStatus: "waiting_for_approval", // Initial status
+      currentConfigId: null, // Will be set after config is created
     });
 
-    const configDocRef = doc(collection(db, 'configurations'));
+    // Create configuration document
+    const configDocRef = doc(collection(db, 'camera_configurations'));
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: null, // Server IP will be set by admin later
+      serverIpAddress: null, // To be set by admin later
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -490,14 +478,17 @@ const CamerasPage: NextPage = () => {
       previousConfigId: null,
     });
 
+    // Update camera document with the new config ID
     batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
+    // Update group document if a group was selected/created
     if (finalGroupId) {
         const groupRefToUpdate = doc(db, 'groups', finalGroupId);
         batch.update(groupRefToUpdate, {
             cameras: arrayUnion(cameraDocRef.id),
             updatedAt: now,
         });
+        // Optimistically update local state for the specific group
         setGroups(prevGroups => prevGroups.map(g =>
             g.id === finalGroupId
             ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id], updatedAt: now }
@@ -511,11 +502,12 @@ const CamerasPage: NextPage = () => {
         title: "Camera Saved",
         description: `${step1Data.cameraName} has been added. It is awaiting approval by an administrator.`,
       });
+      // Optimistically update local state for cameras
       const newCameraForState: Camera = { 
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
         imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', 
-        dataAiHint: 'newly added camera',
+        dataAiHint: 'newly added camera', // You might want a more descriptive hint
       };
       setCameras(prevCameras => [...prevCameras, newCameraForState]);
       handleDrawerClose();
@@ -1171,7 +1163,6 @@ const CamerasPage: NextPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div className="space-x-2">
-         {/* Placeholder for where a camera feed might go, or other primary content for this page */}
         </div>
         <div className="flex flex-wrap items-center space-x-2 sm:space-x-2 gap-y-2 justify-end">
           <Button onClick={handleAddCameraClick}>
@@ -1278,4 +1269,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-

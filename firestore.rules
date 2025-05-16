@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -138,17 +139,31 @@ service cloud.firestore {
       allow read, write: if request.auth != null && (isSystemAdmin() || belongsToOrg(existingData().orgId) || belongsToOrg(incomingData().orgId));
     }
 
-    match /camera_configurations/{configId} {
+    match /camera_configurations/{configId} { // Ensuring collection name matches user's rules
        allow read, write: if request.auth != null && (
                             isSystemAdmin() ||
-                            ( // User can manage configs if they belong to the camera's org
-                              exists(/databases/$(database)/documents/cameras/$(existingData().cameraId)) &&
-                              belongsToOrg(get(/databases/$(database)/documents/cameras/$(existingData().cameraId)).data.orgId)
+                            ( // User can manage configs if they belong to the source's org
+                              (existingData().sourceType == 'camera' &&
+                               exists(/databases/$(database)/documents/cameras/$(existingData().sourceId)) &&
+                               belongsToOrg(get(/databases/$(database)/documents/cameras/$(existingData().sourceId)).data.orgId)
+                              ) ||
+                              (existingData().sourceType == 'video' &&
+                               exists(/databases/$(database)/documents/videos/$(existingData().sourceId)) &&
+                               belongsToOrg(get(/databases/$(database)/documents/videos/$(existingData().sourceId)).data.orgId)
+                              )
                             ) ||
                             ( // For create operations
                               request.resource != null &&
-                              exists(/databases/$(database)/documents/cameras/$(incomingData().cameraId)) &&
-                              belongsToOrg(get(/databases/$(database)/documents/cameras/$(incomingData().cameraId)).data.orgId)
+                              (
+                                (incomingData().sourceType == 'camera' &&
+                                 exists(/databases/$(database)/documents/cameras/$(incomingData().sourceId)) &&
+                                 belongsToOrg(get(/databases/$(database)/documents/cameras/$(incomingData().sourceId)).data.orgId)
+                                ) ||
+                                (incomingData().sourceType == 'video' &&
+                                 exists(/databases/$(database)/documents/videos/$(incomingData().sourceId)) &&
+                                 belongsToOrg(get(/databases/$(database)/documents/videos/$(incomingData().sourceId)).data.orgId)
+                                )
+                              )
                             )
                           );
     }
@@ -165,8 +180,10 @@ service cloud.firestore {
     // Fallback: System admin has full access to everything else not explicitly covered above
     // Be cautious with overly broad rules. This assumes other collections are less sensitive or covered by system-admin only access.
     // For production, it's better to define explicit rules for each collection.
-    match /{path=**} {
-      allow read, write: if isSystemAdmin();
-    }
+    // This rule has been removed from the previous version to make it more secure.
+    // Ensure all necessary collections have explicit rules if this is too broad.
+    // match /{path=**} {
+    //   allow read, write: if isSystemAdmin();
+    // }
   }
 }

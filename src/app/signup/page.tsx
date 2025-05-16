@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
-import { doc, setDoc, collection, addDoc, serverTimestamp, getDoc } from "firebase/firestore"; // Added getDoc
+import { doc, setDoc, collection, addDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -34,10 +34,6 @@ const SignUpPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-
-  // Removed useEffect that was redirecting if user was already logged in.
-  // The main layout handles auth state for protected routes.
-  // Public pages like /signup can remain accessible.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,9 +55,9 @@ const SignUpPage = () => {
         phone: organizationPhone,
         billingAddress: billingAddress,
         description: organizationDescription,
-        primaryUseCases: primaryUseCases,
+        primaryUseCases: primaryUseCases, 
         approved: false,
-        admin: false, // New organizations are not admin by default
+        admin: false, 
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -69,14 +65,14 @@ const SignUpPage = () => {
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
-        name: null, // Name is optional, can be added via profile
+        name: null, 
         organizationId: orgRef.id,
-        role: 'user-admin', // Default role for initial org creator
+        role: 'user-admin', 
+        createdBy: user.uid, // Added createdBy field
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      // Confirm user document creation before redirecting
       const newUserDoc = await getDoc(doc(db, "users", user.uid));
       if (newUserDoc.exists()) {
         toast({
@@ -85,10 +81,8 @@ const SignUpPage = () => {
         });
         router.push("/dashboard");
       } else {
-        // This should ideally not happen if setDoc was successful
         console.error("Signup: User document not found immediately after creation for UID:", user.uid);
         setErrorMessage("Signup completed, but there was an issue preparing your account. Please try signing in or contact support.");
-        // Optionally sign out if this is considered a critical failure path
         await signOut(auth);
       }
 
@@ -99,6 +93,8 @@ const SignUpPage = () => {
         setErrorMessage("This email address is already in use.");
       } else if (error.code === 'auth/weak-password') {
         setErrorMessage("Password should be at least 6 characters.");
+      } else if (error.code === 'permission-denied' || error.code === 'firestore/permission-denied') {
+        setErrorMessage("Permission denied. Please ensure your data is correct or contact support if this issue persists.");
       }
       else {
         setErrorMessage("An unexpected error occurred. Please try again.");
@@ -117,7 +113,7 @@ const SignUpPage = () => {
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-full max-w-md">
-            <CardContent className="pt-6"> {/* Added pt-6 here as CardHeader was removed */}
+            <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
                 {errorMessage && (
                   <Alert variant="destructive">
