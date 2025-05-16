@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { NextPage } from 'next';
@@ -14,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageLoading } from '@/contexts/LoadingContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge'; // Added Badge import
 
 interface CameraData {
   id: string;
@@ -30,6 +30,7 @@ interface ServerInfo {
     id: string;
     name: string;
     ipAddressWithPort: string;
+    isDefault?: boolean; // Added to match server data structure
 }
 
 interface CameraConfig {
@@ -48,22 +49,24 @@ const AssignServersToCamerasPage: NextPage = () => {
   const [servers, setServers] = useState<ServerInfo[]>([]);
   const [cameraConfigs, setCameraConfigs] = useState<Record<string, CameraConfig>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedServers, setSelectedServers] = useState<Record<string, string>>({});
+  const [selectedServers, setSelectedServers] = useState<Record<string, string | undefined>>({});
 
 
-  const fetchCameraConfig = useCallback(async (cameraId: string, configId?: string) => {
+  const fetchCameraConfig = useCallback(async (cameraId: string, configId?: string): Promise<CameraConfig | null> => {
     if (!configId) return null;
     try {
-      const configDocRef = doc(db, 'configurations', configId);
+      // Ensure the collection name matches your Firestore setup, likely 'camera_configurations' or 'configurations'
+      const configDocRef = doc(db, 'configurations', configId); // Assuming 'configurations' based on prior context
       const configDocSnap = await getDoc(configDocRef);
       if (configDocSnap.exists()) {
         return configDocSnap.data() as CameraConfig;
       }
     } catch (error) {
       console.error(`Error fetching config for camera ${cameraId}:`, error);
+      toast({ variant: 'destructive', title: 'Error', description: `Could not fetch configuration for camera ${cameraId}.` });
     }
     return null;
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (!orgId) return;
@@ -87,8 +90,9 @@ const AssignServersToCamerasPage: NextPage = () => {
         const serversSnapshot = await getDocs(serversQuery);
         const fetchedServers = serversSnapshot.docs.map(docSnapshot => ({
           id: docSnapshot.id,
-          name: docSnapshot.data().name,
+          name: docSnapshot.data().name || 'Unnamed Server',
           ipAddressWithPort: docSnapshot.data().ipAddressWithPort,
+          isDefault: docSnapshot.data().isDefault || false,
         } as ServerInfo));
         setServers(fetchedServers);
 
@@ -105,20 +109,27 @@ const AssignServersToCamerasPage: NextPage = () => {
 
         // Fetch configurations for these cameras
         const configs: Record<string, CameraConfig> = {};
-        const initialSelectedServers: Record<string, string> = {};
+        const initialSelected: Record<string, string | undefined> = {};
+
         for (const cam of fetchedCameras) {
           if (cam.currentConfigId) {
             const config = await fetchCameraConfig(cam.id, cam.currentConfigId);
             if (config) {
               configs[cam.id] = config;
               if (config.serverIpAddress) {
-                initialSelectedServers[cam.id] = config.serverIpAddress;
+                initialSelected[cam.id] = config.serverIpAddress;
+              } else {
+                 initialSelected[cam.id] = undefined; // Explicitly undefined for "None"
               }
+            } else {
+                 initialSelected[cam.id] = undefined;
             }
+          } else {
+             initialSelected[cam.id] = undefined;
           }
         }
         setCameraConfigs(configs);
-        setSelectedServers(initialSelectedServers);
+        setSelectedServers(initialSelected);
 
       } catch (error) {
         console.error("Error fetching data: ", error);
@@ -129,26 +140,33 @@ const AssignServersToCamerasPage: NextPage = () => {
 
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, toast, router, fetchCameraConfig]);
+  }, [orgId, toast, router, fetchCameraConfig]); // Removed setIsPageLoading from deps as it's stable
 
   const handleAssignServer = async (cameraId: string) => {
     const camera = cameras.find(c => c.id === cameraId);
-    const selectedServerIp = selectedServers[cameraId];
+    const selectedServerIp = selectedServers[cameraId]; // This will be undefined if "None" is selected
 
-    if (!camera || !camera.currentConfigId || selectedServerIp === undefined) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Missing camera configuration or server selection.' });
+    if (!camera || !camera.currentConfigId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Missing camera configuration ID.' });
       return;
     }
+    
+    // serverIpToSave will be the actual IP string or null
+    const serverIpToSave = selectedServerIp === undefined ? null : selectedServerIp;
+
 
     setIsPageLoading(true);
     try {
       const configDocRef = doc(db, 'configurations', camera.currentConfigId);
-      await updateDoc(configDocRef, { serverIpAddress: selectedServerIp || null }); // Store null if "None" is selected
+      await updateDoc(configDocRef, { serverIpAddress: serverIpToSave });
       toast({ title: 'Server Assigned', description: `Server assignment updated for ${camera.cameraName}.` });
-      // Refresh local config state
+      
+      // Refresh local config state for this specific camera
       const updatedConfig = await fetchCameraConfig(cameraId, camera.currentConfigId);
       if(updatedConfig) {
         setCameraConfigs(prev => ({ ...prev, [cameraId]: updatedConfig }));
+        // Also update selectedServers state to reflect the change or removal
+        setSelectedServers(prev => ({...prev, [cameraId]: updatedConfig.serverIpAddress || undefined}));
       }
     } catch (error) {
       console.error("Error assigning server: ", error);
@@ -157,8 +175,11 @@ const AssignServersToCamerasPage: NextPage = () => {
     setIsPageLoading(false);
   };
   
-  const handleServerSelectionChange = (cameraId: string, serverIp: string) => {
-    setSelectedServers(prev => ({ ...prev, [cameraId]: serverIp }));
+  const handleServerSelectionChange = (cameraId: string, serverIpOrNone: string) => {
+    setSelectedServers(prev => ({
+      ...prev,
+      [cameraId]: serverIpOrNone === "__SELECT_NONE__" ? undefined : serverIpOrNone
+    }));
   };
 
 
@@ -211,15 +232,17 @@ const AssignServersToCamerasPage: NextPage = () => {
                         <TableCell>
                           {servers.length > 0 ? (
                             <Select
-                              value={selectedServers[camera.id] || ""}
+                              value={selectedServers[camera.id] ?? "__SELECT_NONE__"}
                               onValueChange={(value) => handleServerSelectionChange(camera.id, value)}
                             >
                               <SelectTrigger className="w-[280px]">
                                 <SelectValue placeholder="Select a server" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
-                                {servers.map((server) => (
+                                <SelectItem value="__SELECT_NONE__">None</SelectItem>
+                                {servers
+                                  .filter(server => server.ipAddressWithPort && server.ipAddressWithPort.trim() !== "") // Filter out servers with empty IP
+                                  .map((server) => (
                                   <SelectItem key={server.id} value={server.ipAddressWithPort}>
                                     {server.name} ({server.ipAddressWithPort})
                                     {server.isDefault && <Badge variant="outline" className="ml-2 text-xs">Default</Badge>}
@@ -237,7 +260,11 @@ const AssignServersToCamerasPage: NextPage = () => {
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => handleAssignServer(camera.id)}
-                                disabled={selectedServers[camera.id] === undefined || selectedServers[camera.id] === (cameraConfigs[camera.id]?.serverIpAddress || "")}
+                                // Disable if current selection matches what's in config (or both are 'None')
+                                disabled={
+                                  (selectedServers[camera.id] === undefined && (cameraConfigs[camera.id]?.serverIpAddress === null || cameraConfigs[camera.id]?.serverIpAddress === undefined)) ||
+                                  selectedServers[camera.id] === cameraConfigs[camera.id]?.serverIpAddress
+                                }
                                 className="h-8 text-xs"
                               >
                                 Update
@@ -262,4 +289,3 @@ const AssignServersToCamerasPage: NextPage = () => {
 };
 
 export default AssignServersToCamerasPage;
-
