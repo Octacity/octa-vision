@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePageLoading } from '@/contexts/LoadingContext';
 
 interface OrganizationData {
   name: string;
@@ -22,6 +23,7 @@ const ManageOrganizationBillingPage: NextPage = () => {
   const { toast } = useToast();
   const orgId = params.orgId as string;
   const { translate } = useLanguage();
+  const { setIsPageLoading } = usePageLoading();
 
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,7 @@ const ManageOrganizationBillingPage: NextPage = () => {
 
         if (!orgDocSnap.exists()) {
           toast({ variant: 'destructive', title: 'Error', description: 'Organization not found.' });
+          setIsPageLoading(true);
           router.push('/system-admin/organizations');
           return;
         }
@@ -49,6 +52,7 @@ const ManageOrganizationBillingPage: NextPage = () => {
     };
 
     fetchOrganizationData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, toast, router]);
 
   if (loading) {
@@ -69,7 +73,7 @@ const ManageOrganizationBillingPage: NextPage = () => {
 
   return (
     <div>
-      <Button variant="outline" onClick={() => router.push('/system-admin/organizations')} className="mb-4">
+      <Button variant="outline" onClick={() => {setIsPageLoading(true); router.push('/system-admin/organizations');}} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>

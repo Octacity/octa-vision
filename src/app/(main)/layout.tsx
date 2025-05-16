@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -56,6 +57,7 @@ import { NotificationDrawerProvider, useNotificationDrawer } from '@/contexts/No
 import NotificationDrawer from '@/components/NotificationDrawer';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { PageLoadingProvider, usePageLoading } from '@/contexts/LoadingContext';
 
 
 interface MainLayoutProps {
@@ -65,7 +67,8 @@ interface MainLayoutProps {
 const MainLayoutContent = ({ children }: MainLayoutProps) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPageLoading, setIsPageLoading] = useState(false);
+  // const [isPageLoading, setIsPageLoading] = useState(false); // Removed local state
+  const { isPageLoading, setIsPageLoading } = usePageLoading(); // Use context state
   const [canAccessSystemAdminMenu, setCanAccessSystemAdminMenu] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -97,7 +100,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/cameras')) {
         return translate('manageOrganizationCameras');
     }
-    if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/billing')) {
+     if (pathname.startsWith('/system-admin/organizations/') && pathname.endsWith('/billing')) {
         return translate('manageBilling.pageTitle');
     }
     const key = routeToTranslationKey[pathname] || 'octaVision';
@@ -165,7 +168,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
   
   useEffect(() => {
     setIsPageLoading(false); 
-  }, [pathname]);
+  }, [pathname, setIsPageLoading]);
 
 
   const handleSignOut = async () => {
@@ -174,7 +177,7 @@ const MainLayoutContent = ({ children }: MainLayoutProps) => {
     try {
       await signOut(auth);
       toast({ title: translate('signOut'), description: translate('signOutSuccessMessage') });
-      router.push('/'); // Redirect to landing page on sign out
+      router.push('/'); 
     } catch (error) {
       console.error("Error signing out: ", error);
       toast({ variant: 'destructive', title: translate('signOutFailedTitle'), description: translate('signOutFailedMessage') });
@@ -390,9 +393,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   return (
     <NotificationDrawerProvider>
       <SidebarProvider>
-        <div className="flex h-screen">
-          <MainLayoutContent>{children}</MainLayoutContent>
-        </div>
+        <PageLoadingProvider>
+          <div className="flex h-screen">
+            <MainLayoutContent>{children}</MainLayoutContent>
+          </div>
+        </PageLoadingProvider>
       </SidebarProvider>
     </NotificationDrawerProvider>
   );

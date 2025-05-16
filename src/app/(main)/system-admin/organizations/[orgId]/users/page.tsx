@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { usePageLoading } from '@/contexts/LoadingContext';
 
 
 interface UserData {
@@ -60,6 +61,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
   const router = useRouter();
   const { toast } = useToast();
   const orgId = params.orgId as string;
+  const { setIsPageLoading } = usePageLoading();
 
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
@@ -107,6 +109,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
 
         if (!orgDocSnap.exists()) {
           toast({ variant: 'destructive', title: 'Error', description: 'Organization not found.' });
+          setIsPageLoading(true);
           router.push('/system-admin/organizations');
           return;
         }
@@ -188,7 +191,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
         }
     }
     if (userToDelete && userToDelete.role === 'system-admin') {
-        // Potentially add a check for last system-admin if needed, though less common for org-specific page
+        
         const systemAdminQuery = query(collection(db, 'users'), where('role', '==', 'system-admin'));
         const systemAdminSnapshot = await getDocs(systemAdminQuery);
         if (systemAdminSnapshot.size <= 1) {
@@ -373,7 +376,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="user-admin">Admin</SelectItem>
-                     {currentUserRole === 'system-admin' && ( // Only system admin can assign system-admin role
+                     {currentUserRole === 'system-admin' && ( 
                         <SelectItem value="system-admin">System Admin</SelectItem>
                      )}
                   </SelectContent>
@@ -439,7 +442,7 @@ const ManageOrganizationUsersPage: NextPage = () => {
 
   return (
     <div>
-      <Button variant="outline" onClick={() => router.push('/system-admin/organizations')} className="mb-4">
+      <Button variant="outline" onClick={() => {setIsPageLoading(true); router.push('/system-admin/organizations');}} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>
@@ -573,4 +576,3 @@ const ManageOrganizationUsersPage: NextPage = () => {
 };
 
 export default ManageOrganizationUsersPage;
-

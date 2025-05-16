@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePageLoading } from '@/contexts/LoadingContext';
 
 
 interface CameraData {
@@ -34,6 +35,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
   const { toast } = useToast();
   const orgId = params.orgId as string;
   const { translate } = useLanguage();
+  const { setIsPageLoading } = usePageLoading();
 
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
   const [cameras, setCameras] = useState<CameraData[]>([]);
@@ -50,6 +52,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
 
         if (!orgDocSnap.exists()) {
           toast({ variant: 'destructive', title: 'Error', description: 'Organization not found.' });
+          setIsPageLoading(true);
           router.push('/system-admin/organizations');
           return;
         }
@@ -74,6 +77,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, toast, router]);
 
   const handleEditCamera = (cameraId: string) => {
@@ -105,10 +109,10 @@ const ManageOrganizationCamerasPage: NextPage = () => {
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'running_normal':
-        return 'default'; // Or a success-like variant
+        return 'default'; 
       case 'waiting_for_approval':
       case 'pending_setup':
-        return 'secondary'; // Or a warning-like variant
+        return 'secondary'; 
       case 'failed':
       case 'something_failed':
         return 'destructive';
@@ -120,7 +124,7 @@ const ManageOrganizationCamerasPage: NextPage = () => {
 
   return (
     <div>
-      <Button variant="outline" onClick={() => router.push('/system-admin/organizations')} className="mb-4">
+      <Button variant="outline" onClick={() => {setIsPageLoading(true); router.push('/system-admin/organizations');}} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>

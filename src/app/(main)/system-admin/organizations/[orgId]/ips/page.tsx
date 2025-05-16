@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, ArrowLeft, Edit3, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePageLoading } from '@/contexts/LoadingContext';
 
 interface CameraData {
   id: string;
@@ -28,6 +29,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
   const router = useRouter();
   const { toast } = useToast();
   const orgId = params.orgId as string;
+  const { setIsPageLoading } = usePageLoading();
 
   const [organization, setOrganization] = useState<OrganizationData | null>(null);
   const [cameras, setCameras] = useState<CameraData[]>([]);
@@ -44,6 +46,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
 
         if (!orgDocSnap.exists()) {
           toast({ variant: 'destructive', title: 'Error', description: 'Organization not found.' });
+          setIsPageLoading(true);
           router.push('/system-admin/organizations');
           return;
         }
@@ -53,8 +56,8 @@ const ManageOrganizationIPsPage: NextPage = () => {
         const camerasSnapshot = await getDocs(camerasQuery);
         const camerasData = camerasSnapshot.docs.map(doc => ({
           id: doc.id,
-          name: doc.data().cameraName, // Ensure field name matches Firestore
-          rtspUrl: doc.data().rtspUrl, // Ensure field name matches Firestore
+          name: doc.data().cameraName, 
+          rtspUrl: doc.data().rtspUrl, 
           ...doc.data(),
         })) as CameraData[];
         setCameras(camerasData);
@@ -67,6 +70,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, toast, router]);
 
   const handleEditIp = (cameraId: string) => {
@@ -95,7 +99,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
 
   return (
     <div>
-      <Button variant="outline" onClick={() => router.back()} className="mb-4">
+      <Button variant="outline" onClick={() => {setIsPageLoading(true); router.back();}} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
       <Card>
@@ -112,7 +116,7 @@ const ManageOrganizationIPsPage: NextPage = () => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-0"> {/* Removed sm:p-6 sm:pt-0 */}
+        <CardContent className="p-0"> 
           {cameras.length > 0 ? (
             <div className="overflow-x-auto">
               <TooltipProvider>

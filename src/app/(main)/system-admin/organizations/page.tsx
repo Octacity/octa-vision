@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePageLoading } from '@/contexts/LoadingContext';
 
 
 interface Organization {
@@ -42,6 +43,7 @@ const AdminOrganizationsPage: NextPage = () => {
   const { toast } = useToast();
   const router = useRouter();
   const { translate } = useLanguage();
+  const { setIsPageLoading } = usePageLoading();
 
   const [filterText, setFilterText] = useState('');
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -57,7 +59,7 @@ const AdminOrganizationsPage: NextPage = () => {
         
         if (!orgDoc.id) {
           console.error("Organization document missing ID:", orgDoc);
-          return null; // Skip this problematic document
+          return null; 
         }
 
         try {
@@ -77,18 +79,18 @@ const AdminOrganizationsPage: NextPage = () => {
 
           return {
             id: orgDoc.id,
-            name: data.name || 'Unnamed Organization', // Provide a fallback for name
-            approved: data.approved === true, // Ensure boolean
+            name: data.name || 'Unnamed Organization', 
+            approved: data.approved === true, 
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
             phone: data.phone || 'N/A',
             userAdminEmail,
             userCount,
             cameraCount,
-            admin: data.admin === true, // Ensure boolean
+            admin: data.admin === true, 
           } as Organization;
         } catch (error) {
           console.error(`Error processing sub-queries for org ${orgDoc.id}:`, error);
-          return null; // Skip this org if sub-queries fail
+          return null; 
         }
       });
       
@@ -165,6 +167,11 @@ const AdminOrganizationsPage: NextPage = () => {
     return filtered;
   }, [organizations, filterText, sortField, sortDirection]);
 
+  const handleNavigate = (path: string) => {
+    setIsPageLoading(true);
+    router.push(path);
+  };
+
 
   if (loading) {
     return (
@@ -180,8 +187,8 @@ const AdminOrganizationsPage: NextPage = () => {
         <CardHeader className="border-b p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle>{translate('manageOrgsTitle')}</CardTitle>
-              <CardDescription className="text-xs mt-1">View all organizations, approve new ones, and manage their settings.</CardDescription>
+              <CardTitle className="text-lg font-normal text-primary">{translate('manageOrgsTitle')}</CardTitle>
+              <CardDescription className="text-xs mt-1 text-muted-foreground">View all organizations, approve new ones, and manage their settings.</CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -254,10 +261,8 @@ const AdminOrganizationsPage: NextPage = () => {
                           <span>{org.userCount}</span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" asChild className="h-7 w-7 p-1">
-                                <Link href={`/system-admin/organizations/${org.id}/users`}>
-                                  <UsersIconLucide className="h-3.5 w-3.5" />
-                                </Link>
+                              <Button variant="outline" size="icon" asChild className="h-7 w-7 p-1" onClick={() => handleNavigate(`/system-admin/organizations/${org.id}/users`)}>
+                                <UsersIconLucide className="h-3.5 w-3.5" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -271,10 +276,8 @@ const AdminOrganizationsPage: NextPage = () => {
                           <span>{org.cameraCount}</span>
                            <Tooltip>
                             <TooltipTrigger asChild>
-                               <Button variant="outline" size="icon" asChild className="h-7 w-7 p-1">
-                                <Link href={`/system-admin/organizations/${org.id}/cameras`}>
-                                  <CameraIcon className="h-3.5 w-3.5" />
-                                </Link>
+                               <Button variant="outline" size="icon" asChild className="h-7 w-7 p-1" onClick={() => handleNavigate(`/system-admin/organizations/${org.id}/cameras`)}>
+                                <CameraIcon className="h-3.5 w-3.5" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -300,7 +303,7 @@ const AdminOrganizationsPage: NextPage = () => {
                           )}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/ips`)} className="h-8 w-8">
+                              <Button variant="outline" size="icon" onClick={() => handleNavigate(`/system-admin/organizations/${org.id}/ips`)} className="h-8 w-8">
                                 <ServerIcon className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -310,7 +313,7 @@ const AdminOrganizationsPage: NextPage = () => {
                           </Tooltip>
                            <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" onClick={() => router.push(`/system-admin/organizations/${org.id}/billing`)} className="h-8 w-8">
+                              <Button variant="outline" size="icon" onClick={() => handleNavigate(`/system-admin/organizations/${org.id}/billing`)} className="h-8 w-8">
                                 <DollarSign className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
