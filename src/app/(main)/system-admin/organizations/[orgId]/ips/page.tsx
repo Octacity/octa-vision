@@ -4,17 +4,28 @@
 import type { NextPage } from 'next';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageLoading } from '@/contexts/LoadingContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface CameraData {
   id: string;
@@ -51,92 +62,90 @@ const AssignServersToCamerasPage: NextPage = () => {
   const [cameraConfigs, setCameraConfigs] = useState<Record<string, CameraConfig>>({});
   const [loading, setLoading] = useState(true);
   const [selectedServers, setSelectedServers] = useState<Record<string, string | undefined>>({});
+  const [selectedBulkAssignServerIp, setSelectedBulkAssignServerIp] = useState<string | undefined>(undefined);
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
 
 
   const fetchCameraConfig = useCallback(async (cameraId: string, configId?: string): Promise<CameraConfig | null> => {
     if (!configId) return null;
     try {
-      const configDocRef = doc(db, 'camera_configurations', configId); // Changed to camera_configurations
+      const configDocRef = doc(db, 'camera_configurations', configId);
       const configDocSnap = await getDoc(configDocRef);
       if (configDocSnap.exists()) {
         return configDocSnap.data() as CameraConfig;
       }
     } catch (error) {
       console.error(`Error fetching config for camera ${cameraId}:`, error);
-      toast({ variant: 'destructive', title: 'Error', description: `Could not fetch configuration for camera ${cameraId}.` });
+      // Do not toast here to avoid flooding if many configs fail
     }
     return null;
-  }, [toast]);
+  }, []);
 
-  useEffect(() => {
+  const fetchAllData = useCallback(async () => {
     if (!orgId) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch Organization
-        const orgDocRef = doc(db, 'organizations', orgId);
-        const orgDocSnap = await getDoc(orgDocRef);
-        if (!orgDocSnap.exists()) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Organization not found.' });
-          setIsPageLoading(true);
-          router.push('/system-admin/organizations');
-          return;
-        }
-        setOrganization(orgDocSnap.data() as OrganizationData);
-
-        // Fetch Servers
-        const serversQuery = query(collection(db, 'servers'));
-        const serversSnapshot = await getDocs(serversQuery);
-        const fetchedServers = serversSnapshot.docs.map(docSnapshot => ({
-          id: docSnapshot.id,
-          name: docSnapshot.data().name || 'Unnamed Server',
-          ipAddressWithPort: docSnapshot.data().ipAddressWithPort,
-          isDefault: docSnapshot.data().isDefault || false,
-        } as ServerInfo));
-        setServers(fetchedServers);
-
-        // Fetch Cameras
-        const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgId));
-        const camerasSnapshot = await getDocs(camerasQuery);
-        const fetchedCameras = camerasSnapshot.docs.map(docSnapshot => ({
-          id: docSnapshot.id,
-          cameraName: docSnapshot.data().cameraName || 'Unnamed Camera',
-          url: docSnapshot.data().url || 'N/A',
-          currentConfigId: docSnapshot.data().currentConfigId,
-        } as CameraData));
-        setCameras(fetchedCameras);
-
-        // Fetch configurations for these cameras
-        const configs: Record<string, CameraConfig> = {};
-        const initialSelected: Record<string, string | undefined> = {};
-
-        for (const cam of fetchedCameras) {
-          if (cam.currentConfigId) {
-            const config = await fetchCameraConfig(cam.id, cam.currentConfigId);
-            if (config) {
-              configs[cam.id] = config;
-              initialSelected[cam.id] = config.serverIpAddress || undefined;
-            } else {
-                 initialSelected[cam.id] = undefined;
-            }
-          } else {
-             initialSelected[cam.id] = undefined;
-          }
-        }
-        setCameraConfigs(configs);
-        setSelectedServers(initialSelected);
-
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organization, camera, or server data.' });
+    setLoading(true);
+    try {
+      const orgDocRef = doc(db, 'organizations', orgId);
+      const orgDocSnap = await getDoc(orgDocRef);
+      if (!orgDocSnap.exists()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Organization not found.' });
+        setIsPageLoading(true);
+        router.push('/system-admin/organizations');
+        return;
       }
-      setLoading(false);
-    };
+      setOrganization(orgDocSnap.data() as OrganizationData);
 
-    fetchData();
+      const serversQuery = query(collection(db, 'servers'));
+      const serversSnapshot = await getDocs(serversQuery);
+      const fetchedServers = serversSnapshot.docs.map(docSnapshot => ({
+        id: docSnapshot.id,
+        name: docSnapshot.data().name || 'Unnamed Server',
+        ipAddressWithPort: docSnapshot.data().ipAddressWithPort,
+        isDefault: docSnapshot.data().isDefault || false,
+      } as ServerInfo));
+      setServers(fetchedServers);
+
+      const camerasQuery = query(collection(db, 'cameras'), where('orgId', '==', orgId));
+      const camerasSnapshot = await getDocs(camerasQuery);
+      const fetchedCameras = camerasSnapshot.docs.map(docSnapshot => ({
+        id: docSnapshot.id,
+        cameraName: docSnapshot.data().cameraName || 'Unnamed Camera',
+        url: docSnapshot.data().url || 'N/A',
+        currentConfigId: docSnapshot.data().currentConfigId,
+      } as CameraData));
+      setCameras(fetchedCameras);
+
+      const configs: Record<string, CameraConfig> = {};
+      const initialSelected: Record<string, string | undefined> = {};
+      for (const cam of fetchedCameras) {
+        if (cam.currentConfigId) {
+          const config = await fetchCameraConfig(cam.id, cam.currentConfigId);
+          if (config) {
+            configs[cam.id] = config;
+            initialSelected[cam.id] = config.serverIpAddress || undefined;
+          } else {
+            initialSelected[cam.id] = undefined;
+          }
+        } else {
+          initialSelected[cam.id] = undefined;
+        }
+      }
+      setCameraConfigs(configs);
+      setSelectedServers(initialSelected);
+
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch organization, camera, or server data.' });
+    }
+    setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, toast, router, fetchCameraConfig]);
+
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
 
   const handleAssignServer = async (cameraId: string) => {
     const camera = cameras.find(c => c.id === cameraId);
@@ -147,22 +156,23 @@ const AssignServersToCamerasPage: NextPage = () => {
       return;
     }
     if (!camera.currentConfigId) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Configuration Missing', 
-        description: `Camera ${camera.cameraName} does not have an active configuration ID. Please check camera setup.` 
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Missing',
+        description: `Camera ${camera.cameraName} does not have an active configuration ID. Please check camera setup.`
       });
       return;
     }
-    
+
     const serverIpToSave = selectedServerIpOrNone === undefined ? null : selectedServerIpOrNone;
 
     setIsPageLoading(true);
     try {
-      const configDocRef = doc(db, 'camera_configurations', camera.currentConfigId); // Changed to camera_configurations
+      const configDocRef = doc(db, 'camera_configurations', camera.currentConfigId);
       await updateDoc(configDocRef, { serverIpAddress: serverIpToSave });
       toast({ title: 'Server Assigned', description: `Server assignment updated for ${camera.cameraName}.` });
-      
+
+      // Refetch just this camera's config to update UI
       const updatedConfig = await fetchCameraConfig(cameraId, camera.currentConfigId);
       if(updatedConfig) {
         setCameraConfigs(prev => ({ ...prev, [cameraId]: updatedConfig }));
@@ -174,12 +184,52 @@ const AssignServersToCamerasPage: NextPage = () => {
     }
     setIsPageLoading(false);
   };
-  
+
   const handleServerSelectionChange = (cameraId: string, serverIpOrNone: string) => {
     setSelectedServers(prev => ({
       ...prev,
       [cameraId]: serverIpOrNone === "__SELECT_NONE__" ? undefined : serverIpOrNone
     }));
+  };
+
+  const handleBulkAssignServerToOrgCameras = async () => {
+    if (!selectedBulkAssignServerIp || selectedBulkAssignServerIp === "__SELECT_NONE__") {
+        toast({ variant: "destructive", title: "No Server Selected", description: "Please select a server to assign to all cameras." });
+        return;
+    }
+    if (cameras.length === 0) {
+        toast({ variant: "default", title: "No Cameras", description: "There are no cameras in this organization to assign." });
+        return;
+    }
+
+    setIsBulkAssigning(true);
+    const batch = writeBatch(db);
+    let updatesMade = 0;
+
+    cameras.forEach(camera => {
+        if (camera.currentConfigId) {
+            const configDocRef = doc(db, 'camera_configurations', camera.currentConfigId);
+            batch.update(configDocRef, { serverIpAddress: selectedBulkAssignServerIp === undefined ? null : selectedBulkAssignServerIp });
+            updatesMade++;
+        }
+    });
+
+    if (updatesMade === 0) {
+        toast({ variant: "default", title: "No Configurations", description: "No cameras with valid configurations to update." });
+        setIsBulkAssigning(false);
+        return;
+    }
+
+    try {
+        await batch.commit();
+        toast({ title: "Bulk Assignment Successful", description: `Assigned server to ${updatesMade} camera(s). Refreshing data...`});
+        await fetchAllData(); // Refresh all data to show changes
+    } catch (error) {
+        console.error("Error during bulk server assignment: ", error);
+        toast({ variant: "destructive", title: "Bulk Assignment Failed", description: "Could not assign server to all cameras." });
+    }
+    setIsBulkAssigning(false);
+    setSelectedBulkAssignServerIp(undefined); // Reset bulk selector
   };
 
 
@@ -204,14 +254,76 @@ const AssignServersToCamerasPage: NextPage = () => {
       <Button variant="outline" onClick={() => {setIsPageLoading(true); router.push('/system-admin/organizations');}} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
+
+      <Card className="mb-6">
+        <CardHeader>
+            <CardTitle className="text-base font-normal text-primary">Bulk Assign Server</CardTitle>
+            <CardDescription className="text-xs">
+                Assign a single server to all cameras within <strong>{organization.name}</strong>. This will override individual assignments.
+            </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row items-end gap-4">
+             <div className="flex-grow w-full sm:w-auto">
+                <label htmlFor="bulk-assign-server-select" className="text-xs font-medium text-muted-foreground mb-1 block">Select Server</label>
+                <Select
+                    value={selectedBulkAssignServerIp ?? "__SELECT_NONE__"}
+                    onValueChange={(value) => setSelectedBulkAssignServerIp(value === "__SELECT_NONE__" ? undefined : value)}
+                    
+                >
+                    <SelectTrigger id="bulk-assign-server-select" className="w-full">
+                        <SelectValue placeholder="Select a server for bulk assignment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__SELECT_NONE__">Select a server...</SelectItem>
+                        {servers
+                        .filter(server => server.ipAddressWithPort && server.ipAddressWithPort.trim() !== "")
+                        .map((server) => (
+                        <SelectItem key={`bulk-${server.id}`} value={server.ipAddressWithPort}>
+                            {server.name} ({server.ipAddressWithPort})
+                            {server.isDefault && <Badge variant="outline" className="ml-2 text-xs">Default</Badge>}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button 
+                        disabled={isBulkAssigning || !selectedBulkAssignServerIp || selectedBulkAssignServerIp === "__SELECT_NONE__"}
+                        className="w-full sm:w-auto"
+                    >
+                        {isBulkAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Assign to All Cameras
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Confirm Bulk Assignment</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to assign server "{servers.find(s => s.ipAddressWithPort === selectedBulkAssignServerIp)?.name || selectedBulkAssignServerIp}" to all cameras in {organization.name}? This will overwrite existing individual assignments.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isBulkAssigning}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBulkAssignServerToOrgCameras} disabled={isBulkAssigning}>
+                        {isBulkAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Confirm Assignment
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </CardContent>
+      </Card>
+
+
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-lg font-normal text-primary">Assign Servers to Cameras</CardTitle>
+          <CardTitle className="text-lg font-normal text-primary">Individual Camera Server Assignments</CardTitle>
           <CardDescription className="text-xs mt-1 text-muted-foreground">
-            Manage server assignments for cameras in <strong className="text-foreground">{organization.name}</strong>.
+            Manage server assignments for individual cameras in <strong className="text-foreground">{organization.name}</strong>.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0"> 
+        <CardContent className="p-0">
           {cameras.length > 0 ? (
             <div className="overflow-x-auto">
               <TooltipProvider>
@@ -256,9 +368,9 @@ const AssignServersToCamerasPage: NextPage = () => {
                         </TableCell>
                         <TableCell className="sticky right-0 bg-card z-10 text-right px-2 sm:px-4 w-[90px] min-w-[90px] border-l border-border">
                            <div className="flex justify-end items-center space-x-1">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => handleAssignServer(camera.id)}
                                 disabled={
                                   (selectedServers[camera.id] === undefined && (cameraConfigs[camera.id]?.serverIpAddress === null || cameraConfigs[camera.id]?.serverIpAddress === undefined)) ||
@@ -288,3 +400,6 @@ const AssignServersToCamerasPage: NextPage = () => {
 };
 
 export default AssignServersToCamerasPage;
+
+
+    
