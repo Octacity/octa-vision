@@ -13,13 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
-import { doc, setDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, collection, addDoc, serverTimestamp, getDoc } from "firebase/firestore"; // Added getDoc
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 const SignUpPage = () => {
   const [email, setEmail] = useState("");
@@ -28,20 +29,15 @@ const SignUpPage = () => {
   const [organizationPhone, setOrganizationPhone] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [organizationDescription, setOrganizationDescription] = useState("");
-  const [needForOctaVision, setNeedForOctaVision] = useState("");
+  const [primaryUseCases, setPrimaryUseCases] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.push('/dashboard');
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
+  // Removed useEffect that was redirecting if user was already logged in.
+  // The main layout handles auth state for protected routes.
+  // Public pages like /signup can remain accessible.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,20 +59,39 @@ const SignUpPage = () => {
         phone: organizationPhone,
         billingAddress: billingAddress,
         description: organizationDescription,
-        needForOctaVision: needForOctaVision, 
-        approved: false, 
+        primaryUseCases: primaryUseCases,
+        approved: false,
+        admin: false, // New organizations are not admin by default
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
+        name: null, // Name is optional, can be added via profile
         organizationId: orgRef.id,
-        role: 'user-admin',
+        role: 'user-admin', // Default role for initial org creator
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
-      router.push("/dashboard");
+      // Confirm user document creation before redirecting
+      const newUserDoc = await getDoc(doc(db, "users", user.uid));
+      if (newUserDoc.exists()) {
+        toast({
+          title: "Signup Successful",
+          description: "Your account and organization have been created. Welcome!",
+        });
+        router.push("/dashboard");
+      } else {
+        // This should ideally not happen if setDoc was successful
+        console.error("Signup: User document not found immediately after creation for UID:", user.uid);
+        setErrorMessage("Signup completed, but there was an issue preparing your account. Please try signing in or contact support.");
+        // Optionally sign out if this is considered a critical failure path
+        await signOut(auth);
+      }
+
     } catch (error: any)
      {
       console.error("Error signing up:", error);
@@ -102,10 +117,7 @@ const SignUpPage = () => {
 
         <div className="mt-6 flex flex-wrap items-center justify-around max-w-4xl sm:w-full">
           <Card className="w-full max-w-md">
-            <CardHeader>
-              {/* Removed CardTitle and CardDescription */}
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6"> {/* Added pt-6 here as CardHeader was removed */}
               <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
                 {errorMessage && (
                   <Alert variant="destructive">
@@ -175,6 +187,7 @@ const SignUpPage = () => {
                     onChange={(e) => setBillingAddress(e.target.value)}
                     required
                     autoComplete="street-address"
+                    rows={3}
                   />
                 </div>
 
@@ -186,17 +199,19 @@ const SignUpPage = () => {
                     value={organizationDescription}
                     onChange={(e) => setOrganizationDescription(e.target.value)}
                     required
+                    rows={3}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="needForOctaVision" className="block text-left text-muted-foreground mb-1">How do you plan to use OctaVision?</Label>
+                  <Label htmlFor="primaryUseCases" className="block text-left text-muted-foreground mb-1">How do you plan to use our platform?</Label>
                   <Textarea
-                    id="needForOctaVision"
-                    value={needForOctaVision}
-                    onChange={(e) => setNeedForOctaVision(e.target.value)}
+                    id="primaryUseCases"
+                    value={primaryUseCases}
+                    onChange={(e) => setPrimaryUseCases(e.target.value)}
                     required
                     placeholder="Briefly describe your use case or the problems you're trying to solve (e.g., improve workplace safety, monitor inventory, enhance security)."
+                    rows={3}
                   />
                 </div>
 
@@ -224,4 +239,3 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
-
