@@ -2,44 +2,70 @@ import functions_framework
 import requests
 import os
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials, auth, firestore
 from flask import Flask, request, jsonify
-
-# Import routes from separate files
-# Ensure these imports are correct based on your file structure.
-# If files.py, streams.py, etc., are in the same directory as main.py,
-# the imports like `from .files import ...` should work.
-# However, the original code had `from .files import files_bp` which implies blueprints.
-# For simplicity, let's assume direct import or that blueprints are correctly set up in those files.
-
-# If you are using Blueprints as implied by `files_bp`, etc., make sure those
-# files define and export the blueprints. Example in files.py:
-# files_bp = Blueprint('files', __name__)
-# @files_bp.route('/ingest-file', methods=['POST'])
-# def ingest_file_route(): ...
-# Then, in main.py, you register them: app.register_blueprint(files_bp)
-
-# For now, let's assume the existing structure aims to import and register routes.
-# The provided snippets for files.py etc. directly use `@app.route`.
-# This means `app` needs to be defined before those files are imported if they are to use it.
+import time
 
 # Initialize Firebase Admin SDK
 try:
-    firebase_admin.get_app()
-except ValueError:
-    cred = credentials.ApplicationDefault()
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps: # Check if already initialized
+        cred = credentials.ApplicationDefault()
+        firebase_admin.initialize_app(cred)
+except ValueError: # Fallback for multiple initializations in some environments
+    if not firebase_admin._apps:
+        cred = credentials.ApplicationDefault()
+        firebase_admin.initialize_app(cred)
+    pass
 
 
+db = firestore.client()
 app = Flask(__name__)
 
-# Get VSS API Base URL from environment variables
-VSS_API_BASE_URL = os.environ.get('VSS_API_BASE_URL')
+# Cache for the default VSS base URL
+VSS_API_BASE_URL_CACHE = None
+VSS_API_BASE_URL_CACHE_EXPIRY = None
+CACHE_TTL_SECONDS = 300 # 5 minutes
 
-if not VSS_API_BASE_URL:
-    print("Error: VSS_API_BASE_URL environment variable not set. Using default http://localhost:5000")
-    # You might want to raise an exception or handle this differently in production
-    VSS_API_BASE_URL = "http://localhost:5000" # Default for development
+def get_default_vss_base_url():
+    """
+    Retrieves the ipAddressWithPort of the default VSS server from Firestore.
+    Implements a simple time-based cache to reduce Firestore reads.
+    Prepends 'http://' if no scheme is present.
+    """
+    global VSS_API_BASE_URL_CACHE, VSS_API_BASE_URL_CACHE_EXPIRY
+
+    current_time = time.time()
+    if VSS_API_BASE_URL_CACHE and VSS_API_BASE_URL_CACHE_EXPIRY and current_time < VSS_API_BASE_URL_CACHE_EXPIRY:
+        return VSS_API_BASE_URL_CACHE
+
+    try:
+        servers_ref = db.collection('servers')
+        query = servers_ref.where('isDefault', '==', True).limit(1)
+        results = query.stream()
+        
+        default_server_data = None
+        for server_doc in results:
+            default_server_data = server_doc.to_dict()
+            break
+
+        if default_server_data and 'ipAddressWithPort' in default_server_data:
+            base_url = default_server_data['ipAddressWithPort']
+            if not base_url.startswith(('http://', 'https://')):
+                 base_url = f"http://{base_url}" # Assume http if not specified
+
+            VSS_API_BASE_URL_CACHE = base_url
+            VSS_API_BASE_URL_CACHE_EXPIRY = current_time + CACHE_TTL_SECONDS
+            print(f"Fetched default VSS URL from Firestore: {base_url}")
+            return base_url
+        else:
+            print("Error: No default VSS server found in Firestore or 'ipAddressWithPort' missing.")
+            raise ValueError("Default VSS server IP not configured in Firestore.")
+    except Exception as e:
+        print(f"Error fetching default VSS server IP from Firestore: {e}")
+        # Clear cache on error to force re-fetch next time
+        VSS_API_BASE_URL_CACHE = None
+        VSS_API_BASE_URL_CACHE_EXPIRY = None
+        raise ValueError(f"Could not retrieve default VSS server IP: {e}")
 
 
 def verify_firebase_token(req):
@@ -58,10 +84,8 @@ def verify_firebase_token(req):
     except Exception as e:
         return None, str(e)
 
-# Import route modules AFTER app and VSS_API_BASE_URL are defined,
-# so they can use `app.route` decorator and access VSS_API_BASE_URL.
-# This is crucial if those modules directly define routes on `app`.
-from . import files  # Assuming files.py contains routes using 'app'
+# Import route modules AFTER app and helper functions are defined
+from . import files
 from . import streams
 from . import models
 from . import health
@@ -71,17 +95,8 @@ from . import summarization
 
 
 @functions_framework.http
-def main(request):
+def main(request_obj): # Renamed 'request' to 'request_obj' to avoid conflict with flask.request
     """Entry point for the cloud function."""
-    # Flask's app.run() is not used in Cloud Functions.
-    # Instead, the functions_framework handles invoking the app.
-    # The app instance itself needs to be the callable.
-    with app.request_context(request.environ):
+    with app.request_context(request_obj.environ):
+        # flask.request is now available due to app.request_context
         return app.full_dispatch_request()
-
-# Note: If you were using Blueprints, the registration would look like:
-# from .files import files_bp # Assuming files_bp is a Blueprint object
-# app.register_blueprint(files_bp)
-# And so on for other blueprints.
-# The current structure with direct @app.route in other files means those
-# files effectively extend the `app` object defined here.
