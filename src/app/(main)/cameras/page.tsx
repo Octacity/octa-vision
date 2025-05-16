@@ -306,12 +306,7 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
 
-    toast({
-      variant: "default",
-      title: "Camera Setup Information",
-      description: "You can add this camera and set up its configuration. However, camera processing will only begin after your organization's account is approved by an administrator and based on server space availability.",
-      duration: 10000,
-    });
+    // Removed informational toast
 
     await new Promise(resolve => setTimeout(resolve, 500)); 
     setSnapshotUrl('https://placehold.co/400x300.png'); 
@@ -459,7 +454,7 @@ const CamerasPage: NextPage = () => {
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: null, // To be set by admin later
+      serverIpAddress: null, 
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -1269,3 +1264,4 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
