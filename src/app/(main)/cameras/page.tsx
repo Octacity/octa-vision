@@ -39,8 +39,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export interface Camera {
   id: string;
   cameraName: string;
-  imageUrl: string;
+  imageUrl: string; // This might be a placeholder or actual snapshot URL if fetched
   dataAiHint: string;
+  processingStatus?: string; // Add processingStatus to display
 }
 
 interface ChatMessage {
@@ -130,6 +131,7 @@ const CamerasPage: NextPage = () => {
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [isLoadingCameras, setIsLoadingCameras] = useState(true);
 
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -151,16 +153,44 @@ const CamerasPage: NextPage = () => {
           setOrgId(organizationId);
           if (organizationId) {
              fetchGroupsForOrg(organizationId);
+             fetchCamerasForOrg(organizationId); // Fetch cameras
+          } else {
+            setIsLoadingCameras(false);
           }
         } else {
            setOrgId(null);
+           setIsLoadingCameras(false);
         }
       } else {
         setOrgId(null);
+        setIsLoadingCameras(false);
       }
     });
     return () => unsubscribe();
   }, []);
+
+  const fetchCamerasForOrg = async (currentOrgId: string) => {
+    setIsLoadingCameras(true);
+    try {
+      const q = query(collection(db, "cameras"), where("orgId", "==", currentOrgId));
+      const querySnapshot = await getDocs(q);
+      const fetchedCameras = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          cameraName: data.cameraName,
+          imageUrl: data.snapshotUrl || 'https://placehold.co/400x300.png', // Use a placeholder if no snapshot
+          dataAiHint: data.aiDetectionTarget || 'camera security', // Use AI target as hint or default
+          processingStatus: data.processingStatus,
+        } as Camera;
+      });
+      setCameras(fetchedCameras);
+    } catch (error) {
+      console.error("Error fetching cameras for org:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not fetch cameras." });
+    }
+    setIsLoadingCameras(false);
+  };
 
   const fetchGroupsForOrg = async (currentOrgId: string) => {
     try {
@@ -275,20 +305,25 @@ const CamerasPage: NextPage = () => {
       formStep1.setValue('groupDefaultNumFrames', '5');
       formStep1.setValue('groupDefaultVideoOverlapValue', '2');
       formStep1.setValue('groupDefaultVideoOverlapUnit', 'seconds');
+      formStep1.setValue('groupDefaultCameraSceneContext','');
+      formStep1.setValue('groupDefaultAiDetectionTarget','');
+      formStep1.setValue('groupDefaultAlertEvents','');
+
     } else {
       setShowNewGroupForm(false);
       formStep1.setValue('newGroupName', '');
-      formStep1.resetField('groupDefaultCameraSceneContext');
-      formStep1.resetField('groupDefaultAiDetectionTarget');
-      formStep1.resetField('groupDefaultAlertEvents');
-      formStep1.resetField('groupDefaultVideoChunksValue');
-      formStep1.resetField('groupDefaultVideoChunksUnit');
-      formStep1.resetField('groupDefaultNumFrames');
-      formStep1.resetField('groupDefaultVideoOverlapValue');
-      formStep1.resetField('groupDefaultVideoOverlapUnit');
-
       const selectedGroupData = groups.find(g => g.id === value);
       if (selectedGroupData) {
+        formStep1.setValue('groupDefaultCameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
+        formStep1.setValue('groupDefaultAiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
+        formStep1.setValue('groupDefaultAlertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
+        formStep1.setValue('groupDefaultVideoChunksValue', selectedGroupData.defaultVideoChunks?.value?.toString() || '10');
+        formStep1.setValue('groupDefaultVideoChunksUnit', selectedGroupData.defaultVideoChunks?.unit || 'seconds');
+        formStep1.setValue('groupDefaultNumFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
+        formStep1.setValue('groupDefaultVideoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
+        formStep1.setValue('groupDefaultVideoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
+
+        // Also pre-fill Step 3 if a group is selected
         formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
         formStep3.setValue('aiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
         formStep3.setValue('alertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
@@ -297,6 +332,16 @@ const CamerasPage: NextPage = () => {
         formStep3.setValue('numFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
         formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
+      } else {
+        // Reset if group data not found (though should always be found if value is not add_new_group)
+        formStep1.resetField('groupDefaultCameraSceneContext');
+        formStep1.resetField('groupDefaultAiDetectionTarget');
+        formStep1.resetField('groupDefaultAlertEvents');
+        formStep1.resetField('groupDefaultVideoChunksValue');
+        formStep1.resetField('groupDefaultVideoChunksUnit');
+        formStep1.resetField('groupDefaultNumFrames');
+        formStep1.resetField('groupDefaultVideoOverlapValue');
+        formStep1.resetField('groupDefaultVideoOverlapUnit');
       }
     }
   };
@@ -306,13 +351,25 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     setIsProcessingStep2(true);
 
-    // Simulate API call for snapshot
-    await new Promise(resolve => setTimeout(resolve, 500)); 
-    setSnapshotUrl('https://placehold.co/400x300.png'); 
-    
-    // Simulate AI-generated scene description
-    let sceneDescToSet = 'Placeholder: AI-generated scene description would appear here based on the snapshot.'; 
+    // Simulate API call for snapshot - SKIP FOR NOW
+    // setSnapshotUrl('https://placehold.co/400x300.png');
+    setSnapshotUrl(null); // Keep snapshot null for now
+
+    // Simulate AI-generated scene description - SKIP FOR NOW
+    let sceneDescToSet = ''; // User will fill this or it will be prefilled from group defaults if selected
+    const groupValue = formStep1.getValues('group');
+    if (groupValue && groupValue !== 'add_new_group') {
+      const selectedGroupData = groups.find(g => g.id === groupValue);
+      // sceneDescToSet = selectedGroupData?.defaultCameraSceneContext || 'Based on group default (if any) and camera snapshot (if available).';
+    } else if (groupValue === 'add_new_group') {
+      // sceneDescToSet = formStep1.getValues('groupDefaultCameraSceneContext') || 'Based on new group default (if any) and camera snapshot (if available).';
+    } else {
+      // sceneDescToSet = 'Please describe the scene observed by this camera.';
+    }
+    // For now, let's just use a generic placeholder or make it empty for the user to fill
+    sceneDescToSet = ''; // Make user fill it in step 2.
     formStep2.setValue('sceneDescription', sceneDescToSet);
+
 
     setIsProcessingStep2(false);
     setDrawerStep(2);
@@ -332,7 +389,7 @@ const CamerasPage: NextPage = () => {
 
     let baseCameraContext = `The camera is observing: "${currentSceneDesc}".`;
     let finalCameraContext = baseCameraContext;
-    let finalAiTarget = 'Focus on detecting...';
+    let finalAiTarget = '';
     let finalAlertEvents = '';
     let finalVideoChunksValue = '10';
     let finalVideoChunksUnit: 'seconds' | 'minutes' = 'seconds';
@@ -344,11 +401,9 @@ const CamerasPage: NextPage = () => {
     if (step1Values.group && step1Values.group !== 'add_new_group') {
         const selectedGroupData = groups.find(g => g.id === step1Values.group);
         if (selectedGroupData) {
-            if(selectedGroupData.defaultCameraSceneContext) finalCameraContext = selectedGroupData.defaultCameraSceneContext;
-            else if (selectedGroupData.name) finalCameraContext = `${baseCameraContext} It is part of the "${selectedGroupData.name}" group.`;
-
-            if(selectedGroupData.defaultAiDetectionTarget) finalAiTarget = selectedGroupData.defaultAiDetectionTarget;
-            if(selectedGroupData.defaultAlertEvents) finalAlertEvents = selectedGroupData.defaultAlertEvents.join(', ');
+            finalCameraContext = selectedGroupData.defaultCameraSceneContext || currentSceneDesc;
+            finalAiTarget = selectedGroupData.defaultAiDetectionTarget || '';
+            finalAlertEvents = (selectedGroupData.defaultAlertEvents || []).join(', ');
             if(selectedGroupData.defaultVideoChunks) {
                 finalVideoChunksValue = selectedGroupData.defaultVideoChunks.value.toString();
                 finalVideoChunksUnit = selectedGroupData.defaultVideoChunks.unit;
@@ -360,16 +415,16 @@ const CamerasPage: NextPage = () => {
             }
         }
     } else if (step1Values.group === 'add_new_group') {
-        if(step1Values.groupDefaultCameraSceneContext) finalCameraContext = step1Values.groupDefaultCameraSceneContext;
-        else if (step1Values.newGroupName) finalCameraContext = `${baseCameraContext} It will be part of the new group "${step1Values.newGroupName}".`;
-
-        if(step1Values.groupDefaultAiDetectionTarget) finalAiTarget = step1Values.groupDefaultAiDetectionTarget;
-        if(step1Values.groupDefaultAlertEvents) finalAlertEvents = step1Values.groupDefaultAlertEvents;
+        finalCameraContext = step1Values.groupDefaultCameraSceneContext || currentSceneDesc;
+        finalAiTarget = step1Values.groupDefaultAiDetectionTarget || '';
+        finalAlertEvents = step1Values.groupDefaultAlertEvents || '';
         if(step1Values.groupDefaultVideoChunksValue) finalVideoChunksValue = step1Values.groupDefaultVideoChunksValue;
         if(step1Values.groupDefaultVideoChunksUnit) finalVideoChunksUnit = step1Values.groupDefaultVideoChunksUnit;
         if(step1Values.groupDefaultNumFrames) finalNumFrames = step1Values.groupDefaultNumFrames;
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
+    } else { // No group selected
+        finalCameraContext = currentSceneDesc; // Use the scene description entered by user
     }
 
     formStep3.setValue('cameraSceneContext', finalCameraContext);
@@ -397,12 +452,17 @@ const CamerasPage: NextPage = () => {
         return defaultServerDoc.data().ipAddressWithPort as string;
       }
       console.warn("No default server found in Firestore.");
+      toast({
+        variant: "default", // Not destructive, as camera can still be saved
+        title: "No Default Server",
+        description: "No default processing server found. Camera will be saved without a server IP. Please assign one later via System Admin.",
+      });
       return null;
     } catch (error) {
       console.error("Error fetching default server IP:", error);
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Server Fetch Error",
         description: "Could not fetch default server information. Camera will be saved without a server IP.",
       });
       return null;
@@ -411,7 +471,6 @@ const CamerasPage: NextPage = () => {
 
 
   const onSubmitStep3: SubmitHandler<AddCameraStep3Values> = async (configData) => {
-    console.log("Attempting to save camera...");
     if (!formStep3.formState.isValid || !currentUser || !orgId) {
       toast({
         variant: "destructive",
@@ -431,21 +490,19 @@ const CamerasPage: NextPage = () => {
         // Error already toasted in getDefaultServerIp, proceed with null
     }
 
-
     const batch = writeBatch(db);
     const now = serverTimestamp() as Timestamp;
     let finalGroupId: string | null = null;
 
-    // Handle group creation or selection
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
-        const newGroup: Omit<Group, 'id'| 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp } = { 
+        const newGroup: Omit<Group, 'id'| 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp, videos: string[] } = {
             name: step1Data.newGroupName,
             orgId: orgId,
             userId: currentUser.uid,
             cameras: [],
-            videos: [],
+            videos: [], // Initialize videos array
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
@@ -461,9 +518,8 @@ const CamerasPage: NextPage = () => {
         finalGroupId = step1Data.group;
     }
 
-    // Create camera document
     const cameraDocRef = doc(collection(db, 'cameras'));
-    const configDocRef = doc(collection(db, 'camera_configurations')); // Prepare config ref early
+    const configDocRef = doc(collection(db, 'camera_configurations'));
 
     batch.set(cameraDocRef, {
       cameraName: step1Data.cameraName,
@@ -474,18 +530,16 @@ const CamerasPage: NextPage = () => {
       updatedAt: now,
       url: step1Data.rtspUrl,
       protocol: "rtsp",
-      activeVSSId: null, 
+      activeVSSId: null,
       historicalVSSIds: [],
       processingStatus: "waiting_for_approval",
-      currentConfigId: configDocRef.id, // Link to the config ID
+      currentConfigId: configDocRef.id,
     });
 
-    // Create configuration document
     batch.set(configDocRef, {
-      // configId will be auto-generated by Firestore
-      cameraId: cameraDocRef.id, // Reference to the camera
+      sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: fetchedDefaultServerIp, // Use fetched default server IP
+      serverIpAddress: fetchedDefaultServerIp, // Use fetched default server IP or null
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -501,8 +555,10 @@ const CamerasPage: NextPage = () => {
       alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae),
       sceneDescription: step2Data.sceneDescription,
       userId: currentUser.uid,
-      previousConfigId: null, // First config for this camera
+      previousConfigId: null,
     });
+
+    batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
 
     if (finalGroupId) {
@@ -524,20 +580,21 @@ const CamerasPage: NextPage = () => {
         title: "Camera Saved",
         description: `${step1Data.cameraName} has been added. It is awaiting approval by an administrator.`,
       });
-      const newCameraForState: Camera = { 
+      const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', 
-        dataAiHint: 'newly added camera',
+        imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', // Use actual snapshot if available
+        dataAiHint: configData.aiDetectionTarget || 'newly added camera',
+        processingStatus: "waiting_for_approval",
       };
-      setCameras(prevCameras => [...prevCameras, newCameraForState]);
+      setCameras(prevCameras => [...prevCameras, newCameraForState]); // Add to local state for immediate display
       handleDrawerClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving camera and configuration: ", error);
       toast({
         variant: "destructive",
         title: "Save Failed",
-        description: "Could not save the camera and its configuration. Please try again.",
+        description: `Could not save the camera. ${error.message}`,
       });
     }
   };
@@ -981,7 +1038,7 @@ const CamerasPage: NextPage = () => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-x-4">
+                             <div className="grid grid-cols-2 gap-x-4">
                                 <FormField
                                     control={formStep3.control}
                                     name="videoOverlapValue"
@@ -1026,7 +1083,7 @@ const CamerasPage: NextPage = () => {
                                     <FormItem>
                                         <FormLabel className="flex items-center">
                                             <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
-                                            No of frames
+                                            No. of Frames
                                         </FormLabel>
                                         <FormControl>
                                             <Input type="number" placeholder="e.g., 5" {...field} />
@@ -1203,7 +1260,11 @@ const CamerasPage: NextPage = () => {
           </Button>
         </div>
       </div>
-      {cameras.length === 0 ? (
+      {isLoadingCameras ? (
+         <div className="flex justify-center items-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+      ) : cameras.length === 0 ? (
          <div className="flex flex-col items-center justify-center text-center py-12">
             <CameraIconLucide className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">No Cameras Yet</h3>
@@ -1226,7 +1287,13 @@ const CamerasPage: NextPage = () => {
                     className="rounded-t-lg aspect-video w-full object-cover"
                     data-ai-hint={camera.dataAiHint}
                     />
-                    <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
+                    {camera.processingStatus === 'running_normal' ? (
+                        <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
+                    ) : camera.processingStatus === 'waiting_for_approval' ? (
+                         <Clock className="absolute top-2 right-2 h-5 w-5 text-orange-500 bg-white rounded-full p-0.5" />
+                    ) : (
+                        <AlertTriangle className="absolute top-2 right-2 h-5 w-5 text-red-500 bg-white rounded-full p-0.5" />
+                    )}
                 </div>
                 <div className="p-3">
                     <h3 className="text-sm font-semibold mb-2 truncate">{camera.cameraName}</h3>
@@ -1290,4 +1357,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
