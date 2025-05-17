@@ -1,3 +1,4 @@
+
 import functions_framework
 import requests
 import os
@@ -40,8 +41,8 @@ def get_default_vss_base_url():
 
     try:
         servers_ref = db.collection('servers')
-        query = servers_ref.where('isDefault', '==', True).limit(1)
-        results = query.stream()
+        query_ref = servers_ref.where('isDefault', '==', True).limit(1) # Changed from query to query_ref
+        results = query_ref.stream()
         
         default_server_data = None
         for server_doc in results:
@@ -92,6 +93,7 @@ from . import health
 from . import metrics
 from . import config
 from . import summarization
+from . import snapshots # Added import for snapshots
 
 
 @functions_framework.http
@@ -100,3 +102,4 @@ def main(request_obj): # Renamed 'request' to 'request_obj' to avoid conflict wi
     with app.request_context(request_obj.environ):
         # flask.request is now available due to app.request_context
         return app.full_dispatch_request()
+

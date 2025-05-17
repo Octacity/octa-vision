@@ -1,2 +1,5 @@
 firebase-admin
 flask
+requests
+opencv-python
+numpy
