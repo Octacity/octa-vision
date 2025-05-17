@@ -1,0 +1,40 @@
+
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "cloud_functions",
+      "codebase": "default",
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.pyc",
+        "__pycache__/"
+      ],
+      "runtime": "python312",
+      "entryPoint": "main"
+    }
+  ],
+  "hosting": {
+    "public": ".next",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "function": "main"
+      }
+    ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
