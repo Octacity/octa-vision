@@ -39,9 +39,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export interface Camera {
   id: string;
   cameraName: string;
-  imageUrl: string; // This might be a placeholder or actual snapshot URL if fetched
+  imageUrl: string; 
   dataAiHint: string;
-  processingStatus?: string; // Add processingStatus to display
+  processingStatus?: string; 
 }
 
 interface ChatMessage {
@@ -153,7 +153,7 @@ const CamerasPage: NextPage = () => {
           setOrgId(organizationId);
           if (organizationId) {
              fetchGroupsForOrg(organizationId);
-             fetchCamerasForOrg(organizationId); // Fetch cameras
+             fetchCamerasForOrg(organizationId); 
           } else {
             setIsLoadingCameras(false);
           }
@@ -179,8 +179,8 @@ const CamerasPage: NextPage = () => {
         return {
           id: doc.id,
           cameraName: data.cameraName,
-          imageUrl: data.snapshotUrl || 'https://placehold.co/400x300.png', // Use a placeholder if no snapshot
-          dataAiHint: data.aiDetectionTarget || 'camera security', // Use AI target as hint or default
+          imageUrl: data.snapshotUrl || 'https://placehold.co/400x300.png', 
+          dataAiHint: data.aiDetectionTarget || 'camera security', 
           processingStatus: data.processingStatus,
         } as Camera;
       });
@@ -323,7 +323,6 @@ const CamerasPage: NextPage = () => {
         formStep1.setValue('groupDefaultVideoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep1.setValue('groupDefaultVideoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
 
-        // Also pre-fill Step 3 if a group is selected
         formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
         formStep3.setValue('aiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
         formStep3.setValue('alertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
@@ -333,7 +332,6 @@ const CamerasPage: NextPage = () => {
         formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
       } else {
-        // Reset if group data not found (though should always be found if value is not add_new_group)
         formStep1.resetField('groupDefaultCameraSceneContext');
         formStep1.resetField('groupDefaultAiDetectionTarget');
         formStep1.resetField('groupDefaultAlertEvents');
@@ -349,25 +347,59 @@ const CamerasPage: NextPage = () => {
   const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data) => {
     console.log("Step 1 Data:", data);
     if (!formStep1.formState.isValid) return;
+    
     setIsProcessingStep2(true);
+    setSnapshotUrl(null); // Reset snapshot URL before attempting to fetch
 
-    // Simulate API call for snapshot - SKIP FOR NOW
-    // setSnapshotUrl('https://placehold.co/400x300.png');
-    setSnapshotUrl(null); // Keep snapshot null for now
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) {
+        toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in." });
+        setIsProcessingStep2(false);
+        return;
+      }
 
-    // Simulate AI-generated scene description - SKIP FOR NOW
-    let sceneDescToSet = ''; // User will fill this or it will be prefilled from group defaults if selected
-    const groupValue = formStep1.getValues('group');
-    if (groupValue && groupValue !== 'add_new_group') {
-      const selectedGroupData = groups.find(g => g.id === groupValue);
-      // sceneDescToSet = selectedGroupData?.defaultCameraSceneContext || 'Based on group default (if any) and camera snapshot (if available).';
-    } else if (groupValue === 'add_new_group') {
-      // sceneDescToSet = formStep1.getValues('groupDefaultCameraSceneContext') || 'Based on new group default (if any) and camera snapshot (if available).';
-    } else {
-      // sceneDescToSet = 'Please describe the scene observed by this camera.';
+      const idToken = await user.getIdToken();
+
+      const snapshotResponse = await fetch('/api/take-camera-snapshot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ rtsp_url: data.rtspUrl }),
+      });
+
+      if (!snapshotResponse.ok) {
+        let errorMessage = `Failed to get snapshot (status: ${snapshotResponse.status})`;
+        try {
+            const errorData = await snapshotResponse.json();
+            errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+            errorMessage = snapshotResponse.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const snapshotData = await snapshotResponse.json();
+      if (snapshotData.status === 'success' && snapshotData.snapshot_data_uri) {
+        setSnapshotUrl(snapshotData.snapshot_data_uri);
+      } else {
+        setSnapshotUrl(null); // Explicitly set to null if not successful
+        throw new Error(snapshotData.message || "Snapshot API returned an error or invalid data.");
+      }
+    } catch (error: any) {
+      console.error("Error in Step 1 (snapshot):", error);
+      toast({
+        variant: "destructive",
+        title: "Snapshot Error",
+        description: error.message || "Could not retrieve camera snapshot.",
+      });
+      setSnapshotUrl(null); // Ensure snapshotUrl is cleared on error
     }
-    // For now, let's just use a generic placeholder or make it empty for the user to fill
-    sceneDescToSet = ''; // Make user fill it in step 2.
+    
+    let sceneDescToSet = ''; 
     formStep2.setValue('sceneDescription', sceneDescToSet);
 
 
@@ -423,8 +455,8 @@ const CamerasPage: NextPage = () => {
         if(step1Values.groupDefaultNumFrames) finalNumFrames = step1Values.groupDefaultNumFrames;
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
-    } else { // No group selected
-        finalCameraContext = currentSceneDesc; // Use the scene description entered by user
+    } else { 
+        finalCameraContext = currentSceneDesc; 
     }
 
     formStep3.setValue('cameraSceneContext', finalCameraContext);
@@ -453,9 +485,9 @@ const CamerasPage: NextPage = () => {
       }
       console.warn("No default server found in Firestore.");
       toast({
-        variant: "default", // Not destructive, as camera can still be saved
+        variant: "default", 
         title: "No Default Server",
-        description: "No default processing server found. Camera will be saved without a server IP. Please assign one later via System Admin.",
+        description: "No default processing server found. Camera will be saved without an assigned server. A system admin can assign one later.",
       });
       return null;
     } catch (error) {
@@ -463,7 +495,7 @@ const CamerasPage: NextPage = () => {
       toast({
         variant: "destructive",
         title: "Server Fetch Error",
-        description: "Could not fetch default server information. Camera will be saved without a server IP.",
+        description: "Could not fetch default server information. Camera will be saved without an assigned server.",
       });
       return null;
     }
@@ -502,7 +534,7 @@ const CamerasPage: NextPage = () => {
             orgId: orgId,
             userId: currentUser.uid,
             cameras: [],
-            videos: [], // Initialize videos array
+            videos: [], 
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
@@ -539,7 +571,7 @@ const CamerasPage: NextPage = () => {
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: fetchedDefaultServerIp, // Use fetched default server IP or null
+      serverIpAddress: fetchedDefaultServerIp, 
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -583,11 +615,11 @@ const CamerasPage: NextPage = () => {
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', // Use actual snapshot if available
+        imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', 
         dataAiHint: configData.aiDetectionTarget || 'newly added camera',
         processingStatus: "waiting_for_approval",
       };
-      setCameras(prevCameras => [...prevCameras, newCameraForState]); // Add to local state for immediate display
+      setCameras(prevCameras => [...prevCameras, newCameraForState]); 
       handleDrawerClose();
     } catch (error: any) {
       console.error("Error saving camera and configuration: ", error);
@@ -872,12 +904,21 @@ const CamerasPage: NextPage = () => {
                     width={400}
                     height={300}
                     className="rounded-md border object-cover aspect-video w-full"
-                    data-ai-hint="art gallery exhibition"
+                    data-ai-hint="camera snapshot"
                     />
                 )}
-                {!snapshotUrl && isProcessingStep2 && (
+                {/* Loader during processing */}
+                {isProcessingStep2 && !snapshotUrl && (
                     <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                )}
+                {/* Placeholder/Error if processing is done and no snapshot */}
+                {!isProcessingStep2 && !snapshotUrl && (
+                    <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
+                        <CameraIconLucide className="h-12 w-12 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Could not retrieve snapshot.</p>
+                        <p className="text-xs text-muted-foreground">Check RTSP URL and network.</p>
                     </div>
                 )}
 
@@ -1357,3 +1398,4 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
