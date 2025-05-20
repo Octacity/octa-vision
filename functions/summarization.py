@@ -4,17 +4,21 @@ import requests
 import os
 from firebase_admin import auth
 from flask import Flask, request, jsonify
+from firebase_functions import https_fn
 
-# Import app from main.py and the new function to get VSS base URL
-from .main import app, verify_firebase_token, get_default_vss_base_url
+# Import the necessary functions from main
+from main import verify_firebase_token, get_default_vss_base_url
 
 
-@app.route('/summarize-content', methods=['POST'])
-def summarize_content():
+@https_fn.on_request()
+def summarize_content(request: https_fn.Request):
     """
     Cloud function to summarize content using the VSS API.
     Requires Firebase authentication.
     """
+    if request.method != 'POST':
+        return jsonify({"status": "error", "message": "Method Not Allowed"}), 405
+
     decoded_token, error = verify_firebase_token(request)
     if error:
         return jsonify({"status": "error", "message": f"Authentication failed: {error}"}), 401
@@ -32,7 +36,7 @@ def summarize_content():
     vss_api_url = f"{vss_api_base_url}/summarize"
     try:
         vss_api_response = requests.post(vss_api_url, json=request_data)
-        vss_api_response.raise_for_status() 
+        vss_api_response.raise_for_status()
         vss_data = vss_api_response.json()
 
         return jsonify({"status": "success", "data": vss_data}), 200

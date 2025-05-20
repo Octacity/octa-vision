@@ -1,4 +1,3 @@
-. 
 {
   "firestore": {
     "rules": "firestore.rules",
@@ -6,18 +5,16 @@
   },
   "functions": [
     {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
+ "codebase": "default",
+ "source": "functions",
+ "ignore": [
         "venv",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.pyc",
-        "__pycache__/"
-      ],
-      "runtime": "python312",
-      "entryPoint": "main"
+ ".git",
+ "firebase-debug.log",
+ "firebase-debug.*.log",
+ "*.pyc",
+ "__pycache__/"
+ ]
     }
   ],
   "hosting": {
