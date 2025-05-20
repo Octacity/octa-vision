@@ -1,4 +1,4 @@
-
+. 
 {
   "firestore": {
     "rules": "firestore.rules",
@@ -6,7 +6,7 @@
   },
   "functions": [
     {
-      "source": "cloud_functions",
+      "source": "functions",
       "codebase": "default",
       "ignore": [
         "venv",
