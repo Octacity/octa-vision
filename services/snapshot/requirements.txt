@@ -1,0 +1,5 @@
+txt
+opencv-python-headless
+Flask
+gunicorn
+numpy

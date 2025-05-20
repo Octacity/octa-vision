@@ -2,14 +2,14 @@
 
 import requests
 import os
-from flask import Flask, request, jsonify
+from flask import request, jsonify
 from firebase_admin import auth
+from firebase_functions import https_fn
 
-# Import app from main.py and the new function to get VSS base URL
-from .main import app, verify_firebase_token, get_default_vss_base_url
+# Import utility functions from main.py
+from main import verify_firebase_token, get_default_vss_base_url
 
-
-@app.route('/get-recommended-config', methods=['POST'])
+@https_fn.on_request()
 def get_recommended_config():
     """
     Cloud function to recommend a configuration based on video properties using the VSS API.
@@ -17,6 +17,9 @@ def get_recommended_config():
     """
     decoded_token, error = verify_firebase_token(request)
     if error:
+        return jsonify({"status": "error", "message": f"Authentication failed: {error}"}), 401
+
+    if request.method != 'POST':
         return jsonify({"status": "error", "message": f"Authentication failed: {error}"}), 401
 
     request_data = request.get_json()

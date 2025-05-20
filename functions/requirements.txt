@@ -1,4 +1,5 @@
 firebase-admin
+firebase-functions
 flask
 requests
 opencv-python
