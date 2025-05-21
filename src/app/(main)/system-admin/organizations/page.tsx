@@ -7,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/fire
 import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon, Edit3, DollarSign } from 'lucide-react';
+import { CheckCircle, Users as UsersIconLucide, Server as ServerIcon, Shield, PlusCircle, ArrowUpDown, Search, Camera as CameraIcon, Edit3, DollarSign, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -25,13 +25,14 @@ interface Organization {
   name: string;
   phone?: string;
   description?: string;
-  needForOctaVision?: string;
+  primaryUseCases?: string;
   approved: boolean;
-  createdAt: any; // Firestore Timestamp
-  userAdminEmail?: string; // To be populated
-  userCount?: number; // To be populated
-  cameraCount?: number; // To be populated
-  admin?: boolean; // Field to indicate if org has admin privileges
+  createdAt: any; 
+  userAdminEmail?: string; 
+  userCount?: number; 
+  cameraCount?: number; 
+  admin?: boolean; 
+  orgDefaultServerId?: string | null;
 }
 
 type SortField = 'name' | 'status' | 'createdAt';
@@ -83,10 +84,12 @@ const AdminOrganizationsPage: NextPage = () => {
             approved: data.approved === true, 
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
             phone: data.phone || 'N/A',
+            primaryUseCases: data.primaryUseCases || 'N/A',
             userAdminEmail,
             userCount,
             cameraCount,
             admin: data.admin === true, 
+            orgDefaultServerId: data.orgDefaultServerId || null,
           } as Organization;
         } catch (error) {
           console.error(`Error processing sub-queries for org ${orgDoc.id}:`, error);
@@ -183,11 +186,11 @@ const AdminOrganizationsPage: NextPage = () => {
 
   return (
     <div>
-      <Card>
+      <Card className="sm:m-0 -m-4"> {/* Remove margin on small screens */}
         <CardHeader className="border-b p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle className="text-lg font-normal text-primary">{translate('manageOrgsTitle')}</CardTitle>
+              <CardTitle className="text-base font-normal text-primary">{translate('manageOrgsTitle')}</CardTitle>
               <CardDescription className="text-xs mt-1 text-muted-foreground">View all organizations, approve new ones, and manage their settings.</CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">
@@ -210,36 +213,36 @@ const AdminOrganizationsPage: NextPage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>
-                       <Button variant="ghost" onClick={() => handleSort('name')} className="px-1 py-0.5 h-auto hover:bg-muted/50">
+                       <Button variant="ghost" onClick={() => handleSort('name')} className="px-1 py-0.5 h-auto hover:bg-muted/50 text-xs">
                         Name <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
                     <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('status')} className="px-1 py-0.5 h-auto hover:bg-muted/50">
+                      <Button variant="ghost" onClick={() => handleSort('status')} className="px-1 py-0.5 h-auto hover:bg-muted/50 text-xs">
                         Status <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead>User Admin</TableHead>
-                    <TableHead className="text-center">Users</TableHead>
-                    <TableHead className="text-center">Cameras</TableHead>
+                    <TableHead  className="text-xs">User Admin</TableHead>
+                    <TableHead className="text-center text-xs">Users</TableHead>
+                    <TableHead className="text-center text-xs">Cameras</TableHead>
                     <TableHead>
-                      <Button variant="ghost" onClick={() => handleSort('createdAt')} className="px-1 py-0.5 h-auto hover:bg-muted/50">
+                      <Button variant="ghost" onClick={() => handleSort('createdAt')} className="px-1 py-0.5 h-auto hover:bg-muted/50 text-xs">
                         Requested <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">Actions</TableHead>
+                    <TableHead className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border text-xs">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedOrganizations.map((org) => (
                     <TableRow key={org.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-sm">
                         <div className="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1 pr-1 scrollbar-thin">
                           <span>{org.name}</span>
                           {org.admin && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                 <Badge variant="outline" className="ml-2 border-primary text-primary cursor-default">
+                                 <Badge variant="outline" className="ml-2 border-primary text-primary cursor-default text-xs">
                                   <Shield className="h-3 w-3 mr-1"/> Admin
                                  </Badge>
                               </TooltipTrigger>
@@ -248,15 +251,25 @@ const AdminOrganizationsPage: NextPage = () => {
                               </TooltipContent>
                             </Tooltip>
                           )}
+                          {!org.orgDefaultServerId && (
+                             <Tooltip>
+                                <TooltipTrigger asChild>
+                                   <AlertTriangle className="h-4 w-4 text-destructive ml-2" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Organization default server is not set.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={org.approved ? 'default' : 'secondary'} className={`${org.approved ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white`}>
+                        <Badge variant={org.approved ? 'default' : 'secondary'} className={`${org.approved ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white text-xs`}>
                           {org.approved ? 'Approved' : 'Pending'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{org.userAdminEmail}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="whitespace-nowrap text-xs">{org.userAdminEmail}</TableCell>
+                      <TableCell className="text-center text-xs">
                         <div className="flex items-center justify-center space-x-1">
                           <span>{org.userCount}</span>
                           <Tooltip>
@@ -271,7 +284,7 @@ const AdminOrganizationsPage: NextPage = () => {
                           </Tooltip>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center text-xs">
                         <div className="flex items-center justify-center space-x-1">
                           <span>{org.cameraCount}</span>
                            <Tooltip>
@@ -286,8 +299,8 @@ const AdminOrganizationsPage: NextPage = () => {
                           </Tooltip>
                         </div>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{org.createdAt}</TableCell>
-                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[130px] min-w-[130px] border-l border-border">
+                      <TableCell className="whitespace-nowrap text-xs">{org.createdAt}</TableCell>
+                      <TableCell className="sticky right-0 bg-muted z-10 text-right px-2 sm:px-4 w-[100px] min-w-[100px] border-l border-border">
                         <div className="flex justify-end items-center space-x-1">
                           {!org.approved && (
                             <Tooltip>
@@ -308,7 +321,7 @@ const AdminOrganizationsPage: NextPage = () => {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Manage IPs</p>
+                              <p>Manage Camera IPs/Servers</p>
                             </TooltipContent>
                           </Tooltip>
                            <Tooltip>
@@ -341,3 +354,4 @@ const AdminOrganizationsPage: NextPage = () => {
 };
 
 export default AdminOrganizationsPage;
+

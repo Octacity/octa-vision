@@ -9,12 +9,13 @@ import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, ArrowLeft, Save, Settings2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Settings2, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageLoading } from '@/contexts/LoadingContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/alert'; // Added Alert
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +39,7 @@ interface CameraData {
 
 interface OrganizationData {
   name: string;
-  orgDefaultServerId?: string | null; // Added to hold the ID of the org default server
+  orgDefaultServerId?: string | null;
 }
 
 interface ServerInfo {
@@ -66,7 +67,7 @@ const AssignServersToCamerasPage: NextPage = () => {
   const [cameraConfigs, setCameraConfigs] = useState<Record<string, CameraConfig>>({});
   const [loading, setLoading] = useState(true);
   const [selectedServers, setSelectedServers] = useState<Record<string, string | undefined>>({});
-  const [selectedBulkAssignServerIp, setSelectedBulkAssignServerIp] = useState<string | undefined>(undefined);
+  const [selectedBulkAssignServerId, setSelectedBulkAssignServerId] = useState<string | undefined>(undefined);
   const [isBulkAssigning, setIsBulkAssigning] = useState(false);
   const [selectedOrgDefaultServerId, setSelectedOrgDefaultServerId] = useState<string | null | undefined>(undefined);
   const [isSettingOrgDefault, setIsSettingOrgDefault] = useState(false);
@@ -75,7 +76,7 @@ const AssignServersToCamerasPage: NextPage = () => {
   const fetchCameraConfig = useCallback(async (cameraId: string, configId?: string): Promise<CameraConfig | null> => {
     if (!configId) return null;
     try {
-      const configDocRef = doc(db, 'configurations', configId);
+      const configDocRef = doc(db, 'configurations', configId); // Use 'configurations'
       const configDocSnap = await getDoc(configDocRef);
       if (configDocSnap.exists()) {
         return configDocSnap.data() as CameraConfig;
@@ -131,7 +132,8 @@ const AssignServersToCamerasPage: NextPage = () => {
           const config = await fetchCameraConfig(cam.id, cam.currentConfigId);
           if (config) {
             configs[cam.id] = config;
-            initialSelected[cam.id] = config.serverIpAddress || undefined;
+            const assignedServer = fetchedServers.find(s => `${s.protocol}://${s.ipAddressWithPort}` === config.serverIpAddress);
+            initialSelected[cam.id] = assignedServer?.id || (config.serverIpAddress === null ? "__SELECT_NONE__" : undefined);
           } else {
             initialSelected[cam.id] = undefined;
           }
@@ -158,7 +160,7 @@ const AssignServersToCamerasPage: NextPage = () => {
 
   const handleAssignServer = async (cameraId: string) => {
     const camera = cameras.find(c => c.id === cameraId);
-    const selectedServerIpOrNone = selectedServers[cameraId];
+    const selectedServerIdOrNone = selectedServers[cameraId];
 
     if (!camera) {
       toast({ variant: 'destructive', title: 'Error', description: 'Camera not found.' });
@@ -173,20 +175,27 @@ const AssignServersToCamerasPage: NextPage = () => {
       return;
     }
     
-    const serverInfo = servers.find(s => s.id === selectedServerIpOrNone); // Assuming selectedServerIpOrNone is serverId for this logic
-    const serverIpToSave = serverInfo ? `${serverInfo.protocol}://${serverInfo.ipAddressWithPort}` : (selectedServerIpOrNone === "__SELECT_NONE__" ? null : selectedServerIpOrNone);
+    let serverIpToSave: string | null = null;
+    if (selectedServerIdOrNone && selectedServerIdOrNone !== "__SELECT_NONE__") {
+        const serverInfo = servers.find(s => s.id === selectedServerIdOrNone);
+        if (serverInfo) {
+            serverIpToSave = `${serverInfo.protocol}://${serverInfo.ipAddressWithPort}`;
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Selected server not found.' });
+            return;
+        }
+    }
 
 
     setIsPageLoading(true);
     try {
-      const configDocRef = doc(db, 'configurations', camera.currentConfigId);
-      await updateDoc(configDocRef, { serverIpAddress: serverIpToSave }); // Save full URL or null
+      const configDocRef = doc(db, 'configurations', camera.currentConfigId); // Use 'configurations'
+      await updateDoc(configDocRef, { serverIpAddress: serverIpToSave }); 
       toast({ title: 'Server Assigned', description: `Server assignment updated for ${camera.cameraName}.` });
 
       const updatedConfig = await fetchCameraConfig(cameraId, camera.currentConfigId);
       if(updatedConfig) {
         setCameraConfigs(prev => ({ ...prev, [cameraId]: updatedConfig }));
-        setSelectedServers(prev => ({...prev, [cameraId]: serverInfo?.id || (selectedServerIpOrNone === "__SELECT_NONE__" ? "__SELECT_NONE__" : undefined)}));
       }
     } catch (error) {
       console.error("Error assigning server: ", error);
@@ -198,12 +207,12 @@ const AssignServersToCamerasPage: NextPage = () => {
   const handleServerSelectionChange = (cameraId: string, serverIdOrNone: string) => {
     setSelectedServers(prev => ({
       ...prev,
-      [cameraId]: serverIdOrNone
+      [cameraId]: serverIdOrNone === "__SELECT_NONE__" ? undefined : serverIdOrNone,
     }));
   };
 
   const handleBulkAssignServerToOrgCameras = async () => {
-    if (!selectedBulkAssignServerIp || selectedBulkAssignServerIp === "__SELECT_NONE__") {
+    if (!selectedBulkAssignServerId || selectedBulkAssignServerId === "__SELECT_NONE__") {
         toast({ variant: "destructive", title: "No Server Selected", description: "Please select a server to assign to all cameras." });
         return;
     }
@@ -216,7 +225,7 @@ const AssignServersToCamerasPage: NextPage = () => {
     const batch = writeBatch(db);
     let updatesMade = 0;
     
-    const serverToBulkAssign = servers.find(s => s.id === selectedBulkAssignServerIp);
+    const serverToBulkAssign = servers.find(s => s.id === selectedBulkAssignServerId);
     if (!serverToBulkAssign) {
         toast({ variant: "destructive", title: "Server Not Found", description: "Selected server for bulk assignment not found." });
         setIsBulkAssigning(false);
@@ -227,7 +236,7 @@ const AssignServersToCamerasPage: NextPage = () => {
 
     cameras.forEach(camera => {
         if (camera.currentConfigId) {
-            const configDocRef = doc(db, 'configurations', camera.currentConfigId);
+            const configDocRef = doc(db, 'configurations', camera.currentConfigId); // Use 'configurations'
             batch.update(configDocRef, { serverIpAddress: serverUrlToBulkSave });
             updatesMade++;
         }
@@ -248,7 +257,7 @@ const AssignServersToCamerasPage: NextPage = () => {
         toast({ variant: "destructive", title: "Bulk Assignment Failed", description: "Could not assign server to all cameras." });
     }
     setIsBulkAssigning(false);
-    setSelectedBulkAssignServerIp(undefined); 
+    setSelectedBulkAssignServerId(undefined); 
   };
 
   const handleSetOrgDefaultServer = async () => {
@@ -285,13 +294,23 @@ const AssignServersToCamerasPage: NextPage = () => {
     );
   }
   
-  const currentOrgDefaultServerName = servers.find(s => s.id === organization.orgDefaultServerId)?.name || "None";
+  const currentOrgDefaultServerName = servers.find(s => s.id === organization.orgDefaultServerId)?.name || "None (System Default will apply)";
 
   return (
     <div>
       <Button variant="outline" onClick={() => {setIsPageLoading(true); router.push('/system-admin/organizations');}} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organizations
       </Button>
+
+      {!organization.orgDefaultServerId && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <CardTitle className="text-sm">Organization Default Server Not Set</CardTitle>
+          <CardDescription className="text-xs">
+            This organization does not have a default processing server assigned. Cameras will fall back to the System Default Server if available, or require manual server assignment.
+          </CardDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardHeader>
@@ -307,7 +326,7 @@ const AssignServersToCamerasPage: NextPage = () => {
                 <Label htmlFor="org-default-server-select" className="text-xs font-medium text-muted-foreground mb-1 block">Select Server</Label>
                 <Select
                     value={selectedOrgDefaultServerId ?? "__SELECT_NONE__"}
-                    onValueChange={(value) => setSelectedOrgDefaultServerId(value)}
+                    onValueChange={(value) => setSelectedOrgDefaultServerId(value === "__SELECT_NONE__" ? null : value)}
                 >
                     <SelectTrigger id="org-default-server-select" className="w-full">
                         <SelectValue placeholder="Select a server..." />
@@ -327,7 +346,7 @@ const AssignServersToCamerasPage: NextPage = () => {
             </div>
             <Button 
                 onClick={handleSetOrgDefaultServer}
-                disabled={isSettingOrgDefault || selectedOrgDefaultServerId === (organization.orgDefaultServerId || null) || selectedOrgDefaultServerId === undefined}
+                disabled={isSettingOrgDefault || selectedOrgDefaultServerId === (organization.orgDefaultServerId || null) }
                 className="w-full sm:w-auto"
             >
                 {isSettingOrgDefault ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Settings2 className="mr-2 h-4 w-4" />}
@@ -348,8 +367,8 @@ const AssignServersToCamerasPage: NextPage = () => {
              <div className="flex-grow w-full sm:w-auto">
                 <Label htmlFor="bulk-assign-server-select" className="text-xs font-medium text-muted-foreground mb-1 block">Select Server</Label>
                 <Select
-                    value={selectedBulkAssignServerIp ?? "__SELECT_NONE__"}
-                    onValueChange={(value) => setSelectedBulkAssignServerIp(value)}
+                    value={selectedBulkAssignServerId ?? "__SELECT_NONE__"}
+                    onValueChange={(value) => setSelectedBulkAssignServerId(value === "__SELECT_NONE__" ? undefined : value)}
                 >
                     <SelectTrigger id="bulk-assign-server-select" className="w-full">
                         <SelectValue placeholder="Select a server for bulk assignment" />
@@ -370,7 +389,7 @@ const AssignServersToCamerasPage: NextPage = () => {
              <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button 
-                        disabled={isBulkAssigning || !selectedBulkAssignServerIp || selectedBulkAssignServerIp === "__SELECT_NONE__"}
+                        disabled={isBulkAssigning || !selectedBulkAssignServerId}
                         className="w-full sm:w-auto"
                     >
                         {isBulkAssigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -381,7 +400,7 @@ const AssignServersToCamerasPage: NextPage = () => {
                     <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Bulk Assignment</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Are you sure you want to assign server "{servers.find(s => s.id === selectedBulkAssignServerIp)?.name || selectedBulkAssignServerIp}" to all cameras in {organization.name}? This will overwrite existing individual assignments.
+                        Are you sure you want to assign server "{servers.find(s => s.id === selectedBulkAssignServerId)?.name || selectedBulkAssignServerId}" to all cameras in {organization.name}? This will overwrite existing individual assignments.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -419,9 +438,9 @@ const AssignServersToCamerasPage: NextPage = () => {
                   </TableHeader>
                   <TableBody>
                     {cameras.map((camera) => {
-                      const currentServerIp = cameraConfigs[camera.id]?.serverIpAddress;
-                      const assignedServerInfo = servers.find(s => `${s.protocol}://${s.ipAddressWithPort}` === currentServerIp);
-                      const selectedValueForDropdown = assignedServerInfo?.id || (currentServerIp === null ? "__SELECT_NONE__" : undefined);
+                      const currentServerIpFromConfig = cameraConfigs[camera.id]?.serverIpAddress;
+                      const assignedServerInfo = servers.find(s => `${s.protocol}://${s.ipAddressWithPort}` === currentServerIpFromConfig);
+                      const currentSelectedValueInDropdown = selectedServers[camera.id] ?? (assignedServerInfo?.id || (currentServerIpFromConfig === null ? "__SELECT_NONE__" : undefined));
                       
                       return (
                       <TableRow key={camera.id}>
@@ -430,7 +449,7 @@ const AssignServersToCamerasPage: NextPage = () => {
                         <TableCell>
                           {servers.length > 0 ? (
                             <Select
-                              value={selectedServers[camera.id] ?? selectedValueForDropdown ?? "__SELECT_NONE__"}
+                              value={currentSelectedValueInDropdown}
                               onValueChange={(value) => handleServerSelectionChange(camera.id, value)}
                             >
                               <SelectTrigger className="w-[280px]">
@@ -459,9 +478,7 @@ const AssignServersToCamerasPage: NextPage = () => {
                                 size="sm"
                                 onClick={() => handleAssignServer(camera.id)}
                                 disabled={
-                                  selectedServers[camera.id] === undefined || // Nothing selected yet in this session for this camera
-                                  selectedServers[camera.id] === selectedValueForDropdown || // Selection matches current assignment
-                                  (selectedServers[camera.id] === "__SELECT_NONE__" && selectedValueForDropdown === "__SELECT_NONE__") // Both are 'None'
+                                  currentSelectedValueInDropdown === (assignedServerInfo?.id || (currentServerIpFromConfig === null ? "__SELECT_NONE__" : undefined))
                                 }
                                 className="h-8 text-xs"
                               >
