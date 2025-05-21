@@ -5,11 +5,14 @@ import { NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
+    console.log('Next API /take-camera-snapshot: Received Authorization Header:', authHeader); // Log received header
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.error('Next API /take-camera-snapshot: Unauthorized - Missing or invalid token in request to Next.js API route.');
       return NextResponse.json({ status: 'error', message: 'Unauthorized: Missing or invalid token to access this API route.' }, { status: 401 });
     }
     const idToken = authHeader.split('Bearer ')[1];
+    console.log('Next API /take-camera-snapshot: Extracted ID Token to forward:', idToken ? `Token present (first 20 chars: ${idToken.substring(0,20)}...)` : 'Token NOT present after split'); // Log extracted token
 
     let body;
     try {
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'error', message: "Snapshot service configuration error on application server." }, { status: 500 });
     }
 
-    console.log(`Next API /take-camera-snapshot: Calling snapshot service at ${snapshotServiceUrl} for RTSP URL: ${rtsp_url}`);
+    console.log(`Next API /take-camera-snapshot: Forwarding request to snapshot service at ${snapshotServiceUrl} for RTSP URL: ${rtsp_url}`);
     
     let serviceResponse;
     try {
@@ -40,10 +43,10 @@ export async function POST(req: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`, // Forward the token to the snapshot service
+                'Authorization': `Bearer ${idToken}`, // Forwarding the token
             },
-            body: JSON.stringify({ rtsp_url }), // Only send rtsp_url
-            signal: AbortSignal.timeout(30000) // Increased timeout to 30 seconds for snapshot service
+            body: JSON.stringify({ rtsp_url }), 
+            signal: AbortSignal.timeout(30000) 
         });
     } catch (fetchError: any) {
         console.error(`Next API /take-camera-snapshot: Error fetching from snapshot service ${snapshotServiceUrl}:`, fetchError.message);
@@ -70,10 +73,9 @@ export async function POST(req: NextRequest) {
 
     if (!serviceResponse.ok) {
       console.error(`Next API /take-camera-snapshot: Snapshot service error (${serviceResponse.status}) from ${snapshotServiceUrl}. Message from service:`, responseData?.message || "No specific message in error response from service.");
-      // If the service returns 401, it means the token verification failed there.
       if (serviceResponse.status === 401) {
         return NextResponse.json(
-          { status: 'error', message: responseData?.message || `Snapshot service denied access (401). This might be due to token verification issues within the snapshot service. Check snapshot service logs.` },
+          { status: 'error', message: responseData?.message || `Snapshot service denied access (401). This might be due to token verification issues within the snapshot service or an issue with the token itself. Check snapshot service logs.` },
           { status: 401 }
         );
       }
