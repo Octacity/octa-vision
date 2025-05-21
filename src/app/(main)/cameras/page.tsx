@@ -303,12 +303,11 @@ const CamerasPage: NextPage = () => {
   const handleGroupChange = (value: string) => {
     setSelectedGroup(value);
     formStep1.setValue('group', value);
-    formStep2.resetField('sceneDescription'); // Reset scene description when group changes
-    formStep3.reset(); // Reset step 3 when group changes
+    formStep2.resetField('sceneDescription'); 
+    formStep3.reset(); 
 
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
-      // Set defaults for new group form
       formStep1.setValue('groupDefaultVideoChunksValue', '10');
       formStep1.setValue('groupDefaultVideoChunksUnit', 'seconds');
       formStep1.setValue('groupDefaultNumFrames', '5');
@@ -320,10 +319,9 @@ const CamerasPage: NextPage = () => {
 
     } else {
       setShowNewGroupForm(false);
-      formStep1.setValue('newGroupName', ''); // Clear new group name if existing group is selected
+      formStep1.setValue('newGroupName', ''); 
       const selectedGroupData = groups.find(g => g.id === value);
       if (selectedGroupData) {
-        // Populate formStep1 with existing group defaults
         formStep1.setValue('groupDefaultCameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
         formStep1.setValue('groupDefaultAiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
         formStep1.setValue('groupDefaultAlertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
@@ -333,10 +331,8 @@ const CamerasPage: NextPage = () => {
         formStep1.setValue('groupDefaultVideoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep1.setValue('groupDefaultVideoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
 
-        // Pre-populate formStep2's sceneDescription if group has default context
         formStep2.setValue('sceneDescription', selectedGroupData.defaultCameraSceneContext || '');
         
-        // Pre-populate formStep3 with group defaults
         formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
         formStep3.setValue('aiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
         formStep3.setValue('alertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
@@ -346,7 +342,6 @@ const CamerasPage: NextPage = () => {
         formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
       } else {
-        // Clear defaults if no group selected or group data not found
         formStep1.resetField('groupDefaultCameraSceneContext');
         formStep1.resetField('groupDefaultAiDetectionTarget');
         formStep1.resetField('groupDefaultAlertEvents');
@@ -355,7 +350,7 @@ const CamerasPage: NextPage = () => {
         formStep1.resetField('groupDefaultNumFrames');
         formStep1.resetField('groupDefaultVideoOverlapValue');
         formStep1.resetField('groupDefaultVideoOverlapUnit');
-        formStep2.setValue('sceneDescription', ''); // Clear scene description for Step 2
+        formStep2.setValue('sceneDescription', ''); 
       }
     }
   };
@@ -387,18 +382,35 @@ const CamerasPage: NextPage = () => {
       }
 
       const idToken = await user.getIdToken();
+      const snapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL;
 
-      // For new camera, camera_id is not sent to snapshot service during initial snapshot
-      const snapshotResponse = await fetch('/api/take-camera-snapshot', {
+      if (!snapshotServiceUrl) {
+        console.error("Snapshot service URL is not configured in environment variables (NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL).");
+        throw new Error("Snapshot service is not configured. Please contact support.");
+      }
+      console.log(`Calling snapshot service at: ${snapshotServiceUrl} for RTSP: ${data.rtspUrl}`);
+
+      const snapshotResponse = await fetch(snapshotServiceUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ rtsp_url: data.rtspUrl }), 
+        signal: AbortSignal.timeout(30000) 
       });
 
-      const snapshotData = await snapshotResponse.json();
+      const responseText = await snapshotResponse.text();
+      console.log(`Snapshot service raw response (status ${snapshotResponse.status}):`, responseText);
+      
+      let snapshotData;
+      try {
+        snapshotData = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse snapshot service response as JSON:", e);
+        throw new Error(`Snapshot service returned an invalid response (not JSON). Status: ${snapshotResponse.status}.`);
+      }
+
       let errorMessageText = `Failed to get snapshot (status: ${snapshotResponse.status})`;
 
       if (!snapshotResponse.ok) {
@@ -432,9 +444,6 @@ const CamerasPage: NextPage = () => {
 
   const handleStep2Back = () => {
     setDrawerStep(1);
-    // No need to clear snapshotGcsUrl and snapshotResolution here,
-    // as they are tied to the RTSP URL from Step 1. If the user goes back and changes the RTSP URL,
-    // these will be re-fetched when they submit Step 1 again.
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
@@ -479,7 +488,6 @@ const CamerasPage: NextPage = () => {
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
     } else {
-        // No group selected, use current scene description for context if not empty
         finalCameraContext = currentSceneDesc || ''; 
     }
 
@@ -506,11 +514,11 @@ const CamerasPage: NextPage = () => {
       const orgDocSnap = await getDoc(orgDocRef);
       let serverToUseId: string | null = null;
       let serverProtocol: string | null = null;
-      let serverIp: string | null = null;
+      let serverIpWithPort: string | null = null;
 
       if (orgDocSnap.exists()) {
         const orgData = orgDocSnap.data();
-        if (orgData.orgDefaultServerId) {
+        if (orgData.orgDefaultServerId) { // Changed from defaultServerId
           serverToUseId = orgData.orgDefaultServerId;
           console.log("Using Organization Default Server ID:", serverToUseId);
         }
@@ -525,36 +533,36 @@ const CamerasPage: NextPage = () => {
             const serverData = serverDocSnap.data();
             if (serverData.status === 'online') {
                  serverProtocol = serverData.protocol;
-                 serverIp = serverData.ipAddressWithPort;
+                 serverIpWithPort = serverData.ipAddressWithPort;
             } else {
                 console.warn(`Organization default server ${serverData.name} (${serverToUseId}) is not online. Status: ${serverData.status}. Falling back.`);
-                serverToUseId = null; // Force fallback
+                serverToUseId = null; 
             }
         } else {
             console.warn(`Server document for Org Default ID ${serverToUseId} not found. Falling back.`);
-            serverToUseId = null; // Force fallback
+            serverToUseId = null; 
         }
       }
 
 
-      if (!serverIp) { // Fallback to System Default if Org Default not found or not online
+      if (!serverIpWithPort) { 
         console.log("Organization default server not set, not found, or not online. Looking for System Default Server...");
-        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
+        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1)); // Changed from isDefault
         const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
         if (!systemDefaultSnapshot.empty) {
           const systemDefaultServerData = systemDefaultSnapshot.docs[0].data();
            if (systemDefaultServerData.status === 'online') {
                 serverProtocol = systemDefaultServerData.protocol;
-                serverIp = systemDefaultServerData.ipAddressWithPort;
-                console.log("Using System Default Server:", systemDefaultSnapshot.docs[0].id, `${serverProtocol}://${serverIp}`);
+                serverIpWithPort = systemDefaultServerData.ipAddressWithPort;
+                console.log("Using System Default Server:", systemDefaultSnapshot.docs[0].id, `${serverProtocol}://${serverIpWithPort}`);
            } else {
                console.warn(`System Default Server ${systemDefaultServerData.name} is not online. Status: ${systemDefaultServerData.status}. No server IP will be assigned.`);
            }
         }
       }
 
-      if (serverProtocol && serverIp) {
-        return `${serverProtocol}://${serverIp}`;
+      if (serverProtocol && serverIpWithPort) {
+        return `${serverProtocol}://${serverIpWithPort}`;
       }
 
       console.warn("No suitable (Organization or System) Default Server found or active. No server IP will be assigned.");
@@ -584,9 +592,9 @@ const CamerasPage: NextPage = () => {
     const step1Data = formStep1.getValues();
     const step2Data = formStep2.getValues();
 
-    let effectiveServerUrl: string | null = null;
+    let effectiveServerUrlValue: string | null = null;
     try {
-        effectiveServerUrl = await getEffectiveServerUrl(orgId);
+        effectiveServerUrlValue = await getEffectiveServerUrl(orgId);
     } catch (error) {
         // Error already toasted by getEffectiveServerUrl
     }
@@ -642,7 +650,7 @@ const CamerasPage: NextPage = () => {
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: effectiveServerUrl, 
+      serverIpAddress: effectiveServerUrlValue, 
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -660,6 +668,9 @@ const CamerasPage: NextPage = () => {
       userId: currentUser.uid,
       previousConfigId: null,
     });
+    
+    batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
+
 
     if (finalGroupId) {
         const groupRefToUpdate = doc(db, 'groups', finalGroupId);
@@ -966,7 +977,7 @@ const CamerasPage: NextPage = () => {
                     height={300}
                     className="rounded-md border object-cover aspect-video w-full"
                     data-ai-hint="camera snapshot"
-                    unoptimized // Useful for GCS URLs if not configured in next.config.js
+                    unoptimized 
                     />
                 ) : (
                      <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
@@ -1371,7 +1382,7 @@ const CamerasPage: NextPage = () => {
                     height={150}
                     className="rounded-t-lg aspect-video w-full object-cover"
                     data-ai-hint={camera.dataAiHint}
-                    unoptimized // Add this if using GCS URLs not whitelisted in next.config.js
+                    unoptimized 
                     />
                     {camera.processingStatus === 'running_normal' ? (
                         <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-green-500 bg-white rounded-full p-0.5" />
@@ -1444,3 +1455,4 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
