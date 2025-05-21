@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'error', message: 'Missing rtsp_url in request body' }, { status: 400 });
     }
 
-    const snapshotServiceUrl = process.env.TAKE_SNAPSHOT_CLOUD_FUNCTION_URL; 
+    const snapshotServiceUrl = process.env.TAKE_SNAPSHOT_CLOUD_RUN_URL; 
     if (!snapshotServiceUrl) {
-      console.error("TAKE_SNAPSHOT_CLOUD_FUNCTION_URL environment variable is not set.");
+      console.error("TAKE_SNAPSHOT_CLOUD_RUN_URL environment variable is not set.");
       return NextResponse.json({ status: 'error', message: "Snapshot service configuration error on server." }, { status: 500 });
     }
 
@@ -74,3 +74,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: 'error', message }, { status: 500 });
   }
 }
+
