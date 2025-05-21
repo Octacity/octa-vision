@@ -179,7 +179,7 @@ const CamerasPage: NextPage = () => {
         return {
           id: doc.id,
           cameraName: data.cameraName,
-          imageUrl: data.snapshotUrl || 'https://placehold.co/600x400.png',
+          imageUrl: data.snapshotUrl || 'https://placehold.co/600x400.png', // Use saved snapshotUrl
           dataAiHint: data.aiDetectionTarget || 'camera security',
           processingStatus: data.processingStatus,
         } as Camera;
@@ -372,38 +372,39 @@ const CamerasPage: NextPage = () => {
       });
 
       if (!snapshotResponse.ok) {
-          let errorMessage = `Failed to get snapshot (status: ${snapshotResponse.status})`;
+          let errorMessageText = `Failed to get snapshot (status: ${snapshotResponse.status})`;
           if (snapshotResponse.status === 404) {
-              errorMessage = `Snapshot API endpoint (/api/take-camera-snapshot) not found. Please check the Next.js route. (Status: 404)`;
+              errorMessageText = `Snapshot API endpoint (/api/take-camera-snapshot) not found. Please check the Next.js route. (Status: 404)`;
           } else {
               try {
                   const errorData = await snapshotResponse.json();
-                  errorMessage = errorData.message || errorMessage;
+                  errorMessageText = errorData.message || errorMessageText;
               } catch (parseError) {
-                   errorMessage = `Failed to get snapshot. Server returned non-JSON response (status: ${snapshotResponse.status} ${snapshotResponse.statusText})`;
+                   errorMessageText = `Failed to get snapshot. Server returned non-JSON response (status: ${snapshotResponse.status} ${snapshotResponse.statusText})`;
               }
           }
-          throw new Error(errorMessage);
+          console.error("Snapshot API Error:", errorMessageText);
+          throw new Error(errorMessageText);
       }
 
       const snapshotData = await snapshotResponse.json();
       if (snapshotData.status === 'success' && snapshotData.snapshot_data_uri) {
         setSnapshotUrl(snapshotData.snapshot_data_uri);
       } else {
-        setSnapshotUrl(null);
-        throw new Error(snapshotData.message || "Snapshot API returned an error or invalid data.");
+        setSnapshotUrl(null); // Ensure snapshotUrl is null if API call wasn't fully successful
+        throw new Error(snapshotData.message || "Snapshot API call succeeded but returned invalid data or no snapshot URI.");
       }
     } catch (error: any) {
-      console.error("Error in Step 1 (snapshot):", error);
+      console.error("Error in Step 1 (snapshot fetching):", error);
       toast({
         variant: "destructive",
         title: "Snapshot Error",
-        description: error.message || "Could not retrieve camera snapshot.",
+        description: error.message || "Could not retrieve camera snapshot. Check RTSP URL and network connectivity.",
       });
       setSnapshotUrl(null);
     }
 
-    let sceneDescToSet = '';
+    let sceneDescToSet = ''; // For now, keep it empty or implement AI generation here
     formStep2.setValue('sceneDescription', sceneDescToSet);
 
 
@@ -490,10 +491,14 @@ const CamerasPage: NextPage = () => {
           const orgDefaultServerSnap = await getDoc(orgDefaultServerRef);
           if (orgDefaultServerSnap.exists()) {
             const serverData = orgDefaultServerSnap.data();
-            console.log("Using Organization Default Server:", serverData.ipAddressWithPort);
-            return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+            if (serverData.status === 'online') {
+                console.log("Using Organization Default Server:", serverData.ipAddressWithPort);
+                return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+            } else {
+                console.warn(`Organization default server ${serverData.name} (${orgData.orgDefaultServerId}) is not online. Status: ${serverData.status}. Falling back.`);
+            }
           } else {
-            console.warn(`Organization default server ID ${orgData.orgDefaultServerId} not found.`);
+            console.warn(`Organization default server ID ${orgData.orgDefaultServerId} not found in 'servers' collection. Falling back.`);
           }
         }
       } else {
@@ -504,19 +509,23 @@ const CamerasPage: NextPage = () => {
       const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
       if (!systemDefaultSnapshot.empty) {
         const serverData = systemDefaultSnapshot.docs[0].data();
-        console.log("Using System Default Server:", serverData.ipAddressWithPort);
-        return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+         if (serverData.status === 'online') {
+            console.log("Using System Default Server:", serverData.ipAddressWithPort);
+            return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+         } else {
+            console.warn(`System default server ${serverData.name} is not online. Status: ${serverData.status}.`);
+         }
       }
 
-      console.warn("No System Default Server found.");
+      console.warn("No suitable (Organization or System) Default Server found or active.");
       toast({
         variant: "default",
         title: "No Default Server",
-        description: "No default processing server configured (neither Organization nor System). Camera will be saved without an assigned server. A system admin can assign one later.",
+        description: "No active default processing server found (neither Organization nor System). Camera will be saved without an assigned server. A system admin can assign one later.",
       });
       return null;
     } catch (error) {
-      console.error("Error fetching default server URL:", error);
+      console.error("Error fetching effective server URL:", error);
       toast({
         variant: "destructive",
         title: "Server Fetch Error",
@@ -544,7 +553,7 @@ const CamerasPage: NextPage = () => {
     try {
         effectiveServerUrl = await getEffectiveServerUrl(orgId);
     } catch (error) {
-        // Error already toasted
+        // Error already toasted by getEffectiveServerUrl
     }
 
     const batch = writeBatch(db);
@@ -591,12 +600,13 @@ const CamerasPage: NextPage = () => {
       historicalVSSIds: [],
       processingStatus: "waiting_for_approval",
       currentConfigId: configDocRef.id,
+      snapshotUrl: snapshotUrl, // Save the snapshot data URI
     });
 
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: effectiveServerUrl, // Stores full URL or null
+      serverIpAddress: effectiveServerUrl,
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -637,7 +647,7 @@ const CamerasPage: NextPage = () => {
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://placehold.co/600x400.png',
+        imageUrl: snapshotUrl || 'https://placehold.co/600x400.png', // Use the actual snapshot
         dataAiHint: configData.aiDetectionTarget || 'newly added camera',
         processingStatus: "waiting_for_approval",
       };
@@ -935,7 +945,7 @@ const CamerasPage: NextPage = () => {
                     </div>
                 )}
                 {!isProcessingStep2 && !snapshotUrl && (
-                    <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
+                     <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
                         <CameraIconLucide className="h-12 w-12 text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">Could not retrieve snapshot.</p>
                         <p className="text-xs text-muted-foreground">Check RTSP URL and network or try again.</p>
