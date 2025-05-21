@@ -372,24 +372,25 @@ const CamerasPage: NextPage = () => {
       });
 
       if (!snapshotResponse.ok) {
-        let errorMessage = `Failed to get snapshot (status: ${snapshotResponse.status})`;
-        try {
-            const errorData = await snapshotResponse.json();
-            errorMessage = errorData.message || errorMessage;
-            if (snapshotResponse.status === 404) {
-                errorMessage = `Snapshot API endpoint not found. Please check the configuration. (Status: 404)`;
-            }
-        } catch (parseError) {
-             errorMessage = `Failed to get snapshot. Server returned non-JSON response (status: ${snapshotResponse.status} ${snapshotResponse.statusText})`;
-        }
-        throw new Error(errorMessage);
+          let errorMessage = `Failed to get snapshot (status: ${snapshotResponse.status})`;
+          try {
+              const errorData = await snapshotResponse.json();
+              errorMessage = errorData.message || errorMessage;
+              if (snapshotResponse.status === 404) {
+                  errorMessage = `Snapshot API endpoint not found. Please check the configuration. (Status: 404)`;
+              }
+          } catch (parseError) {
+               // If parsing errorData fails, it means the response was not JSON
+               errorMessage = `Failed to get snapshot. Server returned non-JSON response (status: ${snapshotResponse.status} ${snapshotResponse.statusText})`;
+          }
+          throw new Error(errorMessage);
       }
 
       const snapshotData = await snapshotResponse.json();
       if (snapshotData.status === 'success' && snapshotData.snapshot_data_uri) {
         setSnapshotUrl(snapshotData.snapshot_data_uri);
       } else {
-        setSnapshotUrl(null); 
+        setSnapshotUrl(null); // Ensure snapshotUrl is null if API call wasn't fully successful
         throw new Error(snapshotData.message || "Snapshot API returned an error or invalid data.");
       }
     } catch (error: any) {
@@ -399,9 +400,11 @@ const CamerasPage: NextPage = () => {
         title: "Snapshot Error",
         description: error.message || "Could not retrieve camera snapshot.",
       });
-      setSnapshotUrl(null); 
+      setSnapshotUrl(null); // Ensure snapshotUrl is null on error
     }
     
+    // For now, we'll set an empty string for sceneDescription. 
+    // Later, this could be an AI-generated description or based on user input.
     let sceneDescToSet = ''; 
     formStep2.setValue('sceneDescription', sceneDescToSet);
 
@@ -422,8 +425,8 @@ const CamerasPage: NextPage = () => {
     const step1Values = formStep1.getValues();
     const currentSceneDesc = data.sceneDescription;
 
-    let baseCameraContext = `The camera is observing: "${currentSceneDesc}".`;
-    let finalCameraContext = baseCameraContext;
+    // Initialize with defaults or empty strings
+    let finalCameraContext = currentSceneDesc; // Default to current scene if no group context
     let finalAiTarget = '';
     let finalAlertEvents = '';
     let finalVideoChunksValue = '10';
@@ -434,6 +437,7 @@ const CamerasPage: NextPage = () => {
 
 
     if (step1Values.group && step1Values.group !== 'add_new_group') {
+        // Existing group selected
         const selectedGroupData = groups.find(g => g.id === step1Values.group);
         if (selectedGroupData) {
             finalCameraContext = selectedGroupData.defaultCameraSceneContext || currentSceneDesc;
@@ -450,6 +454,7 @@ const CamerasPage: NextPage = () => {
             }
         }
     } else if (step1Values.group === 'add_new_group') {
+        // New group being created
         finalCameraContext = step1Values.groupDefaultCameraSceneContext || currentSceneDesc;
         finalAiTarget = step1Values.groupDefaultAiDetectionTarget || '';
         finalAlertEvents = step1Values.groupDefaultAlertEvents || '';
@@ -459,9 +464,12 @@ const CamerasPage: NextPage = () => {
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
     } else { 
-        finalCameraContext = currentSceneDesc; 
+        // No group selected or being created, camera specific settings will be used
+        // Keep the initialized defaults or empty strings for camera-specific config
+        finalCameraContext = currentSceneDesc; // If no group, context is just the current scene
     }
 
+    // Set values for formStep3
     formStep3.setValue('cameraSceneContext', finalCameraContext);
     formStep3.setValue('aiDetectionTarget', finalAiTarget);
     formStep3.setValue('alertEvents', finalAlertEvents);
@@ -478,19 +486,40 @@ const CamerasPage: NextPage = () => {
       setDrawerStep(2);
   };
 
-  const getDefaultServerIp = async (): Promise<string | null> => {
+  const getEffectiveServerIp = async (currentOrgId: string): Promise<string | null> => {
     try {
-      const serversQuery = query(collection(db, 'servers'), where('isDefault', '==', true), limit(1));
-      const querySnapshot = await getDocs(serversQuery);
-      if (!querySnapshot.empty) {
-        const defaultServerDoc = querySnapshot.docs[0];
-        return defaultServerDoc.data().ipAddressWithPort as string;
+      // 1. Check for Organization Default Server
+      const orgDocRef = doc(db, 'organizations', currentOrgId);
+      const orgDocSnap = await getDoc(orgDocRef);
+      if (orgDocSnap.exists()) {
+        const orgData = orgDocSnap.data();
+        if (orgData.defaultServerId) {
+          const orgDefaultServerRef = doc(db, 'servers', orgData.defaultServerId);
+          const orgDefaultServerSnap = await getDoc(orgDefaultServerRef);
+          if (orgDefaultServerSnap.exists()) {
+            console.log("Using Organization Default Server:", orgDefaultServerSnap.data().ipAddressWithPort);
+            return orgDefaultServerSnap.data().ipAddressWithPort as string;
+          } else {
+            console.warn(`Organization default server ID ${orgData.defaultServerId} not found in servers collection.`);
+          }
+        }
+      } else {
+        console.warn(`Organization document ${currentOrgId} not found.`);
       }
-      console.warn("No default server found in Firestore.");
+
+      // 2. Fallback to System Default Server
+      const systemDefaultServerQuery = query(collection(db, 'servers'), where('isDefault', '==', true), limit(1));
+      const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
+      if (!systemDefaultSnapshot.empty) {
+        const systemDefaultServerDoc = systemDefaultSnapshot.docs[0];
+        console.log("Using System Default Server:", systemDefaultServerDoc.data().ipAddressWithPort);
+        return systemDefaultServerDoc.data().ipAddressWithPort as string;
+      }
+      console.warn("No System Default Server found.");
       toast({
-        variant: "default", 
+        variant: "default",
         title: "No Default Server",
-        description: "No default processing server found. Camera will be saved without an assigned server. A system admin can assign one later.",
+        description: "No default processing server configured (neither Organization nor System). Camera will be saved without an assigned server. A system admin can assign one later.",
       });
       return null;
     } catch (error) {
@@ -518,26 +547,28 @@ const CamerasPage: NextPage = () => {
     const step1Data = formStep1.getValues();
     const step2Data = formStep2.getValues();
 
-    let fetchedDefaultServerIp: string | null = null;
+    let effectiveServerIp: string | null = null;
     try {
-        fetchedDefaultServerIp = await getDefaultServerIp();
+        effectiveServerIp = await getEffectiveServerIp(orgId);
     } catch (error) {
-        // Error already toasted in getDefaultServerIp, proceed with null
+        // Error already toasted in getEffectiveServerIp, proceed with null
     }
 
     const batch = writeBatch(db);
-    const now = serverTimestamp() as Timestamp;
+    const now = serverTimestamp() as Timestamp; // serverTimestamp() should be fine here
     let finalGroupId: string | null = null;
 
+    // Handle group creation or selection
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
+        // Define new group data structure
         const newGroup: Omit<Group, 'id'| 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp, videos: string[], cameras: string[] } = {
             name: step1Data.newGroupName,
             orgId: orgId,
             userId: currentUser.uid,
-            cameras: [],
-            videos: [], 
+            cameras: [], // Initialize with empty array
+            videos: [],  // Initialize with empty array
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
@@ -548,13 +579,15 @@ const CamerasPage: NextPage = () => {
             updatedAt: now,
         };
         batch.set(groupDocRef, newGroup);
-        setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id }]);
+        setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id }]); // Update local state
     } else if (step1Data.group) {
         finalGroupId = step1Data.group;
     }
 
+    // Create camera document
     const cameraDocRef = doc(collection(db, 'cameras'));
-    const configDocRef = doc(collection(db, 'configurations')); // Changed to 'configurations'
+    // Create configuration document
+    const configDocRef = doc(collection(db, 'configurations')); // Corrected collection name
 
     batch.set(cameraDocRef, {
       cameraName: step1Data.cameraName,
@@ -565,16 +598,17 @@ const CamerasPage: NextPage = () => {
       updatedAt: now,
       url: step1Data.rtspUrl,
       protocol: "rtsp",
-      activeVSSId: null,
+      activeVSSId: null, // Will be set after approval and stream start
       historicalVSSIds: [],
       processingStatus: "waiting_for_approval",
       currentConfigId: configDocRef.id, // Set currentConfigId at creation
     });
 
+    // Create configuration document
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera", // Explicitly set sourceType
-      serverIpAddress: fetchedDefaultServerIp, 
+      serverIpAddress: effectiveServerIp, // Save the determined server IP (can be null)
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -588,21 +622,23 @@ const CamerasPage: NextPage = () => {
       cameraSceneContext: configData.cameraSceneContext,
       aiDetectionTarget: configData.aiDetectionTarget,
       alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae),
-      sceneDescription: step2Data.sceneDescription,
+      sceneDescription: step2Data.sceneDescription, // From Step 2
       userId: currentUser.uid,
-      previousConfigId: null,
+      previousConfigId: null, // No previous config for initial setup
     });
 
     // No need to update cameraDocRef for currentConfigId again as it's set during initial creation
     // batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
 
+    // Add camera to group if a group was involved
     if (finalGroupId) {
         const groupRefToUpdate = doc(db, 'groups', finalGroupId);
         batch.update(groupRefToUpdate, {
             cameras: arrayUnion(cameraDocRef.id),
             updatedAt: now,
         });
+        // Update local groups state if necessary
         setGroups(prevGroups => prevGroups.map(g =>
             g.id === finalGroupId
             ? { ...g, cameras: [...(g.cameras || []), cameraDocRef.id], updatedAt: now }
@@ -619,11 +655,11 @@ const CamerasPage: NextPage = () => {
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://placehold.co/600x400.png', 
+        imageUrl: snapshotUrl || 'https://placehold.co/600x400.png', // Use actual snapshot if available
         dataAiHint: configData.aiDetectionTarget || 'newly added camera',
         processingStatus: "waiting_for_approval",
       };
-      setCameras(prevCameras => [...prevCameras, newCameraForState]); 
+      setCameras(prevCameras => [...prevCameras, newCameraForState]); // Update local state
       handleDrawerClose();
     } catch (error: any) {
       console.error("Error saving camera and configuration: ", error);
@@ -650,7 +686,8 @@ const CamerasPage: NextPage = () => {
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate AI response
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
       sender: 'ai',
