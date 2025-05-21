@@ -53,28 +53,27 @@ def upload_to_cloud_storage(image_buffer, camera_id_for_path):
 def take_snapshot():
     data = request.get_json()
     if not data:
-        return jsonify({'error': 'Invalid JSON payload'}), 400
+        return jsonify({'status': 'error', 'message': 'Invalid JSON payload'}), 400
         
     rtsp_url = data.get('rtsp_url')
     camera_id_from_request = data.get('camera_id') # This is optional for new cameras
 
     if not rtsp_url:
-        return jsonify({'error': 'No RTSP URL provided'}), 400
+        return jsonify({'status': 'error', 'message': 'No RTSP URL provided'}), 400
 
     # Verify user authentication (optional, depending on how this service is secured)
-    # If called via a secured Next.js API route that verifies Firebase token,
-    # direct token verification here might be redundant but adds a layer.
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
-        # Allowing this to proceed if the call is coming from a trusted backend (like your Next.js API route)
-        # For direct external calls, strict auth would be needed.
         print("Warning: No Authorization header, proceeding assuming internal call.")
-        # return jsonify({'error': 'Unauthorized - Missing or invalid token'}), 401
+        # For direct external calls, strict auth would be needed.
+        # If this service is ONLY called by your trusted Next.js backend which has already verified the token,
+        # this check could be considered redundant but acts as a defense in depth.
+        # return jsonify({'status': 'error', 'message': 'Unauthorized - Missing or invalid token'}), 401
     else:
         token = auth_header.split('Bearer ')[1]
         decoded_token = verify_token(token)
         if not decoded_token:
-            return jsonify({'error': 'Unauthorized - Invalid token'}), 401
+            return jsonify({'status': 'error', 'message': 'Unauthorized - Invalid token'}), 401
 
     cap = None
     try:
@@ -83,13 +82,13 @@ def take_snapshot():
 
         if not cap.isOpened():
             print(f"Error: Could not open video stream for {rtsp_url}")
-            return jsonify({'error': 'Error opening video stream or file'}), 500
+            return jsonify({'status': 'error', 'message': 'Error opening video stream or file'}), 500
 
         ret, frame = cap.read()
 
         if not ret or frame is None:
             print(f"Error: Could not read frame from stream {rtsp_url}")
-            return jsonify({'error': 'Error reading frame from stream'}), 500
+            return jsonify({'status': 'error', 'message': 'Error reading frame from stream'}), 500
 
         # Get image resolution
         height, width, _ = frame.shape
@@ -101,7 +100,7 @@ def take_snapshot():
 
         if not is_success:
             print("Error: Could not encode image to JPEG")
-            return jsonify({'error': 'Error encoding image to JPEG'}), 500
+            return jsonify({'status': 'error', 'message': 'Error encoding image to JPEG'}), 500
         
         image_buffer_bytes = image_buffer_cv.tobytes()
 
@@ -109,14 +108,16 @@ def take_snapshot():
         snapshot_gcs_url, upload_error = upload_to_cloud_storage(image_buffer_bytes, camera_id_from_request)
         if upload_error:
             print(f"Error uploading to GCS: {upload_error}")
-            return jsonify({'error': f'Failed to upload snapshot: {upload_error}'}), 500
+            return jsonify({'status': 'error', 'message': f'Failed to upload snapshot: {upload_error}'}), 500
 
         # If camera_id_from_request was provided, update Firestore for that existing camera
+        # This part is less relevant for the "add new camera" flow's first snapshot,
+        # as camera_id doesn't exist yet. But it's useful if this endpoint is reused.
         if camera_id_from_request:
             try:
                 doc_ref = db.collection('cameras').document(camera_id_from_request)
                 doc_ref.update({
-                    'snapshotUrl': snapshot_gcs_url, # Stores the GCS URL
+                    'snapshotUrl': snapshot_gcs_url, 
                     'resolution': resolution_str,
                     'lastSnapshotTime': firestore.SERVER_TIMESTAMP
                 })
@@ -125,21 +126,20 @@ def take_snapshot():
                 print(f"Error updating Firestore for camera {camera_id_from_request}: {e}")
                 # Log the error but don't fail the snapshot request if Firestore update fails here,
                 # as the primary goal is to return the snapshot URL and resolution.
-                # The frontend will save these for new cameras.
 
         return jsonify({
             'status': 'success', 
             'message': 'Snapshot taken and saved to GCS', 
-            'snapshotUrl': snapshot_gcs_url, # This is the GCS URL
+            'snapshotUrl': snapshot_gcs_url, 
             'resolution': resolution_str
         }), 200
 
     except cv2.error as e:
         print(f"OpenCV Error: {e}")
-        return jsonify({'error': f'OpenCV error: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': f'OpenCV error: {str(e)}'}), 500
     except Exception as e:
         print(f"Unexpected error in take_snapshot: {e}")
-        return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {str(e)}'}), 500
     finally:
         if cap is not None and cap.isOpened():
             cap.release()
@@ -150,3 +150,4 @@ if __name__ == '__main__':
     # Ensure the app is run with a proper WSGI server like Gunicorn in production
     # For local testing with Flask's built-in server:
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), debug=True)
+
