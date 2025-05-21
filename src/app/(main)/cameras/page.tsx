@@ -14,7 +14,8 @@ import { db } from '@/firebase/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label }
+from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -387,13 +388,13 @@ const CamerasPage: NextPage = () => {
 
       const idToken = await user.getIdToken();
 
+      // For new camera, camera_id is not sent to snapshot service during initial snapshot
       const snapshotResponse = await fetch('/api/take-camera-snapshot', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
-        // For new camera, camera_id is not sent to snapshot service during initial snapshot
         body: JSON.stringify({ rtsp_url: data.rtspUrl }), 
       });
 
@@ -431,8 +432,9 @@ const CamerasPage: NextPage = () => {
 
   const handleStep2Back = () => {
     setDrawerStep(1);
-    setSnapshotGcsUrl(null);
-    setSnapshotResolution(null);
+    // No need to clear snapshotGcsUrl and snapshotResolution here,
+    // as they are tied to the RTSP URL from Step 1. If the user goes back and changes the RTSP URL,
+    // these will be re-fetched when they submit Step 1 again.
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
@@ -503,6 +505,8 @@ const CamerasPage: NextPage = () => {
       const orgDocRef = doc(db, 'organizations', currentOrgIdParam);
       const orgDocSnap = await getDoc(orgDocRef);
       let serverToUseId: string | null = null;
+      let serverProtocol: string | null = null;
+      let serverIp: string | null = null;
 
       if (orgDocSnap.exists()) {
         const orgData = orgDocSnap.data();
@@ -514,31 +518,43 @@ const CamerasPage: NextPage = () => {
         console.warn(`Organization document ${currentOrgIdParam} not found.`);
       }
 
-      if (!serverToUseId) {
-        console.log("Organization default server not set or org not found, looking for System Default Server...");
-        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
-        const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
-        if (!systemDefaultSnapshot.empty) {
-          serverToUseId = systemDefaultSnapshot.docs[0].id;
-          console.log("Using System Default Server ID:", serverToUseId);
-        }
-      }
-
       if (serverToUseId) {
         const serverDocRef = doc(db, 'servers', serverToUseId);
         const serverDocSnap = await getDoc(serverDocRef);
         if (serverDocSnap.exists()) {
-          const serverData = serverDocSnap.data();
-          if (serverData.status === 'online') {
-            return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
-          } else {
-            console.warn(`Selected default server ${serverData.name} (${serverToUseId}) is not online. Status: ${serverData.status}. No server IP will be assigned.`);
-            return null;
-          }
+            const serverData = serverDocSnap.data();
+            if (serverData.status === 'online') {
+                 serverProtocol = serverData.protocol;
+                 serverIp = serverData.ipAddressWithPort;
+            } else {
+                console.warn(`Organization default server ${serverData.name} (${serverToUseId}) is not online. Status: ${serverData.status}. Falling back.`);
+                serverToUseId = null; // Force fallback
+            }
         } else {
-          console.warn(`Server document for ID ${serverToUseId} not found. No server IP will be assigned.`);
-          return null;
+            console.warn(`Server document for Org Default ID ${serverToUseId} not found. Falling back.`);
+            serverToUseId = null; // Force fallback
         }
+      }
+
+
+      if (!serverIp) { // Fallback to System Default if Org Default not found or not online
+        console.log("Organization default server not set, not found, or not online. Looking for System Default Server...");
+        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
+        const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
+        if (!systemDefaultSnapshot.empty) {
+          const systemDefaultServerData = systemDefaultSnapshot.docs[0].data();
+           if (systemDefaultServerData.status === 'online') {
+                serverProtocol = systemDefaultServerData.protocol;
+                serverIp = systemDefaultServerData.ipAddressWithPort;
+                console.log("Using System Default Server:", systemDefaultSnapshot.docs[0].id, `${serverProtocol}://${serverIp}`);
+           } else {
+               console.warn(`System Default Server ${systemDefaultServerData.name} is not online. Status: ${systemDefaultServerData.status}. No server IP will be assigned.`);
+           }
+        }
+      }
+
+      if (serverProtocol && serverIp) {
+        return `${serverProtocol}://${serverIp}`;
       }
 
       console.warn("No suitable (Organization or System) Default Server found or active. No server IP will be assigned.");
@@ -1428,6 +1444,3 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
-
-
-    
