@@ -1,6 +1,7 @@
 
 import cv2
 from flask import Flask, request, jsonify
+from flask_cors import CORS # Added import for CORS
 import numpy as np
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
@@ -11,19 +12,55 @@ import base64
 
 app = Flask(__name__)
 
-# Initialize Firebase Admin SDK robustly at global scope
-# This should only run once when the Cloud Run instance starts.
+# --- CORS Configuration ---
+# Read allowed origins from environment variable
+# Default to a restrictive set or an empty list if not set, for security.
+# It's better to explicitly configure this in your Cloud Run environment.
+CORS_ALLOWED_ORIGINS_STR = os.environ.get(
+    'CORS_ALLOWED_ORIGINS',
+    # Default fallback if the env var is not set.
+    # For production, it's crucial to set CORS_ALLOWED_ORIGINS in the Cloud Run environment.
+    "https://6000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev,http://localhost:9002,http://localhost:3000" 
+)
+if CORS_ALLOWED_ORIGINS_STR:
+    allowed_origins_list = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(',')]
+else:
+    print("Warning: CORS_ALLOWED_ORIGINS environment variable not set or empty. CORS might be restrictive.")
+    allowed_origins_list = [] # Or a sensible default for development if you prefer
+
+CORS(app, resources={r"/take-snapshot": {"origins": allowed_origins_list}}, supports_credentials=True)
+# --- End CORS Configuration ---
+
+
+# --- Firebase Admin SDK Initialization ---
+# Robust initialization at global scope
+SERVICE_ACCOUNT_KEY_PATH = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+
 if not firebase_admin._apps:
     try:
-        print("Snapshot Service: Initializing Firebase Admin SDK...")
-        cred = credentials.ApplicationDefault()
+        print("Snapshot Service: Attempting to initialize Firebase Admin SDK...")
+        if SERVICE_ACCOUNT_KEY_PATH:
+            print(f"Snapshot Service: Using service account key from GOOGLE_APPLICATION_CREDENTIALS: {SERVICE_ACCOUNT_KEY_PATH}")
+            cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+        else:
+            print("Snapshot Service: GOOGLE_APPLICATION_CREDENTIALS not set, using Application Default Credentials.")
+            cred = credentials.ApplicationDefault()
+        
         firebase_admin.initialize_app(cred)
         print("Snapshot Service: Firebase Admin SDK initialized successfully.")
     except Exception as e:
-        # Log a more critical error if initialization fails, as it's fundamental.
-        print(f"CRITICAL: Snapshot Service: Failed to initialize Firebase Admin SDK: {e}. Token verification will fail.")
-        # Depending on policy, you might want to prevent the app from starting
-        # or handle this in a way that makes it clear the service is unhealthy.
+        print(f"CRITICAL: Snapshot Service: Failed to initialize Firebase Admin SDK: {e}. Token verification may fail.")
+# --- End Firebase Admin SDK Initialization ---
+
+
+# --- Storage Bucket Configuration ---
+STORAGE_BUCKET_NAME = os.environ.get('STORAGE_BUCKET')
+if not STORAGE_BUCKET_NAME:
+    # This is a critical configuration. The application should not start without it.
+    raise ValueError("CRITICAL: STORAGE_BUCKET environment variable is not set. Snapshot service cannot start.")
+print(f"Snapshot Service: Configured to use GCS Bucket: {STORAGE_BUCKET_NAME}")
+# --- End Storage Bucket Configuration ---
+
 
 def verify_token(req_headers):
     """Helper to verify Firebase ID token from request headers."""
@@ -35,33 +72,34 @@ def verify_token(req_headers):
     id_token = auth_header.split('Bearer ')[1]
     if not firebase_admin._apps:
         print("Snapshot Service: Firebase Admin SDK not initialized. Cannot verify token.")
+        # This should ideally not happen if initialization is successful at startup.
         return None, "Firebase Admin SDK not initialized on server"
         
     try:
         decoded_token = auth.verify_id_token(id_token)
         return decoded_token, None
-    except firebase_admin.auth.InvalidIdTokenError:
-        print("Snapshot Service: Error verifying token - Invalid ID token.")
+    except firebase_admin.auth.InvalidIdTokenError as e:
+        print(f"Snapshot Service: Error verifying token - Invalid ID token: {e}")
         return None, "Invalid ID token"
-    except firebase_admin.auth.ExpiredIdTokenError:
-        print("Snapshot Service: Error verifying token - Expired ID token.")
+    except firebase_admin.auth.ExpiredIdTokenError as e:
+        print(f"Snapshot Service: Error verifying token - Expired ID token: {e}")
         return None, "Expired ID token"
-    except firebase_admin.auth.RevokedIdTokenError:
-        print("Snapshot Service: Error verifying token - Revoked ID token.")
+    except firebase_admin.auth.RevokedIdTokenError as e:
+        print(f"Snapshot Service: Error verifying token - Revoked ID token: {e}")
         return None, "Revoked ID token"
-    except Exception as e:
-        print(f"Snapshot Service: Error verifying token: {e}")
-        return None, str(e)
+    except firebase_admin.auth.UserDisabledError as e:
+        print(f"Snapshot Service: Error verifying token - User disabled: {e}")
+        return None, "User account has been disabled"
+    except Exception as e: # Catch any other auth-related errors
+        print(f"Snapshot Service: General error verifying token: {e}")
+        return None, f"Token verification failed: {str(e)}"
+
 
 def upload_to_cloud_storage(image_buffer_cv, filename_on_gcs):
     """Uploads the image buffer to Cloud Storage."""
-    bucket_name = os.environ.get('STORAGE_BUCKET')
-    if not bucket_name:
-        print("Snapshot Service Error: STORAGE_BUCKET environment variable not set.")
-        return None, "STORAGE_BUCKET environment variable not set for the snapshot service."
-
+    # STORAGE_BUCKET_NAME is now a global variable checked at startup
     storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
+    bucket = storage_client.bucket(STORAGE_BUCKET_NAME)
     
     try:
         # Encode frame as JPEG directly to bytes
@@ -72,14 +110,25 @@ def upload_to_cloud_storage(image_buffer_cv, filename_on_gcs):
 
         blob = bucket.blob(filename_on_gcs)
         blob.upload_from_string(image_buffer_bytes, content_type='image/jpeg')
+        
+        # Make the blob publicly readable (optional, adjust ACLs as needed for security)
+        # For more granular control, consider signed URLs if images aren't meant to be public indefinitely.
         blob.make_public() 
+        
+        print(f"Snapshot Service: Successfully uploaded {filename_on_gcs} to bucket {STORAGE_BUCKET_NAME}. Public URL: {blob.public_url}")
         return blob.public_url, None
     except Exception as e:
         print(f"Snapshot Service Error: Error uploading to GCS: {e}")
-        return None, str(e)
+        return None, f"Error uploading to Google Cloud Storage: {str(e)}"
 
-@app.route('/take-snapshot', methods=['POST'])
+
+@app.route('/take-snapshot', methods=['POST', 'OPTIONS']) # Added OPTIONS for CORS preflight
 def take_snapshot():
+    # CORS preflight request will be handled by Flask-CORS if methods=['OPTIONS'] is included
+    if request.method == 'OPTIONS':
+        # Flask-CORS handles this automatically, but an explicit response can be here if needed
+        return jsonify(success=True), 200
+
     decoded_token, token_error = verify_token(request.headers)
     if token_error:
         return jsonify({'status': 'error', 'message': f'Authentication failed: {token_error}'}), 401
@@ -90,7 +139,7 @@ def take_snapshot():
         
     rtsp_url = data.get('rtsp_url')
     if not rtsp_url:
-        return jsonify({'status': 'error', 'message': 'No RTSP URL provided'}), 400
+        return jsonify({'status': 'error', 'message': 'RTSP URL is required in the request body'}), 400
 
     cap = None
     try:
@@ -98,50 +147,47 @@ def take_snapshot():
         cap = cv2.VideoCapture(rtsp_url)
 
         if not cap.isOpened():
-            print(f"Snapshot Service Error: Could not open video stream for {rtsp_url}")
-            return jsonify({'status': 'error', 'message': 'Error opening video stream or file'}), 500
+            error_msg = f"Could not open video stream for {rtsp_url}. Check URL and network accessibility from the service."
+            print(f"Snapshot Service Error: {error_msg}")
+            return jsonify({'status': 'error', 'message': error_msg}), 500
 
         ret, frame = cap.read()
 
         if not ret or frame is None:
-            print(f"Snapshot Service Error: Could not read frame from stream {rtsp_url}")
-            return jsonify({'status': 'error', 'message': 'Error reading frame from stream'}), 500
+            error_msg = f"Could not read frame from stream {rtsp_url}. The stream might be unstable or have ended."
+            print(f"Snapshot Service Error: {error_msg}")
+            return jsonify({'status': 'error', 'message': error_msg}), 500
 
         height, width, _ = frame.shape
         resolution_str = f'{width}x{height}'
 
         # Create a unique filename for GCS
         timestamp = int(time.time())
-        gcs_filename = f"snapshots/{timestamp}_{width}x{height}.jpg" # More descriptive filename
+        # Include resolution in filename for easier identification if needed
+        gcs_filename = f"snapshots/{timestamp}_{resolution_str}.jpg" 
 
         gcs_snapshot_url, upload_error = upload_to_cloud_storage(frame, gcs_filename)
         if upload_error:
             print(f"Snapshot Service Error during GCS upload: {upload_error}")
-            # Don't fail the whole request if GCS upload fails, but log it
-            # The primary purpose for the "Add Camera" flow is to get the image data back to the frontend
-            # However, if GCS upload is critical, you might want to return an error here.
-            # For now, we prioritize returning the image data if capture was successful.
-            gcs_snapshot_url = None # Indicate GCS upload failed
-
-        # Encode frame as JPEG for base64 data URI (if needed by frontend, or for fallback)
-        # This part is removed as the service will now primarily return GCS URL.
-        # If base64 is still a desired fallback or primary, it should be re-added here.
-        # For now, focusing on GCS URL as per previous iterations.
-
-        # The service's main job for "Add Camera" step 2 is to return the GCS URL and resolution
+            return jsonify({'status': 'error', 'message': upload_error}), 500
+        
+        # The service is now expected to return the GCS URL and resolution
         return jsonify({
             'status': 'success', 
-            'message': 'Snapshot processed.', 
-            'snapshotUrl': gcs_snapshot_url, # This is the GCS URL
+            'message': 'Snapshot taken and saved to Google Cloud Storage.', 
+            'snapshotUrl': gcs_snapshot_url, 
             'resolution': resolution_str
         }), 200
 
     except cv2.error as e:
         print(f"Snapshot Service OpenCV Error: {e}")
-        return jsonify({'status': 'error', 'message': f'OpenCV error: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': f'OpenCV error processing video stream: {str(e)}'}), 500
     except Exception as e:
         print(f"Snapshot Service Unexpected error: {e}")
-        return jsonify({'status': 'error', 'message': f'An unexpected error occurred in snapshot service: {str(e)}'}), 500
+        # It's good practice to log the full traceback here for debugging
+        import traceback
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': f'An unexpected error occurred in the snapshot service: {str(e)}'}), 500
     finally:
         if cap is not None and cap.isOpened():
             cap.release()
@@ -151,7 +197,7 @@ def take_snapshot():
 if __name__ == '__main__':
     # This is for local execution only (e.g., python services/snapshot/main.py)
     # When deployed to Cloud Run, Gunicorn or another WSGI server is used as entrypoint.
-    # Ensure STORAGE_BUCKET is set in local .env for local testing.
-    print("Snapshot Service: Starting Flask development server...")
+    # Ensure STORAGE_BUCKET and CORS_ALLOWED_ORIGINS are set in local .env for local testing.
+    # Also, ensure GOOGLE_APPLICATION_CREDENTIALS points to your service account key for local Firebase Admin SDK.
+    print("Snapshot Service: Starting Flask development server for local testing...")
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), debug=True)
-
