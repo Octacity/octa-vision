@@ -2,7 +2,8 @@
 'use client';
 
 import type { NextPage } from 'next';
-import { useEffect, useState } from 'react';
+import { useEffect, useState }
+from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -73,6 +74,7 @@ const AdminServersPage: NextPage = () => {
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverFormSchema),
+    mode: 'onChange', // Validate on change to catch cleaned input faster
     defaultValues: {
       name: '',
       ipAddressWithPort: '',
@@ -87,22 +89,31 @@ const AdminServersPage: NextPage = () => {
 
   useEffect(() => {
     if (watchedIpAddress) {
-      let newIp = watchedIpAddress;
-      let newProtocol: 'http' | 'https' | undefined = undefined;
+      let currentIp = watchedIpAddress;
+      let newProtocol: 'http' | 'https' | undefined = form.getValues('protocol'); // Keep current protocol by default
+      let modified = false;
 
-      if (watchedIpAddress.startsWith('https://')) {
+      if (currentIp.startsWith('https://')) {
         newProtocol = 'https';
-        newIp = watchedIpAddress.substring(8);
-      } else if (watchedIpAddress.startsWith('http://')) {
+        currentIp = currentIp.substring(8);
+        modified = true;
+      } else if (currentIp.startsWith('http://')) {
         newProtocol = 'http';
-        newIp = watchedIpAddress.substring(7);
+        currentIp = currentIp.substring(7);
+        modified = true;
       }
 
-      if (newProtocol && newProtocol !== form.getValues('protocol')) {
-        form.setValue('protocol', newProtocol, { shouldValidate: true });
+      // Remove trailing slash if present
+      if (currentIp.endsWith('/')) {
+        currentIp = currentIp.slice(0, -1);
+        modified = true;
       }
-      if (newIp !== watchedIpAddress) {
-        form.setValue('ipAddressWithPort', newIp, { shouldValidate: true });
+
+      if (modified) {
+        form.setValue('ipAddressWithPort', currentIp, { shouldValidate: true });
+        if (newProtocol && newProtocol !== form.getValues('protocol')) {
+          form.setValue('protocol', newProtocol, { shouldValidate: true });
+        }
       }
     }
   }, [watchedIpAddress, form]);
@@ -174,7 +185,7 @@ const AdminServersPage: NextPage = () => {
     try {
       await batch.commit();
       toast({ title: 'System Default Server Updated', description: 'The system default server has been successfully set.' });
-      fetchServers(); // Refresh the list
+      fetchServers(); 
     } catch (error) {
       console.error("Error setting system default server: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not set system default server.' });
@@ -191,19 +202,34 @@ const AdminServersPage: NextPage = () => {
     setIsSubmitting(true);
     const batch = writeBatch(db);
 
+    // Ensure data.ipAddressWithPort is clean before saving
+    let cleanIpAddressWithPort = data.ipAddressWithPort;
+    if (cleanIpAddressWithPort.startsWith('https://')) {
+      cleanIpAddressWithPort = cleanIpAddressWithPort.substring(8);
+    } else if (cleanIpAddressWithPort.startsWith('http://')) {
+      cleanIpAddressWithPort = cleanIpAddressWithPort.substring(7);
+    }
+    if (cleanIpAddressWithPort.endsWith('/')) {
+      cleanIpAddressWithPort = cleanIpAddressWithPort.slice(0, -1);
+    }
+    
+    const serverDataToSave = {
+        ...data,
+        ipAddressWithPort: cleanIpAddressWithPort, // Use the cleaned version
+    };
+
+
     try {
       if (editingServer) {
         const serverRef = doc(db, 'servers', editingServer.id);
-        // If making this server the system default, unset any other system default
-        if (data.isSystemDefault && !editingServer.isSystemDefault) {
+        if (serverDataToSave.isSystemDefault && !editingServer.isSystemDefault) {
           servers.forEach(s => {
             if (s.id !== editingServer.id && s.isSystemDefault) {
               const otherServerRef = doc(db, 'servers', s.id);
               batch.update(otherServerRef, { isSystemDefault: false });
             }
           });
-        } else if (!data.isSystemDefault && editingServer.isSystemDefault) {
-          // Prevent unsetting if it's the only system default server
+        } else if (!serverDataToSave.isSystemDefault && editingServer.isSystemDefault) {
           const systemDefaultServers = servers.filter(s => s.isSystemDefault);
           if (systemDefaultServers.length === 1 && systemDefaultServers[0].id === editingServer.id) {
              toast({ variant: 'destructive', title: 'Action Denied', description: 'Cannot unset the only system default server. Set another server as system default first.' });
@@ -211,34 +237,32 @@ const AdminServersPage: NextPage = () => {
              return;
           }
         }
-        batch.update(serverRef, { ...data, protocol: data.protocol, updatedAt: serverTimestamp() });
+        batch.update(serverRef, { ...serverDataToSave, updatedAt: serverTimestamp() });
         await batch.commit();
-        toast({ title: 'Server Updated', description: `${data.name} has been updated.` });
+        toast({ title: 'Server Updated', description: `${serverDataToSave.name} has been updated.` });
 
-      } else { // Adding a new server
+      } else { 
         const newServerData: Omit<ServerData, 'id' | 'createdAt' | 'createdBy'> & { createdAt: Timestamp, createdBy: string, updatedAt: Timestamp, protocol: 'http' | 'https'} = {
-          ...data,
-          protocol: data.protocol,
+          ...serverDataToSave,
           createdBy: currentUser.uid,
           createdAt: serverTimestamp() as Timestamp,
           updatedAt: serverTimestamp() as Timestamp,
         };
 
-        if (data.isSystemDefault) {
+        if (serverDataToSave.isSystemDefault) {
             servers.forEach(s => {
                 if (s.isSystemDefault) {
                 const otherServerRef = doc(db, 'servers', s.id);
                 batch.update(otherServerRef, { isSystemDefault: false });
                 }
             });
-        } else if (!data.isSystemDefault && servers.length === 0) {
-            // If no other servers exist, make this one the default
+        } else if (!serverDataToSave.isSystemDefault && servers.length === 0) {
             newServerData.isSystemDefault = true;
         }
         const newServerRef = doc(collection(db, 'servers'));
         batch.set(newServerRef, newServerData);
         await batch.commit();
-        toast({ title: 'Server Added', description: `${data.name} has been added successfully.` });
+        toast({ title: 'Server Added', description: `${serverDataToSave.name} has been added successfully.` });
       }
       fetchServers();
       handleDrawerClose();
@@ -273,7 +297,7 @@ const AdminServersPage: NextPage = () => {
     }
     
     try {
-        await updateDoc(doc(db, "servers", serverId), { status: 'offline', remarks: `(Archived) ${serverToDelete?.remarks || ''}`}); // Mark as offline instead of deleting
+        await updateDoc(doc(db, "servers", serverId), { status: 'offline', remarks: `(Archived) ${serverToDelete?.remarks || ''}`}); 
         toast({title: "Server Archived", description: "Server marked as offline. It can be reactivated or permanently deleted by a super-admin if needed."});
         fetchServers();
     } catch (error) {
@@ -319,7 +343,11 @@ const AdminServersPage: NextPage = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Protocol</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={!!watchedIpAddress.match(/^https?:\/\//)}>
+                <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value} 
+                    disabled={!!watchedIpAddress?.match(/^https?:\/\//)}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select protocol" />
@@ -381,8 +409,8 @@ const AdminServersPage: NextPage = () => {
                         disabled={
                             editingServer?.isSystemDefault && 
                             servers.filter(s => s.isSystemDefault && s.id !== editingServer.id).length === 0 && 
-                            servers.length > 0 && // Ensure there's at least one server
-                            !field.value // Only disable if trying to uncheck the last default
+                            servers.length > 0 && 
+                            !field.value 
                         }
                         />
                     </FormControl>
