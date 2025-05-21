@@ -24,6 +24,7 @@ if CORS_ALLOWED_ORIGINS_STR:
     print(f"Snapshot Service: Using CORS_ALLOWED_ORIGINS from environment: {allowed_origins_list}")
 else:
     # Fallback for local development if .env is not loaded or var is missing
+    # This should ideally not be hit in a deployed Cloud Run environment if configured correctly.
     allowed_origins_list = ["http://localhost:9002", "http://localhost:3000"]
     print(f"Snapshot Service: WARNING - CORS_ALLOWED_ORIGINS environment variable not set. Defaulting to: {allowed_origins_list}. Ensure this is set for deployed environments.")
 
@@ -43,12 +44,14 @@ try:
         if SERVICE_ACCOUNT_KEY_PATH:
             print(f"Snapshot Service: Using service account key from GOOGLE_APPLICATION_CREDENTIALS: {SERVICE_ACCOUNT_KEY_PATH}")
             cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+            firebase_admin.initialize_app(cred)
+            print("Snapshot Service: Firebase Admin SDK initialized successfully using service account key file.")
         else:
             print("Snapshot Service: GOOGLE_APPLICATION_CREDENTIALS not set, attempting Application Default Credentials (suitable for Cloud Run/Functions).")
+            # For Cloud Run and other GCP environments, Application Default Credentials will use the service account assigned to the resource.
             cred = credentials.ApplicationDefault()
-        
-        firebase_admin.initialize_app(cred)
-        print("Snapshot Service: Firebase Admin SDK initialized successfully.")
+            firebase_admin.initialize_app(cred)
+            print("Snapshot Service: Firebase Admin SDK initialized successfully using Application Default Credentials.")
     else:
         print("Snapshot Service: Firebase Admin SDK already initialized.")
 except Exception as e:
@@ -138,25 +141,12 @@ def upload_to_cloud_storage(image_buffer_cv, filename_on_gcs):
 @app.route('/take-snapshot', methods=['POST', 'OPTIONS'])
 def take_snapshot():
     print(f"Snapshot Service: Received request to /take-snapshot, method: {request.method}")
-    if request.method == 'OPTIONS':
-        # Flask-CORS should handle this, but an explicit empty 200 can sometimes help
-        # if Flask-CORS is somehow bypassed or there's a routing issue for OPTIONS.
-        # However, Flask-CORS's default handling of OPTIONS is usually sufficient.
-        print("Snapshot Service: Responding to OPTIONS request.")
-        # The response for OPTIONS is built by Flask-CORS, no explicit return needed here usually.
-        # If Flask-CORS handles it, this part might not even be hit for OPTIONS.
-        # To be absolutely sure, we can construct a minimal response if Flask-CORS doesn't.
-        # However, standard Flask-CORS setup should pre-empt this.
-        # For now, let's assume Flask-CORS handles the OPTIONS response correctly.
-        # If issues persist, we can add custom OPTIONS handling here.
-        return jsonify(success=True), 200 # A simple 200 OK for OPTIONS
+    # Flask-CORS will handle OPTIONS requests automatically if configured for this route.
+    # No need for explicit 'if request.method == "OPTIONS":' handling here.
 
     # For POST requests
-    print("Snapshot Service: Processing POST request to /take-snapshot.")
     decoded_token, token_error = verify_token(request.headers)
     if token_error:
-        # This response will be sent if token verification fails.
-        # Flask-CORS should still add headers if the origin is allowed.
         return jsonify({'status': 'error', 'message': f'Authentication failed: {token_error}'}), 401
 
     data = request.get_json()
