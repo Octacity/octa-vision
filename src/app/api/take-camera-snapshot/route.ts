@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'error', message: 'Invalid request body: Malformed JSON.' }, { status: 400 });
     }
     
-    const { rtsp_url } = body;
+    const { rtsp_url, camera_id } = body; // Expect camera_id (optional for new cameras)
 
     if (!rtsp_url) {
       console.error('Snapshot API Error: Missing rtsp_url in request body');
@@ -34,18 +34,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`Snapshot API: Calling snapshot service at ${snapshotServiceUrl} for RTSP URL: ${rtsp_url}`);
 
+    // Prepare payload for the snapshot service
+    const servicePayload: { rtsp_url: string; camera_id?: string } = { rtsp_url };
+    if (camera_id) {
+        servicePayload.camera_id = camera_id;
+    }
+
     const response = await fetch(snapshotServiceUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${idToken}`, // Forward the token
       },
-      body: JSON.stringify({ rtsp_url }),
+      body: JSON.stringify(servicePayload),
       // signal: AbortSignal.timeout(15000) // Example: 15 second timeout (optional)
     });
 
     let responseData;
-    const responseText = await response.text(); // Get text first for robust logging
+    const responseText = await response.text(); 
     console.log(`Snapshot API: Raw response text from ${snapshotServiceUrl} (status: ${response.status}):`, responseText);
 
     try {
@@ -55,27 +61,27 @@ export async function POST(req: NextRequest) {
         console.error(`Snapshot API Error: Snapshot service (${snapshotServiceUrl}) returned non-JSON response (${response.status}). Raw text: ${responseText}`, parseError);
         return NextResponse.json(
             { status: 'error', message: `Snapshot service returned an invalid response format. Status: ${response.status}. Check server logs for details.` },
-            { status: response.status || 502 } // Use 502 for Bad Gateway if original status is missing
+            { status: response.status || 502 } 
         );
     }
 
     if (!response.ok) {
-      console.error(`Snapshot API Error: Snapshot service error (${response.status}) from ${snapshotServiceUrl}. Message:`, responseData?.message || "No message in error response.");
+      console.error(`Snapshot API Error: Snapshot service error (${response.status}) from ${snapshotServiceUrl}. Message:`, responseData?.message || responseData?.error || "No message in error response.");
       return NextResponse.json(
-        { status: 'error', message: responseData?.message || `Snapshot service failed with status ${response.status}.` },
+        { status: 'error', message: responseData?.message || responseData?.error || `Snapshot service failed with status ${response.status}.` },
         { status: response.status }
       );
     }
 
-    // Ensure the expected fields are present for a successful response
-    if (responseData.status === 'success' && !responseData.snapshot_data_uri) {
-      console.error(`Snapshot API Error: Snapshot service returned success status but missing snapshot_data_uri. Response:`, responseData);
+    // Ensure the expected fields are present for a successful response from your service
+    // Your service now returns 'snapshotUrl' (GCS URL) and 'resolution'
+    if (responseData.status === 'success' && (!responseData.snapshotUrl || !responseData.resolution)) {
+      console.error(`Snapshot API Error: Snapshot service returned success status but missing snapshotUrl or resolution. Response:`, responseData);
       return NextResponse.json(
-        { status: 'error', message: 'Snapshot service reported success but did not provide image data.' },
+        { status: 'error', message: 'Snapshot service reported success but did not provide complete image data (URL or resolution).' },
         { status: 500 }
       );
     }
-
 
     return NextResponse.json(responseData, { status: 200 });
 
@@ -86,10 +92,9 @@ export async function POST(req: NextRequest) {
 
     if (error.name === 'AbortError') {
         message = 'Request to snapshot service timed out.';
-        statusCode = 504; // Gateway Timeout
-    } else if (error.message) {
-        // Avoid exposing too much internal detail if it's a generic error
-        message = 'An unexpected error occurred while contacting the snapshot service.';
+        statusCode = 504; 
+    } else if (error.message && !error.message.includes('Internal Server Error')) {
+        message = error.message;
     }
     return NextResponse.json({ status: 'error', message }, { status: statusCode });
   }
