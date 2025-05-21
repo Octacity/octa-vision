@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { db } from "@/firebase/firebase";
 import { Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
-import { doc, setDoc, collection, addDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, setDoc, collection, addDoc, serverTimestamp, getDoc, query, where, getDocs, limit } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -49,26 +49,37 @@ const SignUpPage = () => {
       );
       const user = userCredential.user;
 
-      // Create a new organization document
+      let orgDefaultServerIdToSet: string | null = null;
+      try {
+        const serversQuery = query(collection(db, "servers"), where("isSystemDefault", "==", true), limit(1));
+        const serversSnapshot = await getDocs(serversQuery);
+        if (!serversSnapshot.empty) {
+          orgDefaultServerIdToSet = serversSnapshot.docs[0].id;
+        }
+      } catch (serverError) {
+        console.warn("Could not fetch system default server during signup:", serverError);
+        // Continue without setting orgDefaultServerId if it fails
+      }
+
       const orgRef = await addDoc(collection(db, "organizations"), {
         name: organizationName,
         phone: organizationPhone,
         billingAddress: billingAddress,
         description: organizationDescription,
-        primaryUseCases: primaryUseCases, 
+        primaryUseCases: primaryUseCases,
         approved: false,
-        admin: false, 
+        admin: false,
+        orgDefaultServerId: orgDefaultServerIdToSet, // Set org's default server ID
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      // Store user info in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: email,
-        name: null, 
+        name: null,
         organizationId: orgRef.id,
-        role: 'user-admin', 
-        createdBy: user.uid, // Added createdBy field
+        role: 'user-admin',
+        createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -235,3 +246,4 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
+
