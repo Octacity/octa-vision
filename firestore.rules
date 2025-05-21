@@ -4,36 +4,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to get the requesting user's data from Firestore
+    // Helper function to get the user's role and organizationId
     function getUserData() {
       return request.auth != null ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : null;
     }
-    function userOrgId(){
+    function userOrgId() {
       let userData = getUserData();
       return userData != null ? userData.organizationId : null;
     }
+    function userRole() {
+      let userData = getUserData();
+      return userData != null ? userData.role : null;
+    }
 
-    // Helper function to check if the requesting user is a system-admin
+    // Helper function to check if the user is a system-admin
     function isSystemAdmin() {
-      let userData = getUserData();
-      return userData != null && userData.role == 'system-admin';
+      return userRole() == 'system-admin';
     }
 
-    // Helper function to check if the requesting user is a user-admin
-    function isUserAdmin() {
-      let userData = getUserData();
-      return userData != null && userData.role == 'user-admin';
+    // Helper function to check if the user is a user-admin for a specific org
+    function isUserAdminForOrg(orgId) {
+      return userRole() == 'user-admin' && userOrgId() == orgId;
     }
-
-    // Helper function to check if the requesting user is a regular user
-    function isUser() {
-      let userData = getUserData();
-      return userData != null && userData.role == 'user';
-    }
-
-    // Helper function to check if the requesting user belongs to a specific organization
-    function belongsToOrg(orgId) {
-      return userOrgId() == orgId;
+     // Helper function to check if the user is just a user for a specific org
+    function isUserForOrg(orgId) {
+      return userRole() == 'user' && userOrgId() == orgId;
     }
 
     // Helper function to check if the user is trying to modify their own document
@@ -51,142 +46,172 @@ service cloud.firestore {
       return resource.data;
     }
 
+    // USERS Collection
     match /users/{userId} {
       allow create: if (
                       // Initial signup: user-admin for a new org
                       (request.auth != null &&
                        incomingData().email == request.auth.token.email &&
                        incomingData().role == 'user-admin' &&
-                       incomingData().organizationId != null &&
+                       incomingData().organizationId != null && // Org ID must be provided for new org
                        incomingData().createdBy == request.auth.uid
                       ) ||
                       // System admin creating any user
                       isSystemAdmin() ||
                       // User-admin creating user/user-admin for their org
-                      (isUserAdmin() &&
-                       incomingData().organizationId == userOrgId() &&
+                      (isUserAdminForOrg(incomingData().organizationId) &&
                        (incomingData().role == 'user' || incomingData().role == 'user-admin') &&
                        incomingData().createdBy == request.auth.uid
                       )
                     );
-
-      allow list: if request.auth != null && (isSystemAdmin() || isUserAdmin());
       allow read: if request.auth != null && (
                       isOwner(userId) ||
                       isSystemAdmin() ||
-                      (isUserAdmin() && belongsToOrg(existingData().organizationId))
+                      (isUserAdminForOrg(existingData().organizationId)) // user-admin can read users in their org
                     );
-
       allow update: if request.auth != null && (
+                      // User updating their own non-critical fields
                       (isOwner(userId) &&
-                       incomingData().organizationId == existingData().organizationId && // User cannot change their own org
-                       ( (isUserAdmin() && (incomingData().role == 'user-admin' || incomingData().role == 'user')) || // User admin can change their role to user or user-admin
-                         (isUser() && incomingData().role == existingData().role) // Regular user cannot change their role
-                       )
+                       incomingData().organizationId == existingData().organizationId && // Cannot change org
+                       incomingData().role == existingData().role // Cannot change own role via this
                       ) ||
                       isSystemAdmin() ||
-                      (isUserAdmin() &&
-                       belongsToOrg(existingData().organizationId) && // target user is in their org
-                       incomingData().organizationId == existingData().organizationId && // cannot change target user's org
-                       (incomingData().role == 'user' || incomingData().role == 'user-admin') // can change role of others in org
+                      // User-admin updating users in their org
+                      (isUserAdminForOrg(existingData().organizationId) &&
+                       incomingData().organizationId == existingData().organizationId && // Cannot change target's org
+                       (incomingData().role == 'user' || incomingData().role == 'user-admin') // Can change role within user/user-admin
                       )
                     );
-
       allow delete: if request.auth != null && (
-                       isSystemAdmin() ||
-                       (isUserAdmin() && belongsToOrg(existingData().organizationId) && userId != request.auth.uid) // User-admin can delete others in org
+                      isSystemAdmin() ||
+                      (isUserAdminForOrg(existingData().organizationId) && userId != request.auth.uid) // user-admin can delete users in their org (not self)
                      );
     }
 
+    // ORGANIZATIONS Collection
     match /organizations/{orgId} {
-      allow create: if (
-                      (request.auth != null &&
-                       incomingData().approved == false &&
-                       incomingData().admin == false && // New orgs via signup are not admin orgs
-                       incomingData().createdAt is timestamp)
-                    ) || isSystemAdmin(); // System admin can create any org
+      allow create: if (request.auth != null &&
+                        incomingData().approved == false &&
+                        incomingData().admin == false && // New orgs by users cannot be admin orgs
+                        incomingData().createdAt is timestamp); // Enforce createdAt
+                        // Org ID is auto-generated by Firestore on client-side addDoc
 
-      allow list: if request.auth != null && isSystemAdmin(); // Only system admins can list all orgs
-      allow read: if request.auth != null && (isSystemAdmin() || belongsToOrg(orgId));
-      allow update: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(orgId)));
-      allow delete: if request.auth != null && isSystemAdmin();
+      allow read: if request.auth != null && (isSystemAdmin() || userOrgId() == orgId); // System admin or member of the org
+      allow list: if request.auth != null && isSystemAdmin(); // Only system admin can list all orgs
+      allow update: if request.auth != null && (isSystemAdmin() || isUserAdminForOrg(orgId)); // System admin or user-admin of that org
+      allow delete: if request.auth != null && isSystemAdmin(); // Only system admin can delete orgs
     }
 
+    // GROUPS Collection
     match /groups/{groupId} {
       allow create: if request.auth != null &&
                        incomingData().userId == request.auth.uid &&
                        incomingData().orgId == userOrgId();
-      allow read, list: if request.auth != null && (isSystemAdmin() || belongsToOrg(existingData().orgId));
+      allow read: if request.auth != null && (isSystemAdmin() || (existingData() != null && userOrgId() == existingData().orgId));
       allow update: if request.auth != null && (
-                      isSystemAdmin() ||
-                      (isUserAdmin() && belongsToOrg(existingData().orgId) && incomingData().orgId == existingData().orgId)
-                    );
-      allow delete: if request.auth != null && (isSystemAdmin() || (isUserAdmin() && belongsToOrg(existingData().orgId)));
+                        isSystemAdmin() ||
+                        (existingData() != null && userOrgId() == existingData().orgId &&
+                         (incomingData().userId == existingData().userId || isUserAdminForOrg(existingData().orgId)) && // Creator or user-admin of org
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt', 'cameras', 'videos', 'name', 'defaultCameraSceneContext', 'defaultAiDetectionTarget', 'defaultAlertEvents', 'defaultVideoChunks', 'defaultNumFrames', 'defaultVideoOverlap'])
+                        )
+                      );
+      allow delete: if request.auth != null && (
+                        isSystemAdmin() ||
+                        (existingData() != null && userOrgId() == existingData().orgId &&
+                         (incomingData().userId == existingData().userId || isUserAdminForOrg(existingData().orgId)) // Creator or user-admin of org
+                        )
+                      );
     }
 
-    match /camera_configurations/{configId} {
+    // CONFIGURATIONS Collection (singular 'configurations')
+    match /configurations/{configId} {
       allow create: if request.auth != null &&
                        incomingData().userId == request.auth.uid &&
-                       incomingData().sourceType == "camera" && // Ensure correct source type for camera configs
                        incomingData().sourceId != null &&
-                       (incomingData().serverIpAddress == null || incomingData().serverIpAddress is string) && // serverIp can be null or a string
-                       userOrgId() != null; // User must belong to an org to create a config indirectly tied to an org via camera
-                       // (Org ownership is checked when creating the camera itself)
+                       incomingData().sourceType != null &&
+                       (incomingData().sourceType == "camera" || incomingData().sourceType == "video") &&
+                       ( // Check organization of the source camera or video
+                         (incomingData().sourceType == "camera" && get(/databases/$(database)/documents/cameras/$(incomingData().sourceId)).data.orgId == userOrgId()) ||
+                         (incomingData().sourceType == "video" && get(/databases/$(database)/documents/videos/$(incomingData().sourceId)).data.orgId == userOrgId())
+                       ) &&
+                       (incomingData().serverIpAddress == null || incomingData().serverIpAddress is string); // serverIp can be null or string
 
-      allow read, list: if request.auth != null && (
-                            isSystemAdmin() ||
-                            (userOrgId() != null && // Basic check: user belongs to an org
-                             resource != null && resource.data != null && resource.data.sourceId != null && // Ensure sourceId exists
-                             exists(/databases/$(database)/documents/cameras/$(resource.data.sourceId)) && // Ensure camera exists
-                             belongsToOrg(get(/databases/$(database)/documents/cameras/$(resource.data.sourceId)).data.orgId) // User belongs to camera's org
-                            )
-                          );
+      allow read: if request.auth != null && (
+                      isSystemAdmin() ||
+                      (existingData() != null && // Check if the config document itself exists
+                        (
+                          (existingData().sourceType == "camera" && get(/databases/$(database)/documents/cameras/$(existingData().sourceId)).data.orgId == userOrgId()) ||
+                          (existingData().sourceType == "video" && get(/databases/$(database)/documents/videos/$(existingData().sourceId)).data.orgId == userOrgId())
+                        )
+                      )
+                    );
       allow update: if request.auth != null && (
-                            isSystemAdmin() ||
-                            (userOrgId() != null && resource != null && resource.data != null && resource.data.sourceId != null &&
-                             exists(/databases/$(database)/documents/cameras/$(resource.data.sourceId)) &&
-                             belongsToOrg(get(/databases/$(database)/documents/cameras/$(resource.data.sourceId)).data.orgId) &&
-                             incomingData().sourceId == existingData().sourceId && // Cannot change the camera it points to
-                             incomingData().sourceType == existingData().sourceType // Cannot change source type
-                            )
-                          );
+                      isSystemAdmin() ||
+                      (existingData() != null && // Check if the config document itself exists
+                        (
+                          (existingData().sourceType == "camera" && get(/databases/$(database)/documents/cameras/$(existingData().sourceId)).data.orgId == userOrgId()) ||
+                          (existingData().sourceType == "video" && get(/databases/$(database)/documents/videos/$(existingData().sourceId)).data.orgId == userOrgId())
+                        ) &&
+                        (incomingData().userId == request.auth.uid || isUserAdminForOrg(userOrgId())) // Creator or user-admin of org
+                      )
+                    );
       allow delete: if request.auth != null && (
-                            isSystemAdmin() ||
-                            (userOrgId() != null && resource != null && resource.data != null && resource.data.sourceId != null &&
-                             exists(/databases/$(database)/documents/cameras/$(resource.data.sourceId)) &&
-                             belongsToOrg(get(/databases/$(database)/documents/cameras/$(resource.data.sourceId)).data.orgId)
-                            )
-                          );
+                      isSystemAdmin() ||
+                      (existingData() != null && // Check if the config document itself exists
+                        (
+                          (existingData().sourceType == "camera" && get(/databases/$(database)/documents/cameras/$(existingData().sourceId)).data.orgId == userOrgId()) ||
+                          (existingData().sourceType == "video" && get(/databases/$(database)/documents/videos/$(existingData().sourceId)).data.orgId == userOrgId())
+                        ) &&
+                        (incomingData().userId == request.auth.uid || isUserAdminForOrg(userOrgId())) // Creator or user-admin of org
+                      )
+                    );
     }
 
-     match /cameras/{cameraId} {
-        allow create: if request.auth != null &&
-                         incomingData().userId == request.auth.uid &&
-                         incomingData().orgId == userOrgId() &&
-                         incomingData().processingStatus == "waiting_for_approval" &&
-                         incomingData().currentConfigId != null; // Config ID must be set on create
+    // CAMERAS Collection
+    match /cameras/{cameraId} {
+      allow create: if request.auth != null &&
+                       incomingData().userId == request.auth.uid &&
+                       incomingData().orgId == userOrgId() &&
+                       incomingData().processingStatus == "waiting_for_approval" &&
+                       incomingData().currentConfigId != null; // Config ID is set on client
+      allow read: if request.auth != null && (isSystemAdmin() || (existingData() != null && userOrgId() == existingData().orgId));
+      allow update: if request.auth != null && (
+                        isSystemAdmin() ||
+                        (existingData() != null && userOrgId() == existingData().orgId &&
+                         (incomingData().userId == existingData().userId || isUserAdminForOrg(existingData().orgId)) // Creator or user-admin of org
+                        )
+                      );
+      allow delete: if request.auth != null && (
+                        isSystemAdmin() ||
+                        (existingData() != null && userOrgId() == existingData().orgId &&
+                         (incomingData().userId == existingData().userId || isUserAdminForOrg(existingData().orgId)) // Creator or user-admin of org
+                        )
+                      );
+    }
 
-        allow read, list: if request.auth != null && (isSystemAdmin() || belongsToOrg(existingData().orgId));
-        allow update: if request.auth != null && (
-                          isSystemAdmin() ||
-                          (belongsToOrg(existingData().orgId) && incomingData().orgId == existingData().orgId) // Cannot change orgId
-                        );
-        allow delete: if request.auth != null && (isSystemAdmin() || belongsToOrg(existingData().orgId));
-     }
+    // VIDEOS Collection (Basic placeholder, refine as needed)
+    match /videos/{videoId} {
+      allow create: if request.auth != null &&
+                       incomingData().userId == request.auth.uid &&
+                       incomingData().orgId == userOrgId();
+      allow read: if request.auth != null && (isSystemAdmin() || (existingData() != null && userOrgId() == existingData().orgId));
+      allow update: if request.auth != null && (
+                        isSystemAdmin() ||
+                        (existingData() != null && userOrgId() == existingData().orgId &&
+                         (incomingData().userId == existingData().userId || isUserAdminForOrg(existingData().orgId))
+                        )
+                      );
+      allow delete: if request.auth != null && (
+                        isSystemAdmin() ||
+                        (existingData() != null && userOrgId() == existingData().orgId &&
+                         (incomingData().userId == existingData().userId || isUserAdminForOrg(existingData().orgId))
+                        )
+                      );
+    }
 
-     match /videos/{videoId} {
-        // Define rules for videos similar to cameras, adjusting for video-specific fields/logic
-        // Example:
-        allow create: if request.auth != null && incomingData().userId == request.auth.uid && incomingData().orgId == userOrgId();
-        allow read, list: if request.auth != null && (isSystemAdmin() || belongsToOrg(existingData().orgId));
-        allow update: if request.auth != null && (isSystemAdmin() || (belongsToOrg(existingData().orgId) && incomingData().orgId == existingData().orgId));
-        allow delete: if request.auth != null && (isSystemAdmin() || belongsToOrg(existingData().orgId));
-     }
-
-     match /servers/{serverId} {
-       allow read, list, create, update, delete: if request.auth != null && isSystemAdmin();
-     }
-
-    // No overly broad fallback match. All collections should have explicit rules.
+    // SERVERS Collection
+    match /servers/{serverId} {
+      allow read, list, write, delete: if request.auth != null && isSystemAdmin(); // Only system admins
+    }
   }
 }

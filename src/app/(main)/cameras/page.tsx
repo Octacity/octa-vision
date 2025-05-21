@@ -179,7 +179,7 @@ const CamerasPage: NextPage = () => {
         return {
           id: doc.id,
           cameraName: data.cameraName,
-          imageUrl: data.snapshotUrl || 'https://placehold.co/400x300.png', 
+          imageUrl: data.snapshotUrl || 'https://placehold.co/600x400.png', 
           dataAiHint: data.aiDetectionTarget || 'camera security', 
           processingStatus: data.processingStatus,
         } as Camera;
@@ -349,7 +349,7 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
     
     setIsProcessingStep2(true);
-    setSnapshotUrl(null); // Reset snapshot URL before attempting to fetch
+    setSnapshotUrl(null); 
 
     try {
       const auth = getAuth();
@@ -376,8 +376,11 @@ const CamerasPage: NextPage = () => {
         try {
             const errorData = await snapshotResponse.json();
             errorMessage = errorData.message || errorMessage;
+            if (snapshotResponse.status === 404) {
+                errorMessage = `Snapshot API endpoint not found. Please check the configuration. (Status: 404)`;
+            }
         } catch (parseError) {
-            errorMessage = snapshotResponse.statusText || errorMessage;
+             errorMessage = `Failed to get snapshot. Server returned non-JSON response (status: ${snapshotResponse.status} ${snapshotResponse.statusText})`;
         }
         throw new Error(errorMessage);
       }
@@ -386,7 +389,7 @@ const CamerasPage: NextPage = () => {
       if (snapshotData.status === 'success' && snapshotData.snapshot_data_uri) {
         setSnapshotUrl(snapshotData.snapshot_data_uri);
       } else {
-        setSnapshotUrl(null); // Explicitly set to null if not successful
+        setSnapshotUrl(null); 
         throw new Error(snapshotData.message || "Snapshot API returned an error or invalid data.");
       }
     } catch (error: any) {
@@ -396,7 +399,7 @@ const CamerasPage: NextPage = () => {
         title: "Snapshot Error",
         description: error.message || "Could not retrieve camera snapshot.",
       });
-      setSnapshotUrl(null); // Ensure snapshotUrl is cleared on error
+      setSnapshotUrl(null); 
     }
     
     let sceneDescToSet = ''; 
@@ -529,7 +532,7 @@ const CamerasPage: NextPage = () => {
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
-        const newGroup: Omit<Group, 'id'| 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp, videos: string[] } = {
+        const newGroup: Omit<Group, 'id'| 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp, videos: string[], cameras: string[] } = {
             name: step1Data.newGroupName,
             orgId: orgId,
             userId: currentUser.uid,
@@ -551,7 +554,7 @@ const CamerasPage: NextPage = () => {
     }
 
     const cameraDocRef = doc(collection(db, 'cameras'));
-    const configDocRef = doc(collection(db, 'camera_configurations'));
+    const configDocRef = doc(collection(db, 'configurations')); // Changed to 'configurations'
 
     batch.set(cameraDocRef, {
       cameraName: step1Data.cameraName,
@@ -565,12 +568,12 @@ const CamerasPage: NextPage = () => {
       activeVSSId: null,
       historicalVSSIds: [],
       processingStatus: "waiting_for_approval",
-      currentConfigId: configDocRef.id,
+      currentConfigId: configDocRef.id, // Set currentConfigId at creation
     });
 
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
-      sourceType: "camera",
+      sourceType: "camera", // Explicitly set sourceType
       serverIpAddress: fetchedDefaultServerIp, 
       createdAt: now,
       videoChunks: {
@@ -590,7 +593,8 @@ const CamerasPage: NextPage = () => {
       previousConfigId: null,
     });
 
-    batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
+    // No need to update cameraDocRef for currentConfigId again as it's set during initial creation
+    // batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
 
     if (finalGroupId) {
@@ -615,7 +619,7 @@ const CamerasPage: NextPage = () => {
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: snapshotUrl || 'https://placehold.co/400x300.png', 
+        imageUrl: snapshotUrl || 'https://placehold.co/600x400.png', 
         dataAiHint: configData.aiDetectionTarget || 'newly added camera',
         processingStatus: "waiting_for_approval",
       };
@@ -907,18 +911,16 @@ const CamerasPage: NextPage = () => {
                     data-ai-hint="camera snapshot"
                     />
                 )}
-                {/* Loader during processing */}
                 {isProcessingStep2 && !snapshotUrl && (
                     <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                 )}
-                {/* Placeholder/Error if processing is done and no snapshot */}
                 {!isProcessingStep2 && !snapshotUrl && (
                     <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
                         <CameraIconLucide className="h-12 w-12 text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">Could not retrieve snapshot.</p>
-                        <p className="text-xs text-muted-foreground">Check RTSP URL and network.</p>
+                        <p className="text-xs text-muted-foreground">Check RTSP URL and network or try again.</p>
                     </div>
                 )}
 

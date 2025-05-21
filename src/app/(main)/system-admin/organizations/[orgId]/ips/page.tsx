@@ -45,7 +45,7 @@ interface ServerInfo {
     isDefault?: boolean;
 }
 
-interface CameraConfig {
+interface CameraConfig { // Renamed from Config to CameraConfig for clarity in this context
     serverIpAddress?: string | null;
 }
 
@@ -69,14 +69,13 @@ const AssignServersToCamerasPage: NextPage = () => {
   const fetchCameraConfig = useCallback(async (cameraId: string, configId?: string): Promise<CameraConfig | null> => {
     if (!configId) return null;
     try {
-      const configDocRef = doc(db, 'camera_configurations', configId);
+      const configDocRef = doc(db, 'configurations', configId); // Use 'configurations'
       const configDocSnap = await getDoc(configDocRef);
       if (configDocSnap.exists()) {
         return configDocSnap.data() as CameraConfig;
       }
     } catch (error) {
       console.error(`Error fetching config for camera ${cameraId}:`, error);
-      // Do not toast here to avoid flooding if many configs fail
     }
     return null;
   }, []);
@@ -164,15 +163,14 @@ const AssignServersToCamerasPage: NextPage = () => {
       return;
     }
 
-    const serverIpToSave = selectedServerIpOrNone === undefined ? null : selectedServerIpOrNone;
+    const serverIpToSave = selectedServerIpOrNone === undefined || selectedServerIpOrNone === "__SELECT_NONE__" ? null : selectedServerIpOrNone;
 
     setIsPageLoading(true);
     try {
-      const configDocRef = doc(db, 'camera_configurations', camera.currentConfigId);
+      const configDocRef = doc(db, 'configurations', camera.currentConfigId); // Use 'configurations'
       await updateDoc(configDocRef, { serverIpAddress: serverIpToSave });
       toast({ title: 'Server Assigned', description: `Server assignment updated for ${camera.cameraName}.` });
 
-      // Refetch just this camera's config to update UI
       const updatedConfig = await fetchCameraConfig(cameraId, camera.currentConfigId);
       if(updatedConfig) {
         setCameraConfigs(prev => ({ ...prev, [cameraId]: updatedConfig }));
@@ -205,11 +203,13 @@ const AssignServersToCamerasPage: NextPage = () => {
     setIsBulkAssigning(true);
     const batch = writeBatch(db);
     let updatesMade = 0;
+    const serverIpToBulkSave = selectedBulkAssignServerIp === undefined ? null : selectedBulkAssignServerIp;
+
 
     cameras.forEach(camera => {
         if (camera.currentConfigId) {
-            const configDocRef = doc(db, 'camera_configurations', camera.currentConfigId);
-            batch.update(configDocRef, { serverIpAddress: selectedBulkAssignServerIp === undefined ? null : selectedBulkAssignServerIp });
+            const configDocRef = doc(db, 'configurations', camera.currentConfigId); // Use 'configurations'
+            batch.update(configDocRef, { serverIpAddress: serverIpToBulkSave });
             updatesMade++;
         }
     });
@@ -223,13 +223,13 @@ const AssignServersToCamerasPage: NextPage = () => {
     try {
         await batch.commit();
         toast({ title: "Bulk Assignment Successful", description: `Assigned server to ${updatesMade} camera(s). Refreshing data...`});
-        await fetchAllData(); // Refresh all data to show changes
+        await fetchAllData(); 
     } catch (error) {
         console.error("Error during bulk server assignment: ", error);
         toast({ variant: "destructive", title: "Bulk Assignment Failed", description: "Could not assign server to all cameras." });
     }
     setIsBulkAssigning(false);
-    setSelectedBulkAssignServerIp(undefined); // Reset bulk selector
+    setSelectedBulkAssignServerIp(undefined); 
   };
 
 
@@ -400,6 +400,3 @@ const AssignServersToCamerasPage: NextPage = () => {
 };
 
 export default AssignServersToCamerasPage;
-
-
-    
