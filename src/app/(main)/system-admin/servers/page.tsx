@@ -83,6 +83,31 @@ const AdminServersPage: NextPage = () => {
     },
   });
 
+  const watchedIpAddress = form.watch('ipAddressWithPort');
+
+  useEffect(() => {
+    if (watchedIpAddress) {
+      let newIp = watchedIpAddress;
+      let newProtocol: 'http' | 'https' | undefined = undefined;
+
+      if (watchedIpAddress.startsWith('https://')) {
+        newProtocol = 'https';
+        newIp = watchedIpAddress.substring(8);
+      } else if (watchedIpAddress.startsWith('http://')) {
+        newProtocol = 'http';
+        newIp = watchedIpAddress.substring(7);
+      }
+
+      if (newProtocol && newProtocol !== form.getValues('protocol')) {
+        form.setValue('protocol', newProtocol, { shouldValidate: true });
+      }
+      if (newIp !== watchedIpAddress) {
+        form.setValue('ipAddressWithPort', newIp, { shouldValidate: true });
+      }
+    }
+  }, [watchedIpAddress, form]);
+
+
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -136,22 +161,20 @@ const AdminServersPage: NextPage = () => {
   const handleSetSystemDefaultServer = async (serverIdToSetAsDefault: string) => {
     setIsSubmitting(true);
     const batch = writeBatch(db);
-    let currentSystemDefaultServerExists = false;
-
-    servers.forEach(server => {
-      const serverRef = doc(db, 'servers', server.id);
-      if (server.id === serverIdToSetAsDefault) {
-        batch.update(serverRef, { isSystemDefault: true });
-      } else if (server.isSystemDefault) {
-        currentSystemDefaultServerExists = true;
-        batch.update(serverRef, { isSystemDefault: false });
-      }
-    });
+    
+    const currentDefault = servers.find(s => s.isSystemDefault && s.id !== serverIdToSetAsDefault);
+    if (currentDefault) {
+      const currentDefaultRef = doc(db, 'servers', currentDefault.id);
+      batch.update(currentDefaultRef, { isSystemDefault: false });
+    }
+    
+    const newDefaultRef = doc(db, 'servers', serverIdToSetAsDefault);
+    batch.update(newDefaultRef, { isSystemDefault: true });
 
     try {
       await batch.commit();
       toast({ title: 'System Default Server Updated', description: 'The system default server has been successfully set.' });
-      fetchServers();
+      fetchServers(); // Refresh the list
     } catch (error) {
       console.error("Error setting system default server: ", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not set system default server.' });
@@ -166,52 +189,55 @@ const AdminServersPage: NextPage = () => {
       return;
     }
     setIsSubmitting(true);
+    const batch = writeBatch(db);
 
     try {
       if (editingServer) {
         const serverRef = doc(db, 'servers', editingServer.id);
-        if (data.isSystemDefault) {
-          const batch = writeBatch(db);
+        // If making this server the system default, unset any other system default
+        if (data.isSystemDefault && !editingServer.isSystemDefault) {
           servers.forEach(s => {
             if (s.id !== editingServer.id && s.isSystemDefault) {
               const otherServerRef = doc(db, 'servers', s.id);
               batch.update(otherServerRef, { isSystemDefault: false });
             }
           });
-          await batch.commit();
-        } else {
-          const otherDefaultServers = servers.filter(s => s.id !== editingServer.id && s.isSystemDefault);
-          if (editingServer.isSystemDefault && !otherDefaultServers.length && servers.length > 1) {
+        } else if (!data.isSystemDefault && editingServer.isSystemDefault) {
+          // Prevent unsetting if it's the only system default server
+          const systemDefaultServers = servers.filter(s => s.isSystemDefault);
+          if (systemDefaultServers.length === 1 && systemDefaultServers[0].id === editingServer.id) {
              toast({ variant: 'destructive', title: 'Action Denied', description: 'Cannot unset the only system default server. Set another server as system default first.' });
              setIsSubmitting(false);
              return;
           }
         }
-        await updateDoc(serverRef, { ...data, updatedAt: serverTimestamp() });
+        batch.update(serverRef, { ...data, protocol: data.protocol, updatedAt: serverTimestamp() });
+        await batch.commit();
         toast({ title: 'Server Updated', description: `${data.name} has been updated.` });
 
-      } else {
-        const newServerData: Omit<ServerData, 'id' | 'createdAt' | 'createdBy'> & { createdAt: Timestamp, createdBy: string, updatedAt: Timestamp} = {
+      } else { // Adding a new server
+        const newServerData: Omit<ServerData, 'id' | 'createdAt' | 'createdBy'> & { createdAt: Timestamp, createdBy: string, updatedAt: Timestamp, protocol: 'http' | 'https'} = {
           ...data,
+          protocol: data.protocol,
           createdBy: currentUser.uid,
           createdAt: serverTimestamp() as Timestamp,
           updatedAt: serverTimestamp() as Timestamp,
         };
 
         if (data.isSystemDefault) {
-            const batch = writeBatch(db);
             servers.forEach(s => {
                 if (s.isSystemDefault) {
                 const otherServerRef = doc(db, 'servers', s.id);
                 batch.update(otherServerRef, { isSystemDefault: false });
                 }
             });
-            await batch.commit();
         } else if (!data.isSystemDefault && servers.length === 0) {
+            // If no other servers exist, make this one the default
             newServerData.isSystemDefault = true;
         }
-
-        await addDoc(collection(db, 'servers'), newServerData);
+        const newServerRef = doc(collection(db, 'servers'));
+        batch.set(newServerRef, newServerData);
+        await batch.commit();
         toast({ title: 'Server Added', description: `${data.name} has been added successfully.` });
       }
       fetchServers();
@@ -238,12 +264,22 @@ const AdminServersPage: NextPage = () => {
 
   const handleDeleteServer = async (serverId: string) => {
     const serverToDelete = servers.find(s => s.id === serverId);
-    if (serverToDelete?.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1) {
-        toast({ variant: 'destructive', title: 'Action Denied', description: 'Cannot delete the only system default server. Set another server as system default first.' });
-        return;
+    if (serverToDelete?.isSystemDefault) {
+        const systemDefaultServers = servers.filter(s => s.isSystemDefault);
+        if (systemDefaultServers.length <= 1) {
+            toast({ variant: 'destructive', title: 'Action Denied', description: 'Cannot delete the only system default server. Set another server as system default first, or add a new server and set it as default.' });
+            return;
+        }
     }
-    // Implement actual delete logic here
-    toast({title: "Delete Server", description: "Delete functionality not fully implemented yet."});
+    
+    try {
+        await updateDoc(doc(db, "servers", serverId), { status: 'offline', remarks: `(Archived) ${serverToDelete?.remarks || ''}`}); // Mark as offline instead of deleting
+        toast({title: "Server Archived", description: "Server marked as offline. It can be reactivated or permanently deleted by a super-admin if needed."});
+        fetchServers();
+    } catch (error) {
+        console.error("Error archiving server:", error);
+        toast({ variant: 'destructive', title: 'Archival Failed', description: 'Could not archive the server.' });
+    }
   };
 
 
@@ -271,7 +307,7 @@ const AdminServersPage: NextPage = () => {
               <FormItem>
                 <FormLabel>IP Address with Port</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., 56.124.100.219:8100" {...field} />
+                  <Input placeholder="e.g., 56.124.100.219:8100 or http://56.124.100.219:8100" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -283,7 +319,7 @@ const AdminServersPage: NextPage = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Protocol</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!!watchedIpAddress.match(/^https?:\/\//)}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select protocol" />
@@ -342,7 +378,12 @@ const AdminServersPage: NextPage = () => {
                         <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={editingServer?.isSystemDefault && servers.filter(s => s.isSystemDefault && s.id !== editingServer.id).length === 0 && servers.length > 1 && !field.value}
+                        disabled={
+                            editingServer?.isSystemDefault && 
+                            servers.filter(s => s.isSystemDefault && s.id !== editingServer.id).length === 0 && 
+                            servers.length > 0 && // Ensure there's at least one server
+                            !field.value // Only disable if trying to uncheck the last default
+                        }
                         />
                     </FormControl>
                     <div className="space-y-1 leading-none">
@@ -351,7 +392,7 @@ const AdminServersPage: NextPage = () => {
                         </FormLabel>
                         <FormDescription>
                         Only one server can be the system default. If checked, any other system default server will be unset.
-                        {editingServer?.isSystemDefault && servers.filter(s => s.isSystemDefault && s.id !== editingServer.id).length === 0 && servers.length > 1 && !field.value && " Cannot unset the only system default server." }
+                        {editingServer?.isSystemDefault && servers.filter(s => s.isSystemDefault && s.id !== editingServer.id).length === 0 && servers.length > 0 && !field.value && " Cannot unset the only system default server." }
                         </FormDescription>
                     </div>
                 </FormItem>
@@ -445,7 +486,7 @@ const AdminServersPage: NextPage = () => {
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button variant="outline" size="sm" onClick={() => handleSetSystemDefaultServer(server.id)} disabled={server.isSystemDefault || isSubmitting} className="h-8 text-xs">
-                                        {isSubmitting && server.id === editingServer?.id ? <Loader2 className="h-3 w-3 animate-spin"/> : "Set Default"}
+                                        {isSubmitting && editingServer?.id === server.id ? <Loader2 className="h-3 w-3 animate-spin"/> : "Set Default"}
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -466,21 +507,21 @@ const AdminServersPage: NextPage = () => {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="outline" size="icon" className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
-                                     disabled={server.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1}
+                                     disabled={server.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1 && servers.length > 0}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>{(server.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1) ? "Cannot delete default server" : "Delete Server"}</p>
+                                    <p>{(server.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1 && servers.length > 0) ? "Cannot delete default server" : "Archive Server"}</p>
                                   </TooltipContent>
                                 </Tooltip>
-                                {!(server.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1) && (
+                                {!(server.isSystemDefault && servers.filter(s => s.isSystemDefault).length <= 1 && servers.length > 0) && (
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the server: <strong>{server.name}</strong>.
+                                        This action will mark the server <strong>{server.name}</strong> as offline. Are you sure you want to archive it?
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -489,7 +530,7 @@ const AdminServersPage: NextPage = () => {
                                         onClick={() => handleDeleteServer(server.id)}
                                         className="bg-destructive hover:bg-destructive/90"
                                     >
-                                        Delete
+                                        Archive
                                     </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
