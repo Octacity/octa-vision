@@ -6,8 +6,8 @@ export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Next API /take-camera-snapshot: Unauthorized - Missing or invalid token');
-      return NextResponse.json({ status: 'error', message: 'Unauthorized: Missing or invalid token' }, { status: 401 });
+      console.error('Next API /take-camera-snapshot: Unauthorized - Missing or invalid token in request to Next.js API route.');
+      return NextResponse.json({ status: 'error', message: 'Unauthorized: Missing or invalid token to access this API route.' }, { status: 401 });
     }
     const idToken = authHeader.split('Bearer ')[1];
 
@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'error', message: 'Invalid request body: Malformed JSON.' }, { status: 400 });
     }
     
-    // The snapshot service no longer expects camera_id for taking a generic snapshot
     const { rtsp_url } = body; 
 
     if (!rtsp_url) {
@@ -29,14 +28,11 @@ export async function POST(req: NextRequest) {
 
     const snapshotServiceUrl = process.env.TAKE_SNAPSHOT_CLOUD_RUN_URL; 
     if (!snapshotServiceUrl) {
-      console.error("Next API /take-camera-snapshot: TAKE_SNAPSHOT_CLOUD_RUN_URL environment variable is not set.");
-      return NextResponse.json({ status: 'error', message: "Snapshot service configuration error on server." }, { status: 500 });
+      console.error("Next API /take-camera-snapshot: TAKE_SNAPSHOT_CLOUD_RUN_URL environment variable is not set on the Next.js server.");
+      return NextResponse.json({ status: 'error', message: "Snapshot service configuration error on application server." }, { status: 500 });
     }
 
     console.log(`Next API /take-camera-snapshot: Calling snapshot service at ${snapshotServiceUrl} for RTSP URL: ${rtsp_url}`);
-
-    // Prepare payload for the snapshot service (no camera_id needed for snapshot capture)
-    const servicePayload: { rtsp_url: string; } = { rtsp_url };
     
     let serviceResponse;
     try {
@@ -44,49 +40,54 @@ export async function POST(req: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`, // Forward the token
+                'Authorization': `Bearer ${idToken}`, // Forward the token to the snapshot service
             },
-            body: JSON.stringify(servicePayload),
-            signal: AbortSignal.timeout(20000) // 20 second timeout for snapshot service
+            body: JSON.stringify({ rtsp_url }), // Only send rtsp_url
+            signal: AbortSignal.timeout(30000) // Increased timeout to 30 seconds for snapshot service
         });
     } catch (fetchError: any) {
         console.error(`Next API /take-camera-snapshot: Error fetching from snapshot service ${snapshotServiceUrl}:`, fetchError.message);
-        if (fetchError.name === 'AbortError') {
+        if (fetchError.name === 'AbortError' || fetchError.name === 'TimeoutError') {
             return NextResponse.json({ status: 'error', message: 'Request to snapshot service timed out.' }, { status: 504 });
         }
-        return NextResponse.json({ status: 'error', message: `Error communicating with snapshot service: ${fetchError.message}` }, { status: 502 }); // Bad Gateway
+        return NextResponse.json({ status: 'error', message: `Error communicating with snapshot service: ${fetchError.message}` }, { status: 502 });
     }
-
 
     let responseData;
     const responseText = await serviceResponse.text(); 
-    console.log(`Next API /take-camera-snapshot: Raw response text from ${snapshotServiceUrl} (status: ${serviceResponse.status}):`, responseText);
+    console.log(`Next API /take-camera-snapshot: Raw response text from snapshot service ${snapshotServiceUrl} (status: ${serviceResponse.status}):`, responseText);
 
     try {
         responseData = JSON.parse(responseText); 
-        console.log(`Next API /take-camera-snapshot: Parsed JSON response data from ${snapshotServiceUrl}:`, responseData);
+        console.log(`Next API /take-camera-snapshot: Parsed JSON response data from snapshot service ${snapshotServiceUrl}:`, responseData);
     } catch (parseError) {
         console.error(`Next API /take-camera-snapshot: Snapshot service (${snapshotServiceUrl}) returned non-JSON response (${serviceResponse.status}). Raw text: ${responseText}`, parseError);
         return NextResponse.json(
-            { status: 'error', message: `Snapshot service returned an invalid response format. Status: ${serviceResponse.status}. Check service logs.` },
+            { status: 'error', message: `Snapshot service returned an invalid response format. Status: ${serviceResponse.status}. Check service logs for details.` },
             { status: serviceResponse.status || 502 } 
         );
     }
 
     if (!serviceResponse.ok) {
-      console.error(`Next API /take-camera-snapshot: Snapshot service error (${serviceResponse.status}) from ${snapshotServiceUrl}. Message:`, responseData?.message || "No message in error response.");
+      console.error(`Next API /take-camera-snapshot: Snapshot service error (${serviceResponse.status}) from ${snapshotServiceUrl}. Message from service:`, responseData?.message || "No specific message in error response from service.");
+      // If the service returns 401, it means the token verification failed there.
+      if (serviceResponse.status === 401) {
+        return NextResponse.json(
+          { status: 'error', message: responseData?.message || `Snapshot service denied access (401). This might be due to token verification issues within the snapshot service. Check snapshot service logs.` },
+          { status: 401 }
+        );
+      }
       return NextResponse.json(
-        { status: 'error', message: responseData?.message || `Snapshot service failed with status ${serviceResponse.status}.` },
+        { status: 'error', message: responseData?.message || `Snapshot service failed with status ${serviceResponse.status}. Check service logs.` },
         { status: serviceResponse.status }
       );
     }
 
-    // Expect "status": "success", "snapshotUrl": "...", "resolution": "..."
     if (responseData.status === 'success' && (!responseData.snapshotUrl || !responseData.resolution)) {
       console.error(`Next API /take-camera-snapshot: Snapshot service success but missing snapshotUrl or resolution. Response:`, responseData);
       return NextResponse.json(
-        { status: 'error', message: 'Snapshot service reported success but did not provide complete image data (URL or resolution).' },
-        { status: 500 } // Or 502 if considering it a bad response from upstream
+        { status: 'error', message: 'Snapshot service reported success but did not provide complete image data (URL or resolution). Check service logs.' },
+        { status: 500 } 
       );
     }
 
@@ -94,12 +95,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Next API /take-camera-snapshot: Unhandled exception in POST handler:', error);
-    let message = 'Internal Server Error while processing snapshot request.';
-    let statusCode = 500;
-
-    if (error.message && !error.message.includes('Internal Server Error')) { // Avoid overly generic messages
+    let message = 'Internal Server Error while processing snapshot request in Next.js API.';
+    if (error.message && !error.message.includes('Internal Server Error')) {
         message = error.message;
     }
-    return NextResponse.json({ status: 'error', message }, { status: statusCode });
+    return NextResponse.json({ status: 'error', message }, { status: 500 });
   }
 }
