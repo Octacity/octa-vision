@@ -1,5 +1,7 @@
 txt
 opencv-python-headless
 Flask
+firebase-admin
+google-cloud-storage
 gunicorn
 numpy
