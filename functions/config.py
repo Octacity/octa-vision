@@ -1,30 +1,27 @@
-# cloud_functions/config.py
-
 import requests
 import os
-from flask import request, jsonify
-from firebase_admin import auth
-from firebase_functions import https_fn
+# Keep firebase_admin and related imports if needed
+import firebase_admin
+from firebase_admin import credentials, auth
 
-# Import utility functions from main.py
+# Import functions_framework and jsonify from flask
+import functions_framework
+from flask import jsonify
+
+# Import helper functions from main
 from main import verify_firebase_token, get_default_vss_base_url
 
-@https_fn.on_request()
-def get_recommended_config():
+SERVICE_ACCOUNT_EMAIL = os.environ.get("SERVICE_ACCOUNT_EMAIL")
+
+@functions_framework.http
+def list_models(request):
     """
-    Cloud function to recommend a configuration based on video properties using the VSS API.
+    Cloud function to list available models from the VSS API.
     Requires Firebase authentication.
     """
     decoded_token, error = verify_firebase_token(request)
     if error:
         return jsonify({"status": "error", "message": f"Authentication failed: {error}"}), 401
-
-    if request.method != 'POST':
-        return jsonify({"status": "error", "message": f"Authentication failed: {error}"}), 401
-
-    request_data = request.get_json()
-    if not request_data:
-        return jsonify({"status": "error", "message": "No JSON data provided in the request body"}), 400
 
     try:
         vss_api_base_url = get_default_vss_base_url()
@@ -32,13 +29,47 @@ def get_recommended_config():
         print(f"Configuration Error: {e}")
         return jsonify({"status": "error", "message": f"VSS API configuration error: {e}"}), 503
 
-
-    vss_api_url = f"{vss_api_base_url}/recommended_config"
+    vss_api_url = f"{vss_api_base_url}/models"
     try:
-        vss_api_response = requests.post(vss_api_url, json=request_data)
-        vss_api_response.raise_for_status() 
+        vss_api_response = requests.get(vss_api_url)
+        vss_api_response.raise_for_status()
         vss_data = vss_api_response.json()
         return jsonify({"status": "success", "data": vss_data}), 200
     except requests.exceptions.RequestException as e:
-        print(f"Error calling VSS API to get recommended config: {e}")
-        return jsonify({"status": "error", "message": f"Error calling VSS API to get recommended config: {e}"}), 500
+        print(f"Error calling VSS API to list models: {e}")
+        return jsonify({"status": "error", "message": f"Error calling VSS API to list models: {e}"}), 500
+
+@functions_framework.http(service_account=SERVICE_ACCOUNT_EMAIL)
+def get_model_details(request):
+    """
+    Cloud function to get details of a specific model from the VSS API.
+    Requires Firebase authentication.
+    """
+    decoded_token, error = verify_firebase_token(request)
+    if error:
+        return jsonify({"status": "error", "message": f"Authentication failed: {error}"}), 401
+
+    # Extract model_id from the request URL or parameters
+    try:
+        path_segments = request.path.split('/')
+        model_id = path_segments[-1] if path_segments[-1] and path_segments[-1] != 'get-model-details' else request.args.get('model_id')
+        if not model_id:
+            return jsonify({"status": "error", "message": "Model ID is required"}), 400
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error extracting model ID: {e}"}), 400
+
+    try:
+        vss_api_base_url = get_default_vss_base_url()
+    except ValueError as e:
+        print(f"Configuration Error: {e}")
+        return jsonify({"status": "error", "message": f"VSS API configuration error: {e}"}), 503
+
+    vss_api_url = f"{vss_api_base_url}/models/{model_id}"
+    try:
+        vss_api_response = requests.get(vss_api_url)
+        vss_api_response.raise_for_status()
+        vss_data = vss_api_response.json()
+        return jsonify({"status": "success", "data": vss_data}), 200
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling VSS API to get model details for {model_id}: {e}")
+        return jsonify({"status": "error", "message": f"Error calling VSS API to get model details for {model_id}: {e}"}), 500
