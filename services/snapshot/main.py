@@ -16,17 +16,18 @@ app = Flask(__name__)
 # Read allowed origins from environment variable
 CORS_ALLOWED_ORIGINS_STR = os.environ.get('CORS_ALLOWED_ORIGINS')
 
-if CORS_ALLOWED_ORIGINS_STR:
-    allowed_origins_list = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(',')]
-    print(f"Snapshot Service: Using CORS_ALLOWED_ORIGINS from environment: {allowed_origins_list}")
-else:
+# if CORS_ALLOWED_ORIGINS_STR:
+#     allowed_origins_list = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(',')]
+#     print(f"Snapshot Service: Using CORS_ALLOWED_ORIGINS from environment: {allowed_origins_list}")
+# else:
     # Fallback for local development if the environment variable is not set
-    allowed_origins_list = [
-        "http://localhost:9002", # Your Next.js dev port
-        "http://localhost:3000", # Common React dev port
-        "https://6000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev" # Firebase Studio
-    ]
-    print(f"Snapshot Service: Warning - CORS_ALLOWED_ORIGINS environment variable not set. Using default development origins: {allowed_origins_list}")
+allowed_origins_list = [
+    "http://localhost:9002", # Your Next.js dev port
+    "http://localhost:3000", # Common React dev port
+    "https://6000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev", # Firebase Studio
+    "https://9000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev"
+]
+print(f"Snapshot Service: Warning - CORS_ALLOWED_ORIGINS environment variable not set. Using default development origins: {allowed_origins_list}")
 
 # Initialize CORS for the specific endpoint
 CORS(app, 
