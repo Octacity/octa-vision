@@ -5,7 +5,7 @@ from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, auth
 from google.cloud import storage
-from google.auth.exceptions import RefreshError # Import RefreshError
+from google.auth import exceptions as auth_exceptions # Renamed to avoid conflict
 import os
 import base64
 import numpy as np
@@ -13,12 +13,14 @@ import datetime
 import logging
 
 # --- Logging Configuration ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
 # --- CORS Configuration ---
+# Get allowed origins from environment variable
+# Fallback to a restrictive default or an empty list if not set in deployed env.
 CORS_ALLOWED_ORIGINS_STR = os.environ.get('CORS_ALLOWED_ORIGINS')
 allowed_origins_list = []
 
@@ -49,6 +51,8 @@ logger.info("Snapshot Service: Flask-CORS initialized.")
 
 
 # --- Firebase Admin SDK Initialization ---
+# Attempt to initialize Firebase Admin SDK only if it hasn't been already.
+# This is crucial for Cloud Run/Functions where the environment might persist.
 SERVICE_ACCOUNT_KEY_PATH = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
 
 try:
@@ -56,12 +60,12 @@ try:
         logger.info("Snapshot Service: Attempting to initialize Firebase Admin SDK...")
         if SERVICE_ACCOUNT_KEY_PATH:
             logger.info(f"Snapshot Service: Using service account key from GOOGLE_APPLICATION_CREDENTIALS: {SERVICE_ACCOUNT_KEY_PATH}")
-            cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-            firebase_admin.initialize_app(cred)
+            cred_object = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+            firebase_admin.initialize_app(cred_object)
         else:
             logger.info("Snapshot Service: GOOGLE_APPLICATION_CREDENTIALS not set. Using Application Default Credentials (suitable for Cloud Run/Functions).")
-            cred = credentials.ApplicationDefault()
-            firebase_admin.initialize_app(cred)
+            # For Cloud Run, Cloud Functions, GCE, etc., ApplicationDefaultCredentials() works seamlessly.
+            firebase_admin.initialize_app(credentials.ApplicationDefault())
         logger.info("Snapshot Service: Firebase Admin SDK initialized successfully.")
     else:
         logger.info("Snapshot Service: Firebase Admin SDK already initialized.")
@@ -87,7 +91,7 @@ def verify_token_from_headers(req_headers):
         return None, "Authorization header missing or malformed"
 
     id_token = auth_header.split('Bearer ')[1]
-    if not firebase_admin._apps:
+    if not firebase_admin._apps: # Check if SDK is initialized
         logger.error("Snapshot Service: verify_token - Firebase Admin SDK not initialized. Cannot verify token.")
         return None, "Firebase Admin SDK not initialized on server"
 
@@ -96,22 +100,19 @@ def verify_token_from_headers(req_headers):
         decoded_token = auth.verify_id_token(id_token)
         logger.info(f"Snapshot Service: Token verified successfully for UID: {decoded_token.get('uid')}")
         return decoded_token, None
-    except auth.InvalidIdTokenError as e:
-        logger.warning(f"Snapshot Service: Error verifying token - Invalid ID token: {e}")
-        return None, "Invalid ID token"
-    except auth.ExpiredIdTokenError as e:
-        logger.warning(f"Snapshot Service: Error verifying token - Expired ID token: {e}")
-        return None, "Expired ID token"
-    except auth.RevokedIdTokenError as e:
-        logger.warning(f"Snapshot Service: Error verifying token - Revoked ID token: {e}")
-        return None, "Revoked ID token"
-    except Exception as e:
+    except auth_exceptions.FirebaseError as e: # Catch specific Firebase auth errors
+        logger.warning(f"Snapshot Service: Error verifying token - Firebase Auth error: {e.code} - {e.message}", exc_info=False) # exc_info=False for brevity on auth errors
+        return None, f"Token verification failed: {e.message}"
+    except Exception as e: # Catch any other unexpected errors
         logger.error(f"Snapshot Service: General error verifying token: {e}", exc_info=True)
         return None, f"Token verification failed: {str(e)}"
 
 @app.route('/take-snapshot', methods=['POST', 'OPTIONS'])
 def take_snapshot_route():
     logger.info(f"Snapshot Service: Received request to /take-snapshot, method: {request.method}")
+
+    # Flask-CORS handles OPTIONS preflight requests automatically if configured for the route.
+    # No need for an explicit 'if request.method == "OPTIONS": return ...' block here.
 
     if request.method == 'POST':
         decoded_token, token_error = verify_token_from_headers(request.headers)
@@ -154,25 +155,31 @@ def take_snapshot_route():
             resolution_str = f"{width}x{height}"
             logger.info(f"Snapshot Service: /take-snapshot - Captured frame resolution: {resolution_str}")
 
+            # Encode frame to JPEG bytes
             is_success, image_buffer_bytes = cv2.imencode('.jpg', frame)
             if not is_success:
                 logger.error("Snapshot Service: /take-snapshot - Error encoding image to JPEG")
                 return jsonify({'status': 'error', 'message': 'Error encoding image to JPEG'}), 500
 
+            # Initialize GCS client
+            # For Cloud Run, storage.Client() without arguments will use ADC.
             storage_client = storage.Client()
             bucket = storage_client.bucket(STORAGE_BUCKET_NAME)
             
+            # Generate a unique filename for GCS
             timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-            user_uid_part = decoded_token.get('uid', 'unknown_user') if decoded_token else 'unknown_user_snapshot'
-            gcs_filename = f"snapshots/snap_{user_uid_part}_{timestamp}.jpg"
+            user_uid_part = decoded_token.get('uid', 'unknown_user') if decoded_token else 'unknown_user_snapshot' # Use UID if available
+            gcs_filename = f"snapshots/snap_{user_uid_part}_{timestamp}.jpg" # Example path
             
             blob = bucket.blob(gcs_filename)
+            
+            # Upload the image bytes
             blob.upload_from_string(image_buffer_bytes.tobytes(), content_type='image/jpeg')
             logger.info(f"Snapshot Service: /take-snapshot - Successfully uploaded {gcs_filename} to bucket {STORAGE_BUCKET_NAME}.")
 
             return jsonify({
                 'status': 'success',
-                'gcsObjectName': gcs_filename,
+                'gcsObjectName': gcs_filename, # Return the GCS object name
                 'resolution': resolution_str
             }), 200
 
@@ -187,13 +194,17 @@ def take_snapshot_route():
                 cap.release()
                 logger.info(f"Snapshot Service: /take-snapshot - Released video capture for {rtsp_url}")
     
-    return jsonify(message="Unsupported method or preflight OK"), 200
+    # If not POST, Flask-CORS should handle OPTIONS, or it's an unhandled method
+    # For robustness, you might return a 405 Method Not Allowed if it's not OPTIONS handled by CORS
+    return jsonify(status="error", message="Unsupported HTTP method for this endpoint"), 405
 
 
 @app.route('/retrieve-snapshot', methods=['POST', 'OPTIONS'])
 def retrieve_snapshot_route():
     logger.info(f"Snapshot Service: Received request to /retrieve-snapshot, method: {request.method}")
 
+    # Flask-CORS handles OPTIONS preflight requests automatically.
+    
     if request.method == 'POST':
         decoded_token, token_error = verify_token_from_headers(request.headers)
         if token_error:
@@ -214,8 +225,9 @@ def retrieve_snapshot_route():
             logger.error("Snapshot Service: /retrieve-snapshot - No gcsObjectName provided.")
             return jsonify({'status': 'error', 'message': 'No gcsObjectName provided'}), 400
 
-        logger.info(f"Snapshot Service: /retrieve-snapshot - Generating signed URL for object: {gcs_object_name}")
+        logger.info(f"Snapshot Service: /retrieve-snapshot - Attempting to generate signed URL for: {gcs_object_name}")
         try:
+            # Initialize GCS client. On Cloud Run, this uses ADC.
             storage_client = storage.Client()
             bucket = storage_client.bucket(STORAGE_BUCKET_NAME)
             blob = bucket.blob(gcs_object_name)
@@ -224,14 +236,17 @@ def retrieve_snapshot_route():
                 logger.warning(f"Snapshot Service: /retrieve-snapshot - GCS object {gcs_object_name} not found in bucket {STORAGE_BUCKET_NAME}.")
                 return jsonify({'status': 'error', 'message': 'Snapshot object not found'}), 404
 
+            # Generate a v4 signed URL.
+            # The service account running this Cloud Run instance needs
+            # "Service Account Token Creator" role on itself to sign the URL.
             signed_url = blob.generate_signed_url(
                 version="v4",
-                expiration=datetime.timedelta(minutes=15),
+                expiration=datetime.timedelta(minutes=15), # Example: 15 minutes expiration
                 method="GET",
             )
-            logger.info(f"Snapshot Service: /retrieve-snapshot - Generated signed URL for {gcs_object_name}")
+            logger.info(f"Snapshot Service: /retrieve-snapshot - Successfully generated signed URL for {gcs_object_name}")
             return jsonify({'status': 'success', 'signedUrl': signed_url}), 200
-        except RefreshError as e:
+        except auth_exceptions.RefreshError as e: # Specifically catch auth RefreshError
             logger.error(
                 f"Snapshot Service: /retrieve-snapshot - RefreshError generating signed URL for {gcs_object_name}: {e}. "
                 "This often means the Cloud Run service account is missing the 'Service Account Token Creator' role on itself.",
@@ -239,14 +254,17 @@ def retrieve_snapshot_route():
             )
             return jsonify({'status': 'error', 'message': f'Error generating signed URL: IAM permission issue (Service Account Token Creator role might be missing). Details: {str(e)}'}), 500
         except Exception as e:
-            logger.error(f"Snapshot Service: /retrieve-snapshot - Error generating signed URL for {gcs_object_name}: {e}", exc_info=True)
+            logger.error(f"Snapshot Service: /retrieve-snapshot - General error generating signed URL for {gcs_object_name}: {e}", exc_info=True)
             return jsonify({'status': 'error', 'message': f'Error generating signed URL: {str(e)}'}), 500
             
-    return jsonify(message="Unsupported method or preflight OK"), 200
+    return jsonify(status="error", message="Unsupported HTTP method for this endpoint"), 405
 
 
 if __name__ == '__main__':
+    # PORT environment variable is automatically set by Cloud Run.
     port = int(os.environ.get('PORT', 8080))
+    # FLASK_ENV can be set to 'development' for local testing.
     is_development = os.environ.get('FLASK_ENV') == 'development'
     logger.info(f"Snapshot Service: Starting Flask development server on http://0.0.0.0:{port}, debug={is_development}")
     app.run(host='0.0.0.0', port=port, debug=is_development)
+
