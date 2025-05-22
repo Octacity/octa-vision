@@ -22,10 +22,9 @@ if CORS_ALLOWED_ORIGINS_STR:
     print(f"Snapshot Service: Using CORS_ALLOWED_ORIGINS from environment: {allowed_origins_list}")
 else:
     # Fallback for local development if VAR is not set or if running locally without .env properly sourced
+    # Ensure these match the origins your frontend is served from during development
     allowed_origins_list = [
-        "https://6000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev",
-        "http://localhost:9002", # Your Next.js dev port from package.json
-        "http://localhost:3000"  # Common React dev port
+        "https://6000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev", "https://9000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev"
     ]
     print(f"Warning: CORS_ALLOWED_ORIGINS environment variable not set. Defaulting to: {allowed_origins_list} for development. Ensure this is set in your Cloud Run environment for deployed services.")
 
@@ -179,6 +178,7 @@ def take_snapshot():
                     time.sleep(0.5)
                     cap.release() # Release and try re-opening
                     cap = cv2.VideoCapture(rtsp_url)
+                    print(cap)
                 
                 if not cap.isOpened():
                     error_msg = f"Could not open video stream after multiple attempts for {rtsp_url} within timeout. Check URL and network accessibility."
