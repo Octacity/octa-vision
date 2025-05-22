@@ -44,7 +44,7 @@ export interface Camera {
   dataAiHint: string;
   processingStatus?: string;
   resolution?: string;
-  snapshotGcsObjectName?: string | null; // Added for fetching signed URLs
+  snapshotGcsObjectName?: string | null; 
 }
 
 interface ChatMessage {
@@ -185,10 +185,10 @@ const CamerasPage: NextPage = () => {
       const querySnapshot = await getDocs(q);
       const fetchedCamerasPromises = querySnapshot.docs.map(async (docSnapshot) => {
         const data = docSnapshot.data();
-        let imageUrl = 'https://placehold.co/600x400.png'; // Default placeholder
+        let imageUrl = 'https://placehold.co/600x400.png'; 
         if (data.snapshotGcsObjectName) {
           try {
-            const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_SNAPSHOT_SERVICE_BASE_URL;
+            const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL;
             if (!baseSnapshotServiceUrl) {
               console.error("Snapshot service base URL is not configured for fetching camera list images.");
             } else {
@@ -216,6 +216,8 @@ const CamerasPage: NextPage = () => {
                   if (resData.status === 'success' && resData.signedUrl) {
                     imageUrl = resData.signedUrl;
                   }
+                } else {
+                    console.error(`Failed to retrieve image for ${data.snapshotGcsObjectName}: ${response.status}`);
                 }
               }
             }
@@ -311,6 +313,8 @@ const CamerasPage: NextPage = () => {
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null);
     setSnapshotResolution(null);
+    setIsLoadingSnapshotUrl(false);
+    setIsProcessingStep2(false);
   };
 
   const handleChatIconClick = (camera: Camera) => {
@@ -409,9 +413,9 @@ const CamerasPage: NextPage = () => {
   const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data) => {
     if (!formStep1.formState.isValid) return;
 
-    setCurrentRtspUrlForSnapshot(data.rtspUrl);
-    setSnapshotGcsObjectName(null); // Reset from previous attempts
-    setDisplayableSnapshotUrl(null);
+    setCurrentRtspUrlForSnapshot(data.rtspUrl); // Store RTSP URL for Step 2
+    setSnapshotGcsObjectName(null); 
+    setDisplayableSnapshotUrl(null); 
     setSnapshotResolution(null);
 
     let sceneDescForStep2 = '';
@@ -423,14 +427,14 @@ const CamerasPage: NextPage = () => {
     }
     formStep2.setValue('sceneDescription', sceneDescForStep2);
     
-    setDrawerStep(2);
+    setDrawerStep(2); // Immediately move to Step 2
   };
 
   useEffect(() => {
     const fetchSnapshot = async () => {
-      if (drawerStep === 2 && currentRtspUrlForSnapshot && !snapshotGcsObjectName && !isProcessingStep2) {
+      if (drawerStep === 2 && currentRtspUrlForSnapshot && !snapshotGcsObjectName && !isProcessingStep2 && !isLoadingSnapshotUrl) {
         setIsProcessingStep2(true);
-        setDisplayableSnapshotUrl(null);
+        setDisplayableSnapshotUrl(null); // Reset previous displayable URL
         setSnapshotResolution(null);
 
         try {
@@ -443,9 +447,9 @@ const CamerasPage: NextPage = () => {
           }
           const idToken = await user.getIdToken();
 
-          const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_SNAPSHOT_SERVICE_BASE_URL;
+          const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL;
           if (!baseSnapshotServiceUrl) {
-            console.error("Snapshot service base URL (NEXT_PUBLIC_SNAPSHOT_SERVICE_BASE_URL) is not configured.");
+            console.error("Snapshot service base URL (NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL) is not configured.");
             throw new Error("Snapshot service is not configured. Please contact support.");
           }
           const cleanBaseUrl = baseSnapshotServiceUrl.endsWith('/') ? baseSnapshotServiceUrl.slice(0, -1) : baseSnapshotServiceUrl;
@@ -483,6 +487,7 @@ const CamerasPage: NextPage = () => {
           if (snapshotData.status === 'success' && snapshotData.gcsObjectName && snapshotData.resolution) {
             setSnapshotGcsObjectName(snapshotData.gcsObjectName);
             setSnapshotResolution(snapshotData.resolution);
+            // The signed URL will be fetched in the next useEffect hook
           } else {
             setSnapshotGcsObjectName(null);
             setSnapshotResolution(null);
@@ -522,14 +527,15 @@ const CamerasPage: NextPage = () => {
                 }
                 const idToken = await user.getIdToken();
 
-                const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_SNAPSHOT_SERVICE_BASE_URL;
+                const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL;
                 if (!baseSnapshotServiceUrl) {
-                    console.error("Snapshot service base URL (NEXT_PUBLIC_SNAPSHOT_SERVICE_BASE_URL) is not configured.");
+                    console.error("Snapshot service base URL (NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL) is not configured.");
                     throw new Error("Snapshot URL retrieval service is not configured.");
                 }
                 const cleanBaseUrl = baseSnapshotServiceUrl.endsWith('/') ? baseSnapshotServiceUrl.slice(0, -1) : baseSnapshotServiceUrl;
                 const retrieveUrlServiceFullUrl = `${cleanBaseUrl}/retrieve-image`;
                 
+                console.log(`Calling retrieve image service at: ${retrieveUrlServiceFullUrl} for GCS Object: ${snapshotGcsObjectName}`);
                 const response = await fetch(retrieveUrlServiceFullUrl, {
                     method: 'POST',
                     headers: { 
@@ -579,6 +585,7 @@ const CamerasPage: NextPage = () => {
   const handleStep2Back = () => {
     setDrawerStep(1);
     setIsProcessingStep2(false); 
+    setIsLoadingSnapshotUrl(false);
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
@@ -653,10 +660,7 @@ const CamerasPage: NextPage = () => {
             const orgData = orgDocSnap.data();
             if (orgData.orgDefaultServerId) {
                 serverToUseId = orgData.orgDefaultServerId;
-                console.log("Using Organization Default Server ID:", serverToUseId);
             }
-        } else {
-            console.warn(`Organization document ${currentOrgIdParam} not found.`);
         }
 
         if (serverToUseId) {
@@ -666,39 +670,22 @@ const CamerasPage: NextPage = () => {
                 const serverData = serverDocSnap.data();
                 if (serverData.status === 'online') {
                     return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
-                } else {
-                    console.warn(`Organization default server ${serverData.name} (${serverToUseId}) is not online. Status: ${serverData.status}. Falling back.`);
-                    serverToUseId = null;
-                }
-            } else {
-                console.warn(`Server document for Org Default ID ${serverToUseId} not found. Falling back.`);
-                serverToUseId = null;
-            }
-        }
-
-        if (!serverToUseId) {
-            console.log("Organization default server not set, not found, or not online. Looking for System Default Server...");
-            const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
-            const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
-            if (!systemDefaultSnapshot.empty) {
-                const systemDefaultServerData = systemDefaultSnapshot.docs[0].data();
-                if (systemDefaultServerData.status === 'online') {
-                    console.log("Using System Default Server:", systemDefaultSnapshot.docs[0].id, `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`);
-                    return `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`;
-                } else {
-                    console.warn(`System Default Server ${systemDefaultServerData.name} is not online. Status: ${systemDefaultServerData.status}. No server URL will be assigned.`);
                 }
             }
         }
-        console.warn("No suitable (Organization or System) Default Server found or active. No server URL will be assigned.");
+        // Fallback to system default
+        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
+        const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
+        if (!systemDefaultSnapshot.empty) {
+            const systemDefaultServerData = systemDefaultSnapshot.docs[0].data();
+            if (systemDefaultServerData.status === 'online') {
+                return `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`;
+            }
+        }
         return null;
     } catch (error) {
         console.error("Error fetching effective server URL:", error);
-        toast({
-            variant: "destructive",
-            title: "Server Fetch Error",
-            description: "Could not fetch default server information.",
-        });
+        toast({ variant: "destructive", title: "Server Fetch Error", description: "Could not fetch default server information."});
         return null;
     }
   }, [toast]);
@@ -1583,3 +1570,4 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
