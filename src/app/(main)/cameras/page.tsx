@@ -389,7 +389,6 @@ const CamerasPage: NextPage = () => {
         throw new Error("Snapshot service is not configured. Please contact support.");
       }
       console.log(`Calling snapshot service at: ${snapshotServiceUrl} for RTSP: ${data.rtspUrl}`);
-
       const snapshotResponse = await fetch(snapshotServiceUrl, {
         method: 'POST',
         headers: {
