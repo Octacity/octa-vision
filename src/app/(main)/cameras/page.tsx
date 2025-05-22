@@ -34,14 +34,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import { useToast } from '@/hooks/use-toast';
 import { generateGroupAlertEvents } from '@/ai/flows/generate-group-alert-events';
+import { describeImage } from '@/ai/flows/describe-image-flow'; // Added import
 import { useLanguage } from '@/contexts/LanguageContext';
-import type { Group } from '@/app/(main)/groups/page'; // Updated import path
+import type { Group } from '@/app/(main)/groups/page';
 
 
 export interface Camera {
   id: string;
   cameraName: string;
-  imageUrl: string;
+  imageUrl: string; // This will hold the GCS signed URL for display
   dataAiHint: string;
   processingStatus?: string;
   resolution?: string | null;
@@ -106,13 +107,14 @@ const CamerasPage: NextPage = () => {
   const [drawerStep, setDrawerStep] = useState(1);
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
-  const [isProcessingStep2, setIsProcessingStep2] = useState(false);
-
+  
+  const [isProcessingStep1, setIsProcessingStep1] = useState(false); // Renamed from isProcessingStep2
   const [currentRtspUrlForSnapshot, setCurrentRtspUrlForSnapshot] = useState<string | null>(null);
   const [snapshotGcsObjectName, setSnapshotGcsObjectName] = useState<string | null>(null);
   const [displayableSnapshotUrl, setDisplayableSnapshotUrl] = useState<string | null>(null);
   const [snapshotResolution, setSnapshotResolution] = useState<string | null>(null);
   const [isLoadingSnapshotUrl, setIsLoadingSnapshotUrl] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
 
   const [selectedCameraForChat, setSelectedCameraForChat] = useState<Camera | null>(null);
@@ -169,22 +171,18 @@ const CamerasPage: NextPage = () => {
       const querySnapshot = await getDocs(q);
       const fetchedCamerasPromises = querySnapshot.docs.map(async (docSnapshot) => {
         const data = docSnapshot.data();
-        let imageUrl = 'https://placehold.co/600x400.png';
+        let imageUrl = 'https://placehold.co/600x400.png'; // Default placeholder
         if (data.snapshotGcsObjectName) {
           try {
-            const retrieveSnapshotUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
-            if (!retrieveSnapshotUrl) {
-              console.error("Retrieve snapshot service URL is not configured (NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL).");
+            const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
+            if (!retrieveSnapshotServiceUrl) {
+              console.error("Retrieve snapshot service URL is not configured.");
             } else {
               const auth = getAuth();
               const user = auth.currentUser;
-              let idToken = null;
               if (user) {
-                idToken = await user.getIdToken();
-              }
-
-              if(idToken) {
-                const response = await fetch(retrieveSnapshotUrl, {
+                const idToken = await user.getIdToken();
+                const response = await fetch(retrieveSnapshotServiceUrl, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -213,7 +211,7 @@ const CamerasPage: NextPage = () => {
           id: docSnapshot.id,
           cameraName: data.cameraName,
           imageUrl: imageUrl,
-          dataAiHint: data.aiDetectionTarget || 'camera security',
+          dataAiHint: data.aiDetectionTarget || 'camera security', // Use a relevant field from config or default
           processingStatus: data.processingStatus,
           resolution: data.resolution,
           snapshotGcsObjectName: data.snapshotGcsObjectName,
@@ -227,6 +225,7 @@ const CamerasPage: NextPage = () => {
     }
     setIsLoadingCameras(false);
   };
+
 
   const fetchGroupsForOrg = async (currentOrgId: string) => {
     try {
@@ -297,8 +296,9 @@ const CamerasPage: NextPage = () => {
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null);
     setSnapshotResolution(null);
+    setIsProcessingStep1(false);
     setIsLoadingSnapshotUrl(false);
-    setIsProcessingStep2(false);
+    setIsGeneratingDescription(false);
   };
 
   const handleChatIconClick = (camera: Camera) => {
@@ -335,8 +335,9 @@ const CamerasPage: NextPage = () => {
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null);
     setSnapshotResolution(null);
-    setIsProcessingStep2(false);
+    setIsProcessingStep1(false);
     setIsLoadingSnapshotUrl(false);
+    setIsGeneratingDescription(false);
   };
 
   const handleGroupChange = (value: string) => {
@@ -398,9 +399,13 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
 
     setCurrentRtspUrlForSnapshot(data.rtspUrl);
+    // Reset snapshot related states for the new RTSP URL
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null);
     setSnapshotResolution(null);
+    setIsLoadingSnapshotUrl(false);
+    setIsGeneratingDescription(false);
+
 
     let sceneDescForStep2 = '';
     if (data.group && data.group !== 'add_new_group') {
@@ -414,156 +419,140 @@ const CamerasPage: NextPage = () => {
     setDrawerStep(2);
   };
 
+  // useEffect to fetch snapshot and AI description when drawerStep is 2 and RTSP URL is set
   useEffect(() => {
-    const fetchSnapshotAndResolution = async () => {
-      if (drawerStep === 2 && currentRtspUrlForSnapshot && !snapshotGcsObjectName && !isProcessingStep2 && !isLoadingSnapshotUrl) {
-        setIsProcessingStep2(true);
+    const fetchSnapshotAndDescription = async () => {
+      if (drawerStep === 2 && currentRtspUrlForSnapshot && !snapshotGcsObjectName && !isProcessingStep1) {
+        setIsProcessingStep1(true); // Indicates overall processing for Step 2
         setDisplayableSnapshotUrl(null);
         setSnapshotResolution(null);
+        setSnapshotGcsObjectName(null);
 
         try {
           const auth = getAuth();
           const user = auth.currentUser;
           if (!user) {
             toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in." });
-            setIsProcessingStep2(false);
+            setIsProcessingStep1(false);
             return;
           }
           const idToken = await user.getIdToken();
-
           const takeSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_URL;
           if (!takeSnapshotServiceUrl) {
-            console.error("Snapshot service URL is not configured (NEXT_PUBLIC_TAKE_SNAPSHOT_URL).");
+            console.error("Snapshot service URL is not configured.");
             throw new Error("Snapshot service is not configured. Please contact support.");
           }
 
           console.log(`Calling snapshot service at: ${takeSnapshotServiceUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
-
           const snapshotResponse = await fetch(takeSnapshotServiceUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
             body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
+            signal: AbortSignal.timeout(30000) // 30-second timeout
           });
 
-          const responseText = await snapshotResponse.text();
           let snapshotData;
-          let errorMessageText = `Failed to get snapshot (status: ${snapshotResponse.status})`;
-
           try {
-            snapshotData = JSON.parse(responseText);
+            snapshotData = await snapshotResponse.json();
           } catch (e) {
+            const responseText = await snapshotResponse.text();
             console.error("Failed to parse snapshot service response as JSON:", responseText, e);
-            throw new Error(`${errorMessageText}. Invalid response from service.`);
+            throw new Error(`Snapshot service returned an invalid response format. Status: ${snapshotResponse.status}. Check service logs.`);
           }
 
           if (!snapshotResponse.ok) {
-            console.error("Snapshot API Error from frontend:", snapshotData.message || snapshotData.error || errorMessageText);
-            errorMessageText = snapshotData.message || snapshotData.error || errorMessageText;
+            const errorMessageText = snapshotData.message || snapshotData.error || `Failed to get snapshot (status: ${snapshotResponse.status})`;
+            console.error("Snapshot API Error:", errorMessageText);
             throw new Error(errorMessageText);
           }
 
           if (snapshotData.status === 'success' && snapshotData.gcsObjectName && snapshotData.resolution) {
             setSnapshotGcsObjectName(snapshotData.gcsObjectName);
             setSnapshotResolution(snapshotData.resolution);
+            // Now fetch the signed URL for display
+            setIsLoadingSnapshotUrl(true);
+            const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
+            if (!retrieveSnapshotServiceUrl) {
+              console.error("Retrieve snapshot service URL is not configured.");
+              throw new Error("Retrieve snapshot URL service is not configured.");
+            }
+
+            const signedUrlResponse = await fetch(retrieveSnapshotServiceUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+              body: JSON.stringify({ gcsObjectName: snapshotData.gcsObjectName }),
+              signal: AbortSignal.timeout(15000)
+            });
+            const signedUrlData = await signedUrlResponse.json();
+            if (signedUrlResponse.ok && signedUrlData.status === 'success' && signedUrlData.signedUrl) {
+              setDisplayableSnapshotUrl(signedUrlData.signedUrl);
+              // After getting the displayable URL, fetch the image data for AI description
+              setIsGeneratingDescription(true);
+              try {
+                const imageResponse = await fetch(signedUrlData.signedUrl);
+                if (!imageResponse.ok) throw new Error('Failed to fetch image for AI description');
+                const imageBlob = await imageResponse.blob();
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                  const base64data = reader.result as string;
+                  try {
+                    const aiDescriptionResponse = await describeImage({ imageDataUri: base64data, language });
+                    if (aiDescriptionResponse && aiDescriptionResponse.description && !aiDescriptionResponse.description.startsWith("Error:")) {
+                      formStep2.setValue('sceneDescription', aiDescriptionResponse.description);
+                    } else {
+                      toast({ variant: "destructive", title: "AI Description Failed", description: aiDescriptionResponse.description || "Could not generate scene description." });
+                    }
+                  } catch (aiError: any) {
+                     toast({ variant: "destructive", title: "AI Description Error", description: aiError.message || "Failed to get AI description." });
+                  } finally {
+                    setIsGeneratingDescription(false);
+                  }
+                };
+                reader.readAsDataURL(imageBlob);
+              } catch (fetchError: any) {
+                console.error("Error fetching image for AI:", fetchError);
+                toast({ variant: "destructive", title: "Image Fetch Error", description: "Could not fetch snapshot for AI analysis." });
+                setIsGeneratingDescription(false);
+              }
+            } else {
+              throw new Error(signedUrlData.message || "Failed to get signed URL from service.");
+            }
+            setIsLoadingSnapshotUrl(false);
           } else {
-            setSnapshotGcsObjectName(null);
-            setSnapshotResolution(null);
-            throw new Error(snapshotData.message || "Snapshot API call succeeded but returned invalid data (missing GCS object name or resolution).");
+            throw new Error(snapshotData.message || "Snapshot API call succeeded but returned invalid data.");
           }
         } catch (error: any) {
-          console.error("Error fetching snapshot in Step 2:", error);
+          console.error("Error fetching snapshot/description in Step 2:", error);
           toast({
             variant: "destructive",
-            title: "Snapshot Error",
-            description: error.message || "Could not retrieve camera snapshot. Check RTSP URL and network connectivity.",
+            title: "Snapshot/Description Error",
+            description: error.message || "Could not retrieve camera snapshot or generate description.",
           });
           setSnapshotGcsObjectName(null);
           setSnapshotResolution(null);
+          setDisplayableSnapshotUrl(null);
+          setIsLoadingSnapshotUrl(false);
+          setIsGeneratingDescription(false);
         } finally {
-          setIsProcessingStep2(false);
+          setIsProcessingStep1(false);
         }
       }
     };
-
-    fetchSnapshotAndResolution();
+    fetchSnapshotAndDescription();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerStep, currentRtspUrlForSnapshot, toast]);
-
-
-  useEffect(() => {
-    const fetchDisplayableSnapshotUrl = async () => {
-        if (drawerStep === 2 && snapshotGcsObjectName && !displayableSnapshotUrl && !isLoadingSnapshotUrl && !isProcessingStep2) {
-            setIsLoadingSnapshotUrl(true);
-            try {
-                const auth = getAuth();
-                const user = auth.currentUser;
-                if (!user) {
-                    toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to retrieve image URL." });
-                    setIsLoadingSnapshotUrl(false);
-                    return;
-                }
-                const idToken = await user.getIdToken();
-
-                const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
-                if (!retrieveSnapshotServiceUrl) {
-                    console.error("Retrieve snapshot service URL is not configured (NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL).");
-                    throw new Error("Snapshot URL retrieval service is not configured.");
-                }
-
-                console.log(`Calling retrieve image service at: ${retrieveSnapshotServiceUrl} for GCS Object: ${snapshotGcsObjectName}`);
-                const response = await fetch(retrieveSnapshotServiceUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${idToken}`
-                     },
-                    body: JSON.stringify({ gcsObjectName: snapshotGcsObjectName })
-                });
-
-                const responseText = await response.text();
-                let responseData;
-                try {
-                    responseData = JSON.parse(responseText);
-                } catch (e) {
-                    console.error("Failed to parse retrieve-image service response as JSON:", responseText, e);
-                    throw new Error(`Invalid response from image retrieval service. Status: ${response.status}`);
-                }
-
-                if (!response.ok) {
-                    throw new Error(responseData.message || `Failed to retrieve snapshot URL (status: ${response.status})`);
-                }
-
-                if (responseData.status === 'success' && responseData.signedUrl) {
-                    setDisplayableSnapshotUrl(responseData.signedUrl);
-                } else {
-                    throw new Error(responseData.message || "Failed to get signed URL from service.");
-                }
-            } catch (error: any) {
-                console.error("Error retrieving displayable snapshot URL:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Image Load Error",
-                    description: error.message || "Could not load snapshot image.",
-                });
-                setDisplayableSnapshotUrl(null);
-            } finally {
-                setIsLoadingSnapshotUrl(false);
-            }
-        }
-    };
-    fetchDisplayableSnapshotUrl();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerStep, snapshotGcsObjectName, displayableSnapshotUrl, isLoadingSnapshotUrl, isProcessingStep2, toast]);
-
+  }, [drawerStep, currentRtspUrlForSnapshot]);
 
 
   const handleStep2Back = () => {
     setDrawerStep(1);
-    setIsProcessingStep2(false);
+    setIsProcessingStep1(false);
     setIsLoadingSnapshotUrl(false);
+    setIsGeneratingDescription(false);
+    // Optionally reset snapshot states if you want Step 1 to re-fetch if RTSP changes
+    // setCurrentRtspUrlForSnapshot(null); 
+    // setSnapshotGcsObjectName(null);
+    // setDisplayableSnapshotUrl(null);
+    // setSnapshotResolution(null);
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
@@ -607,8 +596,8 @@ const CamerasPage: NextPage = () => {
         if(step1Values.groupDefaultNumFrames) finalNumFrames = step1Values.groupDefaultNumFrames;
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
-    } else {
-        finalCameraContext = currentSceneDesc || '';
+    } else { // No group selected, use currentSceneDesc as basis if available
+        finalCameraContext = currentSceneDesc || ''; // Ensure finalCameraContext gets the description from step2
     }
 
     formStep3.setValue('cameraSceneContext', finalCameraContext);
@@ -636,7 +625,7 @@ const CamerasPage: NextPage = () => {
 
         if (orgDocSnap.exists()) {
             const orgData = orgDocSnap.data();
-            if (orgData.orgDefaultServerId) {
+            if (orgData.orgDefaultServerId) { // Use new field name
                 serverToUseId = orgData.orgDefaultServerId;
             }
         }
@@ -652,7 +641,8 @@ const CamerasPage: NextPage = () => {
             }
         }
 
-        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
+        // Fallback to System Default Server
+        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1)); // Use new field name
         const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
         if (!systemDefaultSnapshot.empty) {
             const systemDefaultServerData = systemDefaultSnapshot.docs[0].data();
@@ -660,7 +650,7 @@ const CamerasPage: NextPage = () => {
                 return `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`;
             }
         }
-        return null;
+        return null; // No suitable server found
     } catch (error) {
         console.error("Error fetching effective server URL:", error);
         toast({ variant: "destructive", title: "Server Fetch Error", description: "Could not fetch default server information."});
@@ -680,7 +670,7 @@ const CamerasPage: NextPage = () => {
     }
 
     const step1Data = formStep1.getValues();
-    const step2Data = formStep2.getValues();
+    const step2Data = formStep2.getValues(); // sceneDescription is here
 
     let effectiveServerUrlValue: string | null = null;
     try {
@@ -729,18 +719,18 @@ const CamerasPage: NextPage = () => {
       updatedAt: now,
       url: step1Data.rtspUrl,
       protocol: "rtsp",
-      activeVSSId: null,
+      activeVSSId: null, // activeVSSId will be set after admin approval & stream start
       historicalVSSIds: [],
       processingStatus: "waiting_for_approval",
       currentConfigId: configDocRef.id,
-      snapshotGcsObjectName: snapshotGcsObjectName,
-      resolution: snapshotResolution,
+      snapshotGcsObjectName: snapshotGcsObjectName, // Save the GCS object name
+      resolution: snapshotResolution, // Save the resolution
     });
 
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: effectiveServerUrlValue,
+      serverIpAddress: effectiveServerUrlValue, // Set based on default server logic
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -751,15 +741,16 @@ const CamerasPage: NextPage = () => {
         value: parseFloat(configData.videoOverlapValue),
         unit: configData.videoOverlapUnit,
       },
-      cameraSceneContext: configData.cameraSceneContext,
-      aiDetectionTarget: configData.aiDetectionTarget,
-      alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae),
-      sceneDescription: step2Data.sceneDescription,
+      cameraSceneContext: configData.cameraSceneContext, // From Step 3 form
+      aiDetectionTarget: configData.aiDetectionTarget, // From Step 3 form
+      alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae), // From Step 3 form
+      sceneDescription: step2Data.sceneDescription, // From Step 2 form (possibly AI generated)
       userId: currentUser.uid,
-      previousConfigId: null,
+      previousConfigId: null, // First config
     });
 
-    batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
+    // No need to batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
+    // as currentConfigId is already included in the initial batch.set for cameraDocRef.
 
 
     if (finalGroupId) {
@@ -784,7 +775,7 @@ const CamerasPage: NextPage = () => {
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: displayableSnapshotUrl || 'https://placehold.co/600x400.png',
+        imageUrl: displayableSnapshotUrl || 'https://placehold.co/600x400.png', // Use the temp signed URL for immediate display
         dataAiHint: configData.aiDetectionTarget || 'newly added camera',
         processingStatus: "waiting_for_approval",
         resolution: snapshotResolution || undefined,
@@ -817,7 +808,9 @@ const CamerasPage: NextPage = () => {
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate AI response
+    // Replace this with actual AI call if needed
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
       sender: 'ai',
@@ -828,6 +821,7 @@ const CamerasPage: NextPage = () => {
     setIsSendingMessage(false);
   };
 
+  // Scroll to bottom of chat messages
   useEffect(() => {
     const scrollElement = chatScrollAreaRef.current;
     if (scrollElement) {
@@ -1054,7 +1048,7 @@ const CamerasPage: NextPage = () => {
             <Form {...formStep2}>
                 <form id="add-camera-form-step2" onSubmit={formStep2.handleSubmit(onSubmitStep2)} className="space-y-6">
 
-                {isProcessingStep2 || isLoadingSnapshotUrl ? (
+                {isProcessingStep1 || isLoadingSnapshotUrl ? (
                     <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
                         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                         <p className="text-sm text-muted-foreground">
@@ -1064,13 +1058,13 @@ const CamerasPage: NextPage = () => {
                     </div>
                 ) : displayableSnapshotUrl ? (
                     <Image
-                    src={displayableSnapshotUrl}
+                    src={displayableSnapshotUrl} // Use the GCS signed URL
                     alt="Camera Snapshot"
                     width={400}
                     height={300}
                     className="rounded-md border object-cover aspect-video w-full"
                     data-ai-hint="camera snapshot"
-                    unoptimized
+                    unoptimized // Important for GCS signed URLs which may not have cache headers
                     />
                 ) : (
                      <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
@@ -1088,6 +1082,7 @@ const CamerasPage: NextPage = () => {
                             <FormLabel className="flex items-center">
                                 <Wand2 className="w-4 h-4 mr-2 text-muted-foreground" />
                                 Explain the scene?
+                                {isGeneratingDescription && <Loader2 className="h-4 w-4 animate-spin ml-2 text-primary" />}
                             </FormLabel>
                             <FormControl>
                                 <div className="relative">
@@ -1102,6 +1097,7 @@ const CamerasPage: NextPage = () => {
                                 </Button>
                                 </div>
                             </FormControl>
+                             {isGeneratingDescription && <p className="text-xs text-muted-foreground mt-1">AI is generating a description...</p>}
                             <FormMessage />
                         </FormItem>
                     )}
@@ -1294,6 +1290,7 @@ const CamerasPage: NextPage = () => {
     } else if (drawerType === 'chatCamera' && selectedCameraForChat) {
         return (
             <div className="flex flex-col h-full p-4 space-y-4" ref={chatScrollAreaRef}>
+                {/* Chat messages rendering */}
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
                     <div className="flex items-end space-x-2 max-w-[80%]">
@@ -1351,9 +1348,9 @@ const CamerasPage: NextPage = () => {
                 <Button
                     type="submit"
                     form="add-camera-form-step1"
-                    disabled={formStep1.formState.isSubmitting || !formStep1.formState.isValid }
+                    disabled={formStep1.formState.isSubmitting || !formStep1.formState.isValid || isProcessingStep1}
                 >
-                    {formStep1.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {isProcessingStep1 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Next
                 </Button>
             </div>
@@ -1361,13 +1358,13 @@ const CamerasPage: NextPage = () => {
         } else if (drawerStep === 2) {
         return (
             <div className="flex justify-between p-4 border-t">
-                <Button variant="outline" onClick={handleStep2Back} disabled={isProcessingStep2 || isLoadingSnapshotUrl}>Back</Button>
+                <Button variant="outline" onClick={handleStep2Back} disabled={isProcessingStep1 || isLoadingSnapshotUrl || isGeneratingDescription}>Back</Button>
                 <Button
                     type="submit"
                     form="add-camera-form-step2"
-                    disabled={isProcessingStep2 || isLoadingSnapshotUrl || formStep2.formState.isSubmitting || !formStep2.formState.isValid}
+                    disabled={isProcessingStep1 || isLoadingSnapshotUrl || isGeneratingDescription || formStep2.formState.isSubmitting || !formStep2.formState.isValid}
                 >
-                    {formStep2.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {(formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Next
                 </Button>
             </div>
