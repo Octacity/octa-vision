@@ -15,7 +15,7 @@ COPY requirements.txt .
 # --no-cache-dir reduces image size.
 # --system ensures packages are installed system-wide in the container,
 # which is fine for this single-application container.
-RUN pip install --no-cache-dir --system -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code (main.py and any other .py files)
 # into the container at /app

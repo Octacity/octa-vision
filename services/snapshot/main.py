@@ -55,6 +55,7 @@ logger.info("Snapshot Service: Flask-CORS initialized.")
 # This is crucial for Cloud Run/Functions where the environment might persist.
 SERVICE_ACCOUNT_KEY_PATH = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
 
+logger.info(f"Snapshot Service: GOOGLE_APPLICATION_CREDENTIALS environment variable value: {SERVICE_ACCOUNT_KEY_PATH}")
 try:
     if not firebase_admin._apps:
         logger.info("Snapshot Service: Attempting to initialize Firebase Admin SDK...")
@@ -111,9 +112,9 @@ def verify_token_from_headers(req_headers):
 def take_snapshot_route():
     logger.info(f"Snapshot Service: Received request to /take-snapshot, method: {request.method}")
 
-    # Flask-CORS handles OPTIONS preflight requests automatically if configured for the route.
-    # No need for an explicit 'if request.method == "OPTIONS": return ...' block here.
-
+    # Explicitly handle OPTIONS preflight requests for debugging
+    if request.method == 'OPTIONS':
+        return app.make_default_options_response()
     if request.method == 'POST':
         decoded_token, token_error = verify_token_from_headers(request.headers)
         if token_error:
@@ -203,8 +204,9 @@ def take_snapshot_route():
 def retrieve_snapshot_route():
     logger.info(f"Snapshot Service: Received request to /retrieve-snapshot, method: {request.method}")
 
-    # Flask-CORS handles OPTIONS preflight requests automatically.
-    
+    # Explicitly handle OPTIONS preflight requests for debugging
+    if request.method == 'OPTIONS':
+        return app.make_default_options_response()
     if request.method == 'POST':
         decoded_token, token_error = verify_token_from_headers(request.headers)
         if token_error:

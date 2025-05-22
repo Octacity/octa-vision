@@ -446,7 +446,6 @@ const CamerasPage: NextPage = () => {
               'Authorization': `Bearer ${idToken}`
             },
             body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
-            signal: AbortSignal.timeout(30000)
           });
 
           const responseText = await snapshotResponse.text();

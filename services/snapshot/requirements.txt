@@ -1,6 +1,6 @@
 Flask>=2.0
 Flask-CORS>=3.0
-opencv-python-headless>=4.0
+opencv-python-headless==4.7.0.68
 numpy<2 # Explicitly less than 2.0 to avoid recent numpy 2.0 ABI issues with older opencv builds
 firebase-admin>=5.0
 google-cloud-storage>=2.0.0
