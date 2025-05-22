@@ -122,7 +122,7 @@ const CamerasPage: NextPage = () => {
   const [drawerStep, setDrawerStep] = useState(1);
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
-  const [isProcessingStep2, setIsProcessingStep2] = useState(false); 
+  const [isProcessingStep2, setIsProcessingStep2] = useState(false); // For snapshot capture loading
   
   const [snapshotGcsObjectName, setSnapshotGcsObjectName] = useState<string | null>(null);
   const [displayableSnapshotUrl, setDisplayableSnapshotUrl] = useState<string | null>(null);
@@ -193,7 +193,7 @@ const CamerasPage: NextPage = () => {
               console.error("Snapshot service base URL is not configured for fetching camera list images.");
             } else {
               const cleanBaseUrl = baseSnapshotServiceUrl.endsWith('/') ? baseSnapshotServiceUrl.slice(0, -1) : baseSnapshotServiceUrl;
-              const retrieveUrl = `${cleanBaseUrl}/retrieve-image`;
+              const retrieveUrl = `${cleanBaseUrl}/retrieve-snapshot`; // Changed from /retrieve-image
               
               const auth = getAuth();
               const user = auth.currentUser;
@@ -414,6 +414,7 @@ const CamerasPage: NextPage = () => {
     if (!formStep1.formState.isValid) return;
 
     setCurrentRtspUrlForSnapshot(data.rtspUrl); // Store RTSP URL for Step 2
+    // Reset previous snapshot states
     setSnapshotGcsObjectName(null); 
     setDisplayableSnapshotUrl(null); 
     setSnapshotResolution(null);
@@ -427,14 +428,14 @@ const CamerasPage: NextPage = () => {
     }
     formStep2.setValue('sceneDescription', sceneDescForStep2);
     
-    setDrawerStep(2); // Immediately move to Step 2
+    setDrawerStep(2); // Immediately move to Step 2, snapshot fetching will happen in useEffect
   };
 
   useEffect(() => {
-    const fetchSnapshot = async () => {
+    const fetchSnapshotAndResolution = async () => {
       if (drawerStep === 2 && currentRtspUrlForSnapshot && !snapshotGcsObjectName && !isProcessingStep2 && !isLoadingSnapshotUrl) {
-        setIsProcessingStep2(true);
-        setDisplayableSnapshotUrl(null); // Reset previous displayable URL
+        setIsProcessingStep2(true); // Start processing indicator
+        setDisplayableSnapshotUrl(null); 
         setSnapshotResolution(null);
 
         try {
@@ -487,7 +488,7 @@ const CamerasPage: NextPage = () => {
           if (snapshotData.status === 'success' && snapshotData.gcsObjectName && snapshotData.resolution) {
             setSnapshotGcsObjectName(snapshotData.gcsObjectName);
             setSnapshotResolution(snapshotData.resolution);
-            // The signed URL will be fetched in the next useEffect hook
+            // The signed URL will be fetched in the next useEffect hook based on gcsObjectName
           } else {
             setSnapshotGcsObjectName(null);
             setSnapshotResolution(null);
@@ -503,18 +504,20 @@ const CamerasPage: NextPage = () => {
           setSnapshotGcsObjectName(null);
           setSnapshotResolution(null);
         } finally {
-          setIsProcessingStep2(false);
+          setIsProcessingStep2(false); // End processing indicator
         }
       }
     };
 
-    fetchSnapshot();
+    fetchSnapshotAndResolution();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerStep, currentRtspUrlForSnapshot, toast]);
+  }, [drawerStep, currentRtspUrlForSnapshot, toast]); // Removed snapshotGcsObjectName from dependencies to avoid loop with setSnapshotGcsObjectName
 
 
   useEffect(() => {
     const fetchDisplayableSnapshotUrl = async () => {
+        // Only fetch if we are in step 2, have a GCS object name, don't have a displayable URL yet,
+        // and not currently loading/processing something else.
         if (drawerStep === 2 && snapshotGcsObjectName && !displayableSnapshotUrl && !isLoadingSnapshotUrl && !isProcessingStep2) {
             setIsLoadingSnapshotUrl(true);
             try {
@@ -533,7 +536,7 @@ const CamerasPage: NextPage = () => {
                     throw new Error("Snapshot URL retrieval service is not configured.");
                 }
                 const cleanBaseUrl = baseSnapshotServiceUrl.endsWith('/') ? baseSnapshotServiceUrl.slice(0, -1) : baseSnapshotServiceUrl;
-                const retrieveUrlServiceFullUrl = `${cleanBaseUrl}/retrieve-image`;
+                const retrieveUrlServiceFullUrl = `${cleanBaseUrl}/retrieve-snapshot`; // Changed from /retrieve-image
                 
                 console.log(`Calling retrieve image service at: ${retrieveUrlServiceFullUrl} for GCS Object: ${snapshotGcsObjectName}`);
                 const response = await fetch(retrieveUrlServiceFullUrl, {
@@ -586,6 +589,7 @@ const CamerasPage: NextPage = () => {
     setDrawerStep(1);
     setIsProcessingStep2(false); 
     setIsLoadingSnapshotUrl(false);
+    // Do not reset snapshotGcsObjectName here, so if user goes back and forth, it doesn't re-fetch unless RTSP changes
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data) => {
@@ -630,6 +634,8 @@ const CamerasPage: NextPage = () => {
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
     } else {
+        // No group selected, and not adding new group. Use step2 sceneDescription for context.
+        // Other AI/Alert/Video params will use default values or be blank.
         finalCameraContext = currentSceneDesc || ''; 
     }
 
@@ -652,17 +658,19 @@ const CamerasPage: NextPage = () => {
   const getEffectiveServerUrl = useCallback(async (currentOrgIdParam: string): Promise<string | null> => {
     if (!currentOrgIdParam) return null;
     try {
+        // Fetch organization document
         const orgDocRef = doc(db, 'organizations', currentOrgIdParam);
         const orgDocSnap = await getDoc(orgDocRef);
         let serverToUseId: string | null = null;
 
         if (orgDocSnap.exists()) {
             const orgData = orgDocSnap.data();
-            if (orgData.orgDefaultServerId) {
+            if (orgData.orgDefaultServerId) { // Updated field name
                 serverToUseId = orgData.orgDefaultServerId;
             }
         }
 
+        // If org has a default server, try to use it
         if (serverToUseId) {
             const serverDocRef = doc(db, 'servers', serverToUseId);
             const serverDocSnap = await getDoc(serverDocRef);
@@ -673,7 +681,8 @@ const CamerasPage: NextPage = () => {
                 }
             }
         }
-        // Fallback to system default
+
+        // Fallback to system default if org default not found or not online
         const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
         const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
         if (!systemDefaultSnapshot.empty) {
@@ -682,7 +691,7 @@ const CamerasPage: NextPage = () => {
                 return `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`;
             }
         }
-        return null;
+        return null; // No suitable server found
     } catch (error) {
         console.error("Error fetching effective server URL:", error);
         toast({ variant: "destructive", title: "Server Fetch Error", description: "Could not fetch default server information."});
@@ -708,7 +717,7 @@ const CamerasPage: NextPage = () => {
     try {
         effectiveServerUrlValue = await getEffectiveServerUrl(orgId);
     } catch (error) {
-        // Error already toasted
+        // Error already toasted by getEffectiveServerUrl
     }
 
     const batch = writeBatch(db);
@@ -723,7 +732,7 @@ const CamerasPage: NextPage = () => {
             orgId: orgId,
             userId: currentUser.uid,
             cameras: [],
-            videos: [],
+            videos: [], // Initialize videos array
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
@@ -1570,4 +1579,5 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
 
