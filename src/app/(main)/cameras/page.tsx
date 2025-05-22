@@ -401,27 +401,20 @@ const CamerasPage: NextPage = () => {
           }
 
           const idToken = await user.getIdToken();
-          const baseSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL;
+          const snapshotServiceFullUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL;
 
-          if (!baseSnapshotServiceUrl) {
+          if (!snapshotServiceFullUrl) {
             console.error("Snapshot service URL (NEXT_PUBLIC_TAKE_SNAPSHOT_CLOUD_RUN_URL) is not configured.");
             throw new Error("Snapshot service is not configured. Please contact support.");
           }
-          const cleanBaseUrl = baseSnapshotServiceUrl.endsWith('/') ? baseSnapshotServiceUrl.slice(0, -1) : baseSnapshotServiceUrl;
-          const snapshotServiceFullUrl = `${cleanBaseUrl}/take-snapshot`;
-          
+
           console.log(`Calling snapshot service at: ${snapshotServiceFullUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
 
           const snapshotResponse = await fetch(snapshotServiceFullUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
-            signal: AbortSignal.timeout(30000)
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+            body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot })
           });
-
           const responseText = await snapshotResponse.text();
           let snapshotData;
           let errorMessageText = `Failed to get snapshot (status: ${snapshotResponse.status})`;
