@@ -3,7 +3,7 @@ from firebase_functions import https_fn
 import firebase_admin
 from auth_helper import verify_firebase_token, get_firestore_client
 from firebase_admin import credentials, auth, firestore
-import time
+from suggest_apis import suggest_scene_description, suggest_detection_targets, suggest_alert_events
 import os
 
 

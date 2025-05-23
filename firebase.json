@@ -16,7 +16,8 @@
         "__pycache__/"
       ],
       "codebase": "default",
-      " облигацияs": [
+      "gen": "2",
+      "triggers": [
         {
           "functionId": "helloworld",
           "entryPoint": "main.helloworld",
