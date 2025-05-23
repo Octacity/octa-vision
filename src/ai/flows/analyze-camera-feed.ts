@@ -29,31 +29,30 @@ const AnalyzeCameraFeedOutputSchema = z.object({
 export type AnalyzeCameraFeedOutput = z.infer<typeof AnalyzeCameraFeedOutputSchema>;
 
 export async function analyzeCameraFeed(input: AnalyzeCameraFeedInput): Promise<AnalyzeCameraFeedOutput> {
-  return analyzeCameraFeedFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'analyzeCameraFeedPrompt',
-  input: {
-    schema: AnalyzeCameraFeedInputSchema, // Use the main input schema
-  },
-  output: {
-    schema: AnalyzeCameraFeedOutputSchema, // Use the main output schema
-  },
-  prompt: `You are an AI agent specializing in analyzing security camera footage. You will use the camera feed and the user-provided prompt to determine if the event described in the prompt is detected in the camera feed. If the event is detected, set eventDetected to true and provide an appropriate alert message. If the event is not detected, set eventDetected to false and provide a message indicating that the event was not detected. Respond in {{language}}.
+  const prompt = ai.definePrompt({
+    name: 'analyzeCameraFeedPrompt_local',
+    input: {
+      schema: AnalyzeCameraFeedInputSchema,
+    },
+    output: {
+      schema: AnalyzeCameraFeedOutputSchema,
+    },
+    prompt: `You are an AI agent specializing in analyzing security camera footage. You will use the camera feed and the user-provided prompt to determine if the event described in the prompt is detected in the camera feed. If the event is detected, set eventDetected to true and provide an appropriate alert message. If the event is not detected, set eventDetected to false and provide a message indicating that the event was not detected. Respond in {{language}}.
 
 User Prompt: {{{prompt}}}
 Camera Feed: {{media url=cameraFeedDataUri}}`,
-});
+  });
 
-const analyzeCameraFeedFlow = ai.defineFlow( // Removed explicit type parameters as they are inferred
-  {
-    name: 'analyzeCameraFeedFlow',
-    inputSchema: AnalyzeCameraFeedInputSchema,
-    outputSchema: AnalyzeCameraFeedOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);
+  const analyzeCameraFeedFlow = ai.defineFlow(
+    {
+      name: 'analyzeCameraFeedFlow_local',
+      inputSchema: AnalyzeCameraFeedInputSchema,
+      outputSchema: AnalyzeCameraFeedOutputSchema,
+    },
+    async (flowInput) => {
+      const {output} = await prompt(flowInput); // Note: Error handling should be added here
+      return output!;
+    }
+  );
+  return analyzeCameraFeedFlow(input);
+}

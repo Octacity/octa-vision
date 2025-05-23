@@ -27,59 +27,59 @@ const DescribeImageOutputSchema = z.object({
 export type DescribeImageOutput = z.infer<typeof DescribeImageOutputSchema>;
 
 export async function describeImage(input: DescribeImageInput): Promise<DescribeImageOutput> {
-  return describeImageFlow(input);
-}
+  console.log('describeImageFlow: Input received:', { 
+      language: input.language, 
+      imageDataUriLength: input.imageDataUri?.length 
+  });
 
-const prompt = ai.definePrompt({
-  name: 'describeImagePrompt',
-  input: {schema: DescribeImageInputSchema},
-  output: {schema: DescribeImageOutputSchema},
-  prompt: `You are an AI assistant that describes scenes from images.
+  const prompt = ai.definePrompt({
+    name: 'describeImagePrompt_local',
+    input: {schema: DescribeImageInputSchema},
+    output: {schema: DescribeImageOutputSchema},
+    prompt: `You are an AI assistant that describes scenes from images.
 Provide a concise and informative description of the scene captured in the following image.
 Respond in {{language}}.
 
 Image: {{media url=imageDataUri}}
 
 Scene Description:`,
-});
+  });
 
-const describeImageFlow = ai.defineFlow(
-  {
-    name: 'describeImageFlow',
-    inputSchema: DescribeImageInputSchema,
-    outputSchema: DescribeImageOutputSchema,
-  },
-  async (input) => {
-    console.log('describeImageFlow: Input received:', { 
-        language: input.language, 
-        imageDataUriLength: input.imageDataUri?.length  // Log length instead of full URI for brevity
-    });
-    try {
-      const {output} = await prompt(input);
-      console.log('describeImageFlow: Output from AI prompt:', JSON.stringify(output, null, 2));
+  const describeImageFlow = ai.defineFlow(
+    {
+      name: 'describeImageFlow_local',
+      inputSchema: DescribeImageInputSchema,
+      outputSchema: DescribeImageOutputSchema,
+    },
+    async (flowInput) => {
+      try {
+        const {output} = await prompt(flowInput);
+        console.log('describeImageFlow: Output from AI prompt:', JSON.stringify(output, null, 2));
 
-      if (!output?.description) {
-        console.warn('describeImageFlow: AI model did not return expected "description" structure.', output);
-        let errorMsg = "Error: AI failed to generate a description.";
-        if (input.language === 'es') {
-            errorMsg = "Error: La IA no pudo generar una descripción.";
-        } else if (input.language === 'pt') {
-            errorMsg = "Erro: A IA não conseguiu gerar uma descrição.";
+        if (!output?.description) {
+          console.warn('describeImageFlow: AI model did not return expected "description" structure.', output);
+          let errorMsg = "Error: AI failed to generate a description.";
+          if (flowInput.language === 'es') {
+              errorMsg = "Error: La IA no pudo generar una descripción.";
+          } else if (flowInput.language === 'pt') {
+              errorMsg = "Erro: A IA não conseguiu gerar uma descrição.";
+          }
+          return { description: errorMsg };
         }
-        return { description: errorMsg };
+        return output;
+      } catch (error: any) {
+        console.error('describeImageFlow: Error during AI prompt execution:', error);
+        let errorMessage = "Failed to communicate with the AI model for image description.";
+        if (error?.message) {
+          errorMessage = error.message;
+        } else if (flowInput.language === 'es') {
+          errorMessage = "Falló la comunicación con el modelo IA para la descripción de la imagen.";
+        } else if (flowInput.language === 'pt') {
+          errorMessage = "Falha na comunicação com o modelo de IA para descrição da imagem.";
+        }
+        return { description: `Error: ${errorMessage}` };
       }
-      return output;
-    } catch (error: any) {
-      console.error('describeImageFlow: Error during AI prompt execution:', error);
-      let errorMessage = "Failed to communicate with the AI model for image description.";
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (input.language === 'es') {
-        errorMessage = "Falló la comunicación con el modelo IA para la descripción de la imagen.";
-      } else if (input.language === 'pt') {
-        errorMessage = "Falha na comunicação com o modelo de IA para descrição da imagem.";
-      }
-      return { description: `Error: ${errorMessage}` };
     }
-  }
-);
+  );
+  return describeImageFlow(input);
+}
