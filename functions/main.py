@@ -61,7 +61,12 @@ def get_default_vss_base_url():
         raise ValueError(f"Could not retrieve system default VSS server URL: {e}")
 
 
-@https_fn.on_request()
+# Read allowed origins from environment variable
+allowed_origins_str = os.environ.get('CORS_ALLOWED_ORIGINS')
+allowed_origins = allowed_origins_str.split(',') if allowed_origins_str else True
+
+
+@https_fn.on_request(cors=allowed_origins)
 def helloworld(req: https_fn.Request) -> https_fn.Response:
     print("HelloWorld function invoked")
     return https_fn.Response("Hello, OctaVision world from a 2nd gen Cloud Function in main.py!")

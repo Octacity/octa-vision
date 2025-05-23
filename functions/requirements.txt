@@ -1,6 +1,7 @@
 firebase-admin
 firebase-functions
 flask
+Flask-Cors
 google-generativeai
 requests
 opencv-python

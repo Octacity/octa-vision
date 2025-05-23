@@ -32,9 +32,17 @@ def get_gemini_model(model_name):
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
+# Read allowed origins from environment variable
+allowed_origins_str = os.environ.get('CORS_ALLOWED_ORIGINS')
+if allowed_origins_str:
+    ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_str.split(',')]
+else:
+    # Allow all origins if environment variable is not set
+    ALLOWED_ORIGINS = True
+
 
 # --- Suggest Scene Description Function ---
-@https_fn.on_request()
+@https_fn.on_request(cors=ALLOWED_ORIGINS)
 def suggest_scene_description(req: https_fn.Request) -> https_fn.Response:
     """HTTP Cloud Function to suggest a scene description based on an image."""
     # Authentication logic should be handled by the caller or middleware if not public
@@ -84,7 +92,7 @@ def suggest_scene_description(req: https_fn.Request) -> https_fn.Response:
 
 
 # --- Suggest Detection Targets Function ---
-@https_fn.on_request()
+@https_fn.on_request(cors=ALLOWED_ORIGINS)
 def suggest_detection_targets(req: https_fn.Request) -> https_fn.Response:
     """HTTP Cloud Function to suggest detection targets."""
 
@@ -124,7 +132,7 @@ Suggest a concise comma-separated list of detection targets (e.g., "Person, Vehi
     return https_fn.Response(json.dumps({'suggestedTargets': suggested_targets_string}), status=200, mimetype='application/json')
 
 # --- Suggest Alert Events Function ---
-@https_fn.on_request()
+@https_fn.on_request(cors=ALLOWED_ORIGINS)
 def suggest_alert_events(req: https_fn.Request) -> https_fn.Response:
     """HTTP Cloud Function to suggest alert events."""
 
