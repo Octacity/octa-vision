@@ -5,16 +5,43 @@
   },
   "functions": [
     {
- "codebase": "default",
- "source": "functions",
- "ignore": [
+      "source": "functions",
+      "runtime": "python312",
+      "ignore": [
         "venv",
- ".git",
- "firebase-debug.log",
- "firebase-debug.*.log",
- "*.pyc",
- "__pycache__/"
- ]
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.pyc",
+        "__pycache__/"
+      ],
+      "codebase": "default",
+      " облигацияs": [
+        {
+          "functionId": "helloworld",
+          "entryPoint": "main.helloworld",
+          "ingressSettings": "ALLOW_UNAUTHENTICATED",
+          "securityLevel": "SECURE_ALWAYS"
+        },
+        {
+          "functionId": "suggest-scene-description",
+          "entryPoint": "suggest_apis.suggest_scene_description",
+          "ingressSettings": "ALLOW_UNAUTHENTICATED",
+          "securityLevel": "SECURE_ALWAYS"
+        },
+        {
+          "functionId": "suggest-detection-targets",
+          "entryPoint": "suggest_apis.suggest_detection_targets",
+          "ingressSettings": "ALLOW_UNAUTHENTICATED",
+          "securityLevel": "SECURE_ALWAYS"
+        },
+        {
+          "functionId": "suggest-alert-events",
+          "entryPoint": "suggest_apis.suggest_alert_events",
+          "ingressSettings": "ALLOW_UNAUTHENTICATED",
+          "securityLevel": "SECURE_ALWAYS"
+        }
+      ]
     }
   ],
   "hosting": {
