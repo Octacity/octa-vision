@@ -25,7 +25,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, Clock, AlertTriangle, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, Wand2, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIconLucide, Diamond, Bot, Send, Camera as CameraIconLucide, Server, Sparkles } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle as AlertTriangleIcon, Bell, MessageSquare, Plus, Users, ListFilter, ArrowUpDown, MoreHorizontal, Video, Edit3, Folder, HelpCircle, ShieldAlert, Settings2, Wand2, Loader2, Film, BarChart, CalendarDays, AlertCircle as AlertCircleIconLucide, Diamond, Bot, Send, Camera as CameraIconLucide, Server, Sparkles } from 'lucide-react';
 import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -56,11 +56,11 @@ export interface Group {
 export interface Camera {
   id: string;
   cameraName: string;
-  imageUrl: string; // This will store the GCS Signed URL for display
+  imageUrl: string; 
   dataAiHint: string;
   processingStatus?: string;
   resolution?: string | null;
-  snapshotGcsObjectName?: string | null; // Store GCS object name here
+  snapshotGcsObjectName?: string | null; 
 }
 
 interface ChatMessage {
@@ -282,7 +282,7 @@ const CamerasPage: NextPage = () => {
     resolver: zodResolver(addCameraStep2Schema),
     mode: "onChange",
     defaultValues: {
-        sceneDescription: '', // Ensure this is the default
+        sceneDescription: '', 
     },
   });
 
@@ -303,7 +303,7 @@ const CamerasPage: NextPage = () => {
 
 
   const handleAddCameraClick = () => {
-    formStep1.reset({ // Explicitly reset all fields of formStep1
+    formStep1.reset({ 
       rtspUrl: '',
       cameraName: '',
       group: undefined,
@@ -317,8 +317,17 @@ const CamerasPage: NextPage = () => {
       groupDefaultVideoOverlapValue: '2',
       groupDefaultVideoOverlapUnit: 'seconds',
     });
-    formStep2.reset({ sceneDescription: '' }); // Explicitly reset sceneDescription
-    formStep3.reset();
+    formStep2.reset({ sceneDescription: '' }); 
+    formStep3.reset({
+        cameraSceneContext: '',
+        aiDetectionTarget: '',
+        alertEvents: '',
+        videoChunksValue: '10',
+        videoChunksUnit: 'seconds',
+        numFrames: '5',
+        videoOverlapValue: '2',
+        videoOverlapUnit: 'seconds',
+    });
 
     setDrawerType('addCamera');
     setDrawerStep(1);
@@ -363,7 +372,7 @@ const CamerasPage: NextPage = () => {
     setShowNewGroupForm(false);
     setDrawerStep(1);
     
-    formStep1.reset({ // Explicitly reset all fields of formStep1
+    formStep1.reset({ 
       rtspUrl: '',
       cameraName: '',
       group: undefined,
@@ -377,8 +386,17 @@ const CamerasPage: NextPage = () => {
       groupDefaultVideoOverlapValue: '2',
       groupDefaultVideoOverlapUnit: 'seconds',
     });
-    formStep2.reset({ sceneDescription: '' }); // Explicitly reset sceneDescription
-    formStep3.reset();
+    formStep2.reset({ sceneDescription: '' }); 
+    formStep3.reset({
+        cameraSceneContext: '',
+        aiDetectionTarget: '',
+        alertEvents: '',
+        videoChunksValue: '10',
+        videoChunksUnit: 'seconds',
+        numFrames: '5',
+        videoOverlapValue: '2',
+        videoOverlapUnit: 'seconds',
+    });
 
     setSelectedCameraForChat(null);
     setChatMessages([]);
@@ -397,7 +415,7 @@ const CamerasPage: NextPage = () => {
     setSelectedGroup(value);
     formStep1.setValue('group', value);
     
-    let sceneDescForStep2 = ''; // Default to empty
+    let sceneDescForStep2Init = ''; 
 
     if (value === 'add_new_group') {
       setShowNewGroupForm(true);
@@ -410,7 +428,9 @@ const CamerasPage: NextPage = () => {
       formStep1.setValue('groupDefaultCameraSceneContext','');
       formStep1.setValue('groupDefaultAiDetectionTarget','');
       formStep1.setValue('groupDefaultAlertEvents','');
-      sceneDescForStep2 = formStep1.getValues('groupDefaultCameraSceneContext') || '';
+      if (formStep1.getValues('groupDefaultCameraSceneContext')) {
+        sceneDescForStep2Init = formStep1.getValues('groupDefaultCameraSceneContext')!;
+      }
     } else {
       setShowNewGroupForm(false);
       formStep1.setValue('newGroupName', '');
@@ -424,51 +444,50 @@ const CamerasPage: NextPage = () => {
         formStep1.setValue('groupDefaultNumFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
         formStep1.setValue('groupDefaultVideoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
         formStep1.setValue('groupDefaultVideoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
-        sceneDescForStep2 = selectedGroupData.defaultCameraSceneContext || '';
+        
+        if (selectedGroupData.defaultCameraSceneContext) {
+            sceneDescForStep2Init = selectedGroupData.defaultCameraSceneContext;
+        }
 
-        // Pre-fill Step 3 based on selected group defaults
-        formStep3.setValue('cameraSceneContext', selectedGroupData.defaultCameraSceneContext || '');
-        formStep3.setValue('aiDetectionTarget', selectedGroupData.defaultAiDetectionTarget || '');
-        formStep3.setValue('alertEvents', (selectedGroupData.defaultAlertEvents || []).join(', '));
-        formStep3.setValue('videoChunksValue', selectedGroupData.defaultVideoChunks?.value?.toString() || '10');
-        formStep3.setValue('videoChunksUnit', selectedGroupData.defaultVideoChunks?.unit || 'seconds');
-        formStep3.setValue('numFrames', selectedGroupData.defaultNumFrames?.toString() || '5');
-        formStep3.setValue('videoOverlapValue', selectedGroupData.defaultVideoOverlap?.value?.toString() || '2');
-        formStep3.setValue('videoOverlapUnit', selectedGroupData.defaultVideoOverlap?.unit || 'seconds');
+        formStep3.reset({
+            cameraSceneContext: selectedGroupData.defaultCameraSceneContext || '',
+            aiDetectionTarget: selectedGroupData.defaultAiDetectionTarget || '',
+            alertEvents: (selectedGroupData.defaultAlertEvents || []).join(', '),
+            videoChunksValue: selectedGroupData.defaultVideoChunks?.value?.toString() || '10',
+            videoChunksUnit: selectedGroupData.defaultVideoChunks?.unit || 'seconds',
+            numFrames: selectedGroupData.defaultNumFrames?.toString() || '5',
+            videoOverlapValue: selectedGroupData.defaultVideoOverlap?.value?.toString() || '2',
+            videoOverlapUnit: selectedGroupData.defaultVideoOverlap?.unit || 'seconds',
+        });
       } else {
-         // Reset fields if group is deselected or not found (sceneDescForStep2 remains empty)
         formStep1.resetField('groupDefaultCameraSceneContext');
         formStep1.resetField('groupDefaultAiDetectionTarget');
         formStep1.resetField('groupDefaultAlertEvents');
-        // ... reset other group default fields in formStep1 ...
-        formStep3.reset(); // Also reset formStep3 if group context is lost
+        formStep3.reset(); 
       }
     }
-    formStep2.reset({ sceneDescription: sceneDescForStep2 }); // Explicitly set or clear sceneDescription
+    formStep2.reset({ sceneDescription: sceneDescForStep2Init }); 
   };
 
   const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data) => {
     if (!formStep1.formState.isValid) return;
-    setIsProcessingStep1Submitting(true);
-
-    setCurrentRtspUrlForSnapshot(data.rtspUrl);
-    // Reset snapshot states for new attempt
-    setSnapshotGcsObjectName(null);
-    setDisplayableSnapshotUrl(null);
-    setSnapshotResolution(null);
-
-    let sceneDescForStep2 = '';
-    const selectedGroupId = data.group; // Use data.group from submitted form values
+    
+    let sceneDescForStep2Init = ''; 
+    const selectedGroupId = data.group; 
     if (selectedGroupId && selectedGroupId !== 'add_new_group') {
         const selectedGroupData = groups.find(g => g.id === selectedGroupId);
-        sceneDescForStep2 = selectedGroupData?.defaultCameraSceneContext || '';
+        if (selectedGroupData && selectedGroupData.defaultCameraSceneContext) {
+            sceneDescForStep2Init = selectedGroupData.defaultCameraSceneContext;
+        }
     } else if (selectedGroupId === 'add_new_group') {
-        sceneDescForStep2 = data.groupDefaultCameraSceneContext || ''; // Use data.groupDefaultCameraSceneContext
+        if (data.groupDefaultCameraSceneContext) {
+             sceneDescForStep2Init = data.groupDefaultCameraSceneContext;
+        }
     }
-    formStep2.reset({ sceneDescription: sceneDescForStep2 });
+    formStep2.reset({ sceneDescription: sceneDescForStep2Init });
 
+    setCurrentRtspUrlForSnapshot(data.rtspUrl);
     setDrawerStep(2);
-    setIsProcessingStep1Submitting(false);
   };
 
   useEffect(() => {
@@ -494,12 +513,16 @@ const CamerasPage: NextPage = () => {
             throw new Error("Snapshot service URL (take) is not configured.");
           }
           
-          console.log(`Calling snapshot service at: ${takeSnapshotServiceUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
-          const snapshotResponse = await fetch(takeSnapshotServiceUrl, {
+          const cleanBaseUrl = takeSnapshotServiceUrl.endsWith('/') ? takeSnapshotServiceUrl.slice(0, -1) : takeSnapshotServiceUrl;
+          const snapshotServiceFullUrl = `${cleanBaseUrl}/take-snapshot`;
+
+          console.log(`Calling snapshot service at: ${snapshotServiceFullUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
+          
+          const snapshotResponse = await fetch(snapshotServiceFullUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
             body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
-            signal: AbortSignal.timeout(45000)
+            signal: AbortSignal.timeout(45000) 
           });
 
           let errorMessageText = `Failed to get snapshot details (status: ${snapshotResponse.status})`;
@@ -552,7 +575,11 @@ const CamerasPage: NextPage = () => {
                 if (!user) throw new Error("User not authenticated for retrieving snapshot URL.");
                 const idToken = await user.getIdToken();
 
-                const signedUrlResponse = await fetch(retrieveSnapshotServiceUrl, {
+                const cleanBaseUrl = retrieveSnapshotServiceUrl.endsWith('/') ? retrieveSnapshotServiceUrl.slice(0, -1) : retrieveSnapshotServiceUrl;
+                const retrieveServiceFullUrl = `${cleanBaseUrl}/retrieve-snapshot`;
+
+
+                const signedUrlResponse = await fetch(retrieveServiceFullUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
                     body: JSON.stringify({ gcsObjectName: snapshotGcsObjectName }),
@@ -614,13 +641,14 @@ const CamerasPage: NextPage = () => {
 
             const description = aiDescriptionResponse?.description;
             let isLikelyError = false;
+            // Check for specific error message patterns from the flow
+            const errorKeywords = ["failed to generate", "no pudo generar", "não conseguiu gerar", "Error:", "failed to communicate"];
             if (typeof description === 'string' && description.trim() !== '') {
-              const errorKeywords = ["failed to generate", "no pudo generar", "não conseguiu gerar", "Error:", "failed to communicate"];
-              isLikelyError = errorKeywords.some(keyword => description.toLowerCase().includes(keyword.toLowerCase()));
+                isLikelyError = errorKeywords.some(keyword => description.toLowerCase().includes(keyword.toLowerCase()));
             } else {
-              isLikelyError = true;
+                isLikelyError = true; // Empty or non-string description is an issue
             }
-
+            
             if (!isLikelyError && typeof description === 'string') {
               console.log("Frontend: Attempting to set sceneDescription with:", description);
               formStep2.setValue('sceneDescription', description);
@@ -650,7 +678,7 @@ const CamerasPage: NextPage = () => {
 
   const handleStep2Back = () => {
     setDrawerStep(1);
-    setCurrentRtspUrlForSnapshot(null);
+    setCurrentRtspUrlForSnapshot(null); // Reset for next attempt
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null);
     setSnapshotResolution(null);
@@ -679,6 +707,7 @@ const CamerasPage: NextPage = () => {
     if (step1Values.group && step1Values.group !== 'add_new_group') {
         const selectedGroupData = groups.find(g => g.id === step1Values.group);
         if (selectedGroupData) {
+            // Use group default for cameraSceneContext if it's not empty, otherwise use currentSceneDesc from formStep2
             finalCameraContext = selectedGroupData.defaultCameraSceneContext || currentSceneDesc;
             finalAiTarget = selectedGroupData.defaultAiDetectionTarget || '';
             finalAlertEvents = (selectedGroupData.defaultAlertEvents || []).join(', ');
@@ -693,6 +722,7 @@ const CamerasPage: NextPage = () => {
             }
         }
     } else if (step1Values.group === 'add_new_group') {
+        // Use new group defaults for cameraSceneContext if not empty, otherwise use currentSceneDesc from formStep2
         finalCameraContext = step1Values.groupDefaultCameraSceneContext || currentSceneDesc;
         finalAiTarget = step1Values.groupDefaultAiDetectionTarget || '';
         finalAlertEvents = step1Values.groupDefaultAlertEvents || '';
@@ -701,9 +731,13 @@ const CamerasPage: NextPage = () => {
         if(step1Values.groupDefaultNumFrames) finalNumFrames = step1Values.groupDefaultNumFrames;
         if(step1Values.groupDefaultVideoOverlapValue) finalVideoOverlapValue = step1Values.groupDefaultVideoOverlapValue;
         if(step1Values.groupDefaultVideoOverlapUnit) finalVideoOverlapUnit = step1Values.groupDefaultVideoOverlapUnit;
+    } else {
+        // No group selected or adding new group without defaults, cameraSceneContext is just currentSceneDesc
+        finalCameraContext = currentSceneDesc;
     }
 
-    formStep3.reset({ // Reset formStep3 with the determined values
+
+    formStep3.reset({ 
         cameraSceneContext: finalCameraContext,
         aiDetectionTarget: finalAiTarget,
         alertEvents: finalAlertEvents,
@@ -723,9 +757,7 @@ const CamerasPage: NextPage = () => {
 
   const getEffectiveServerUrl = useCallback(async (currentOrgIdParam: string | null): Promise<string | null> => {
     if (!currentOrgIdParam) return null;
-    let serverIpToUse: string | null = null;
-    let protocolToUse: 'http' | 'https' = 'http';
-
+    
     try {
         const orgDocRef = doc(db, 'organizations', currentOrgIdParam);
         const orgDocSnap = await getDoc(orgDocRef);
@@ -737,32 +769,29 @@ const CamerasPage: NextPage = () => {
                 const serverDocSnap = await getDoc(serverDocRef);
                 if (serverDocSnap.exists()) {
                     const serverData = serverDocSnap.data();
-                    if (serverData.status === 'online') {
-                        serverIpToUse = serverData.ipAddressWithPort;
-                        protocolToUse = serverData.protocol || 'http';
-                        console.log("Using Org Default Server:", `${protocolToUse}://${serverIpToUse}`);
-                        return `${protocolToUse}://${serverIpToUse}`;
+                    if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
+                        console.log("Using Org Default Server:", `${serverData.protocol}://${serverData.ipAddressWithPort}`);
+                        return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
                     } else {
-                         console.warn(`Org default server ${orgData.orgDefaultServerId} is not online. Falling back.`);
+                         console.warn(`Org default server ${orgData.orgDefaultServerId} is not online or misconfigured. Falling back.`);
                     }
                 } else {
                      console.warn(`Org default server ${orgData.orgDefaultServerId} not found. Falling back.`);
                 }
             }
+        } else {
+            console.warn(`Organization document ${currentOrgIdParam} not found. Falling back to system default.`);
         }
 
-        // Fallback to System Default Server
         const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
         const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
         if (!systemDefaultSnapshot.empty) {
             const systemDefaultServerData = systemDefaultSnapshot.docs[0].data();
-            if (systemDefaultServerData.status === 'online') {
-                serverIpToUse = systemDefaultServerData.ipAddressWithPort;
-                protocolToUse = systemDefaultServerData.protocol || 'http';
-                console.log("Using System Default Server:", `${protocolToUse}://${serverIpToUse}`);
-                return `${protocolToUse}://${serverIpToUse}`;
+            if (systemDefaultServerData.status === 'online' && systemDefaultServerData.ipAddressWithPort && systemDefaultServerData.protocol) {
+                console.log("Using System Default Server:", `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`);
+                return `${systemDefaultServerData.protocol}://${systemDefaultServerData.ipAddressWithPort}`;
             } else {
-                 console.warn(`System default server ${systemDefaultSnapshot.docs[0].id} is not online.`);
+                 console.warn(`System default server ${systemDefaultSnapshot.docs[0].id} is not online or misconfigured.`);
             }
         }
         toast({ variant: "destructive", title: "No Server Available", description: "No suitable processing server (org default or system default) is currently online."});
@@ -786,12 +815,12 @@ const CamerasPage: NextPage = () => {
     }
 
     const step1Data = formStep1.getValues();
-    const step2Data = formStep2.getValues(); // sceneDescription is here
+    const step2Data = formStep2.getValues(); 
 
     let effectiveServerIpAddressValue: string | null = null;
     try {
         effectiveServerIpAddressValue = await getEffectiveServerUrl(orgId);
-        if (!effectiveServerIpAddressValue && !currentUser.email?.endsWith('@octavision.com')) { // Allow admin to proceed without server for testing
+        if (!effectiveServerIpAddressValue && !currentUser.email?.endsWith('@octavision.com')) { 
             toast({ variant: "destructive", title: "No Processing Server", description: "No server is available to process this camera. Please contact an administrator."});
             return;
         }
@@ -806,12 +835,12 @@ const CamerasPage: NextPage = () => {
     if (step1Data.group === 'add_new_group' && step1Data.newGroupName) {
         const groupDocRef = doc(collection(db, 'groups'));
         finalGroupId = groupDocRef.id;
-        const newGroup: Omit<Group, 'id'> & {createdAt: Timestamp, updatedAt: Timestamp} = {
+        const newGroup: Omit<Group, 'id'|'cameras'|'videos'> & {createdAt: Timestamp, updatedAt: Timestamp, cameras: string[], videos: string[]} = {
             name: step1Data.newGroupName,
             orgId: orgId,
             userId: currentUser.uid,
-            cameras: [],
-            videos: [],
+            cameras: [], 
+            videos: [], 
             defaultCameraSceneContext: step1Data.groupDefaultCameraSceneContext || null,
             defaultAiDetectionTarget: step1Data.groupDefaultAiDetectionTarget || null,
             defaultAlertEvents: step1Data.groupDefaultAlertEvents ? step1Data.groupDefaultAlertEvents.split(',').map(ae => ae.trim()).filter(ae => ae) : null,
@@ -822,7 +851,8 @@ const CamerasPage: NextPage = () => {
             updatedAt: now,
         };
         batch.set(groupDocRef, newGroup);
-        setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id }]);
+        // Client-side state update for new group
+        setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id, cameras: [], videos: [] }]);
     } else if (step1Data.group) {
         finalGroupId = step1Data.group;
     }
@@ -843,14 +873,14 @@ const CamerasPage: NextPage = () => {
       historicalVSSIds: [],
       processingStatus: "waiting_for_approval",
       currentConfigId: configDocRef.id,
-      snapshotGcsObjectName: snapshotGcsObjectName,
-      resolution: snapshotResolution,
+      snapshotGcsObjectName: snapshotGcsObjectName, 
+      resolution: snapshotResolution, 
     });
 
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: effectiveServerIpAddressValue,
+      serverIpAddress: effectiveServerIpAddressValue, 
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -864,7 +894,7 @@ const CamerasPage: NextPage = () => {
       cameraSceneContext: configData.cameraSceneContext,
       aiDetectionTarget: configData.aiDetectionTarget,
       alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae),
-      sceneDescription: step2Data.sceneDescription,
+      sceneDescription: step2Data.sceneDescription, // This is the value from formStep2
       userId: currentUser.uid,
       previousConfigId: null,
     });
@@ -925,7 +955,9 @@ const CamerasPage: NextPage = () => {
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate AI response
+    // Replace this with actual AI call in the future
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
       sender: 'ai',
@@ -1191,9 +1223,7 @@ const CamerasPage: NextPage = () => {
                 <FormField
                     control={formStep2.control}
                     name="sceneDescription"
-                    render={({ field }) => {
-                         // console.log("SceneDescription FormField render, field.value:", field.value, "field.disabled:", field.disabled);
-                         return (
+                    render={({ field }) => (
                         <FormItem className="text-left">
                              <div className="flex items-center justify-between">
                                 <FormLabel className="flex items-center">
@@ -1214,11 +1244,8 @@ const CamerasPage: NextPage = () => {
                             <FormControl>
                                 <Textarea
                                     placeholder="e.g., This camera overlooks the main warehouse loading bay, monitoring incoming and outgoing trucks."
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    onBlur={field.onBlur}
-                                    name={field.name}
-                                    ref={field.ref}
+                                    {...field}
+                                    value={field.value || ''} 
                                     rows={3}
                                     disabled={isGeneratingDescription} 
                                 />
@@ -1226,8 +1253,8 @@ const CamerasPage: NextPage = () => {
                              {isGeneratingDescription && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating a description...</p>}
                             <FormMessage />
                         </FormItem>
-                        );
-                    }}
+                        )
+                    }
                 />
                 </form>
             </Form>
@@ -1594,7 +1621,7 @@ const CamerasPage: NextPage = () => {
                     ) : camera.processingStatus === 'waiting_for_approval' ? (
                          <Clock className="absolute top-2 right-2 h-5 w-5 text-orange-500 bg-white rounded-full p-0.5" />
                     ) : (
-                        <AlertTriangle className="absolute top-2 right-2 h-5 w-5 text-red-500 bg-white rounded-full p-0.5" />
+                        <AlertTriangleIcon className="absolute top-2 right-2 h-5 w-5 text-red-500 bg-white rounded-full p-0.5" />
                     )}
                 </div>
                 <div className="p-3">
@@ -1660,3 +1687,5 @@ const CamerasPage: NextPage = () => {
 };
 
 export default CamerasPage;
+
+    
