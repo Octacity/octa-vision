@@ -60,6 +60,8 @@ export interface Camera {
   processingStatus?: string;
   resolution?: string | null;
   snapshotGcsObjectName?: string | null;
+  rtspUsername?: string | null;
+  rtspPassword?: string | null;
 }
 
 interface ChatMessage {
@@ -72,7 +74,16 @@ interface ChatMessage {
 
 
 const addCameraStep1Schema = z.object({
-  rtspUrl: z.string().url({ message: "Invalid RTSP URL format." }).min(1, "RTSP URL is required."),
+  rtspUrl: z.string().min(1, "RTSP URL is required.").refine(value => {
+    try {
+      // Basic check for rtsp:// prefix, actual URL validation is complex
+      return value.toLowerCase().startsWith('rtsp://');
+    } catch (e) {
+      return false;
+    }
+  }, { message: "Invalid RTSP URL format. Must start with rtsp://" }),
+  rtspUsername: z.string().optional(),
+  rtspPassword: z.string().optional(),
   cameraName: z.string().min(1, "Camera name is required."),
   group: z.string().optional(),
   newGroupName: z.string().optional(),
@@ -123,8 +134,8 @@ const CamerasPage: NextPage = () => {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
 
-  const [isProcessingStep1Submitting, setIsProcessingStep1Submitting] = useState(false);
-  const [isProcessingStep2Snapshot, setIsProcessingStep2Snapshot] = useState(false);
+  const [isProcessingStep1Submitting, setIsProcessingStep1Submitting] = useState(false); // For step 1 form submission logic
+  const [isProcessingStep2Snapshot, setIsProcessingStep2Snapshot] = useState(false); // For the actual snapshot API call
 
   const [currentRtspUrlForSnapshot, setCurrentRtspUrlForSnapshot] = useState<string | null>(null);
   const [snapshotGcsObjectName, setSnapshotGcsObjectName] = useState<string | null>(null);
@@ -193,23 +204,22 @@ const CamerasPage: NextPage = () => {
 
         if (data.snapshotGcsObjectName) {
           console.log(`Frontend: Attempting to call /retrieve-snapshot for camera list item: ${data.snapshotGcsObjectName}`);
-          try {
-            const retrieveSnapshotUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
-            if (!retrieveSnapshotUrl) {
-                console.error("Retrieve snapshot service URL (NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL) is not configured for camera list.");
-            } else {
-                const auth = getAuth();
-                const user = auth.currentUser;
-                if (user) {
-                    const idToken = await user.getIdToken();
-                    const response = await fetch(retrieveSnapshotUrl, {
+          const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
+          if (!retrieveSnapshotServiceUrl) {
+            console.error("Retrieve snapshot service URL (NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL) is not configured for camera list.");
+          } else {
+              const auth = getAuth();
+              const user = auth.currentUser;
+              if (user) {
+                  const idToken = await user.getIdToken();
+                  try {
+                    const response = await fetch(retrieveSnapshotServiceUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${idToken}`
                         },
                         body: JSON.stringify({ gcsObjectName: data.snapshotGcsObjectName }),
-                        signal: AbortSignal.timeout(15000)
                     });
                     if (response.ok) {
                         const resData = await response.json();
@@ -222,10 +232,10 @@ const CamerasPage: NextPage = () => {
                         const errorText = await response.text();
                         console.warn(`Failed to retrieve image for ${data.snapshotGcsObjectName} in list (API error): ${response.status} - ${errorText}`);
                     }
-                }
-            }
-          } catch (e: any) {
-            console.warn(`Error fetching signed URL for ${data.snapshotGcsObjectName} in list:`, e.message);
+                  } catch (e: any) {
+                      console.warn(`Error fetching signed URL for ${data.snapshotGcsObjectName} in list:`, e.message);
+                  }
+              }
           }
         }
         return {
@@ -236,6 +246,8 @@ const CamerasPage: NextPage = () => {
           processingStatus: data.processingStatus,
           resolution: data.resolution || null,
           snapshotGcsObjectName: data.snapshotGcsObjectName || null,
+          rtspUsername: data.rtspUsername || null,
+          rtspPassword: data.rtspPassword || null, // Be cautious with handling/displaying passwords
         } as Camera;
       });
       const fetchedCameras = await Promise.all(fetchedCamerasPromises);
@@ -266,6 +278,8 @@ const CamerasPage: NextPage = () => {
     mode: "onChange",
     defaultValues: {
       rtspUrl: '',
+      rtspUsername: '',
+      rtspPassword: '',
       cameraName: '',
       group: undefined,
       newGroupName: '',
@@ -279,6 +293,36 @@ const CamerasPage: NextPage = () => {
       groupDefaultVideoOverlapUnit: 'seconds',
     },
   });
+
+  const watchedRtspUrl = formStep1.watch('rtspUrl');
+
+  useEffect(() => {
+    if (watchedRtspUrl) {
+      try {
+        const url = new URL(watchedRtspUrl);
+        if (url.username) {
+          formStep1.setValue('rtspUsername', decodeURIComponent(url.username), { shouldValidate: true });
+        } else {
+          // If no username in URL, clear the field if it wasn't manually set
+          if (formStep1.getValues('rtspUsername') !== '' && !formStep1.formState.dirtyFields.rtspUsername) {
+             formStep1.setValue('rtspUsername', '', { shouldValidate: true });
+          }
+        }
+        if (url.password) {
+          formStep1.setValue('rtspPassword', decodeURIComponent(url.password), { shouldValidate: true });
+        } else {
+          if (formStep1.getValues('rtspPassword') !== '' && !formStep1.formState.dirtyFields.rtspPassword) {
+            formStep1.setValue('rtspPassword', '', { shouldValidate: true });
+          }
+        }
+      } catch (error) {
+        // Invalid URL format, clear username/password if they were auto-filled
+        if (!formStep1.formState.dirtyFields.rtspUsername) formStep1.setValue('rtspUsername', '', { shouldValidate: true });
+        if (!formStep1.formState.dirtyFields.rtspPassword) formStep1.setValue('rtspPassword', '', { shouldValidate: true });
+        console.warn("Could not parse RTSP URL for username/password:", error);
+      }
+    }
+  }, [watchedRtspUrl, formStep1]);
 
 
   const formStep2 = useForm<AddCameraStep2Values>({
@@ -309,6 +353,8 @@ const CamerasPage: NextPage = () => {
   const handleAddCameraClick = () => {
     formStep1.reset({
       rtspUrl: '',
+      rtspUsername: '',
+      rtspPassword: '',
       cameraName: '',
       group: undefined,
       newGroupName: '',
@@ -379,6 +425,8 @@ const CamerasPage: NextPage = () => {
 
     formStep1.reset({
       rtspUrl: '',
+      rtspUsername: '',
+      rtspPassword: '',
       cameraName: '',
       group: undefined,
       newGroupName: '',
@@ -454,7 +502,7 @@ const CamerasPage: NextPage = () => {
         formStep1.resetField('groupDefaultAlertEvents');
       }
     }
-     formStep2.reset({ sceneDescription: sceneDescForStep2Init }); // Reset formStep2 sceneDescription based on group
+     formStep2.reset({ sceneDescription: sceneDescForStep2Init }); 
 
      // Also reset formStep3 based on these new group defaults
     const step1Data = formStep1.getValues();
@@ -508,26 +556,27 @@ const CamerasPage: NextPage = () => {
 
   const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data_step1_form) => {
     if (!formStep1.formState.isValid) return;
+    setIsProcessingStep1Submitting(true); // Indicate submission of step 1
 
     setCurrentRtspUrlForSnapshot(data_step1_form.rtspUrl);
 
+    // Reset snapshot-related states for Step 2
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null);
     setSnapshotResolution(null);
-    setIsGeneratingDescription(false);
+    setIsGeneratingDescription(false); // Reset AI description generation state
 
+    // Initialize formStep2.sceneDescription based on group defaults
     let sceneDescForStep2Init = '';
-    const selectedGroupId = formStep1.getValues('group');
-
-    if (selectedGroupId === 'add_new_group') {
-        sceneDescForStep2Init = formStep1.getValues('groupDefaultCameraSceneContext') || '';
-    } else if (selectedGroupId) {
-        const groupData = groups.find(g => g.id === selectedGroupId);
+    if (data_step1_form.group && data_step1_form.group !== 'add_new_group') {
+        const groupData = groups.find(g => g.id === data_step1_form.group);
         sceneDescForStep2Init = groupData?.defaultCameraSceneContext || '';
+    } else if (data_step1_form.group === 'add_new_group') {
+        sceneDescForStep2Init = data_step1_form.groupDefaultCameraSceneContext || '';
     }
     formStep2.reset({ sceneDescription: sceneDescForStep2Init });
 
-
+    // Initialize formStep3 based on group defaults or Step 1 new group defaults
     let sceneContextForStep3 = '';
     let aiTargetForStep3 = '';
     let alertEventsForStep3 = '';
@@ -576,6 +625,7 @@ const CamerasPage: NextPage = () => {
     });
 
     setDrawerStep(2);
+    setIsProcessingStep1Submitting(false); // Done with step 1 submission logic
   };
 
 
@@ -603,22 +653,23 @@ const CamerasPage: NextPage = () => {
             throw new Error("Snapshot service URL (NEXT_PUBLIC_TAKE_SNAPSHOT_URL) is not configured.");
           }
 
-          console.log(`Frontend: Attempting to call /take-snapshot: ${snapshotServiceUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
+          console.log(`Frontend: Attempting to call ${snapshotServiceUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
           const snapshotResponse = await fetch(snapshotServiceUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
             body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
-            signal: AbortSignal.timeout(45000)
           });
 
-          let errorMessageText = `Failed to get snapshot details (status: ${snapshotResponse.status}). Check Next.js server logs and Cloud Run service logs for more details.`;
+          let errorMessageText = `Failed to get snapshot details. Status: ${snapshotResponse.status}. Check service logs.`;
           if (!snapshotResponse.ok) {
             try {
                 const errorData = await snapshotResponse.json();
                 console.error("Snapshot service error response:", errorData);
                 errorMessageText = errorData.message || errorData.error || errorMessageText;
             } catch (e) {
-                console.error("Snapshot service error: Could not parse JSON response. Response text:", await snapshotResponse.text());
+                const rawErrorText = await snapshotResponse.text();
+                console.error("Snapshot service error: Could not parse JSON response. Response text:", rawErrorText);
+                errorMessageText = rawErrorText || errorMessageText;
             }
             throw new Error(errorMessageText);
           }
@@ -627,6 +678,7 @@ const CamerasPage: NextPage = () => {
           if (snapshotData.status === 'success' && snapshotData.gcsObjectName && snapshotData.resolution) {
             setSnapshotGcsObjectName(snapshotData.gcsObjectName);
             setSnapshotResolution(snapshotData.resolution);
+            toast({ title: "Snapshot Processed", description: "Snapshot captured and initial data retrieved." });
           } else {
             throw new Error(snapshotData.message || "Snapshot API call succeeded but returned invalid data (gcsObjectName/resolution).");
           }
@@ -644,13 +696,15 @@ const CamerasPage: NextPage = () => {
         }
       }
     };
-    fetchSnapshotAndDetails();
-  }, [drawerStep, currentRtspUrlForSnapshot, snapshotGcsObjectName, isProcessingStep2Snapshot, isLoadingSnapshotUrl, toast]);
+    if(drawerStep === 2 && currentRtspUrlForSnapshot && !isProcessingStep2Snapshot) {
+        fetchSnapshotAndDetails();
+    }
+  }, [drawerStep, currentRtspUrlForSnapshot, toast]); // Removed snapshotGcsObjectName, isLoadingSnapshotUrl from deps
 
 
   useEffect(() => {
     const fetchDisplayableSnapshotUrl = async () => {
-        if (drawerStep === 2 && snapshotGcsObjectName && !displayableSnapshotUrl && !isLoadingSnapshotUrl && !isProcessingStep2Snapshot) {
+        if (drawerStep === 2 && snapshotGcsObjectName && !displayableSnapshotUrl && !isLoadingSnapshotUrl) {
             setIsLoadingSnapshotUrl(true);
             try {
                 const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
@@ -663,22 +717,23 @@ const CamerasPage: NextPage = () => {
                 if (!user) throw new Error("User not authenticated for retrieving snapshot URL.");
                 const idToken = await user.getIdToken();
 
-                console.log(`Frontend: Attempting to call /retrieve-snapshot for Step 2 display: ${retrieveSnapshotServiceUrl} for GCS Object: ${snapshotGcsObjectName}`);
+                console.log(`Frontend: Attempting to call ${retrieveSnapshotServiceUrl} for Step 2 display: GCS Object: ${snapshotGcsObjectName}`);
                 const signedUrlResponse = await fetch(retrieveSnapshotServiceUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
                     body: JSON.stringify({ gcsObjectName: snapshotGcsObjectName }),
-                    signal: AbortSignal.timeout(15000)
                 });
 
-                let errorMessageText = `Failed to get signed URL (status: ${signedUrlResponse.status}). Check Next.js server logs and Cloud Run service logs for more details.`;
+                let errorMessageText = `Failed to get signed URL. Status: ${signedUrlResponse.status}. Check service logs.`;
                 if (!signedUrlResponse.ok) {
                     try {
                         const errorData = await signedUrlResponse.json();
                         console.error("Retrieve snapshot URL service error:", errorData);
                         errorMessageText = errorData.message || errorData.error || errorMessageText;
                     } catch (e) {
-                        console.error("Retrieve snapshot URL service error: Could not parse JSON response. Response text:", await signedUrlResponse.text());
+                         const rawErrorText = await signedUrlResponse.text();
+                        console.error("Retrieve snapshot URL service error: Could not parse JSON response. Response text:", rawErrorText);
+                        errorMessageText = rawErrorText || errorMessageText;
                     }
                     throw new Error(errorMessageText);
                 }
@@ -698,33 +753,57 @@ const CamerasPage: NextPage = () => {
             }
         }
     };
-    fetchDisplayableSnapshotUrl();
-  }, [drawerStep, snapshotGcsObjectName, displayableSnapshotUrl, isLoadingSnapshotUrl, isProcessingStep2Snapshot, toast]);
+    if(drawerStep === 2 && snapshotGcsObjectName && !isLoadingSnapshotUrl && !displayableSnapshotUrl) {
+        fetchDisplayableSnapshotUrl();
+    }
+  }, [drawerStep, snapshotGcsObjectName, displayableSnapshotUrl, isLoadingSnapshotUrl, toast]);
 
 
   const handleStep2Back = () => {
     setDrawerStep(1);
+    // Optionally reset step 2 states if needed
+    // setSnapshotGcsObjectName(null);
+    // setDisplayableSnapshotUrl(null);
+    // setSnapshotResolution(null);
+    // formStep2.reset({ sceneDescription: ''}); // Or prefill based on step 1 again
   };
 
   const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data_step2_form) => {
     // Data from formStep2 (like sceneDescription) is already in formStep2.getValues()
+    // Set values for formStep3 based on formStep2.sceneDescription if needed, or group defaults
+    const step1Values = formStep1.getValues();
+    let cameraSceneCtx = formStep3.getValues('cameraSceneContext'); // Keep existing if any
+    
+    // If formStep2 sceneDescription is filled, it might override cameraSceneContext for step 3
+    // Or, you might want a different field in formStep3 for this more detailed description
+    // For now, let's assume sceneDescription from formStep2 is used if cameraSceneContext is empty.
+    if (!cameraSceneCtx && data_step2_form.sceneDescription) {
+        // This logic might need refinement depending on how you want to use sceneDescription vs cameraSceneContext
+        // formStep3.setValue('cameraSceneContext', data_step2_form.sceneDescription); 
+    }
+    // Or simply update the field in configurations directly in onSubmitStep3 from formStep2.getValues()
+
     setDrawerStep(3);
   };
 
 
   const getEffectiveServerUrl = useCallback(async (): Promise<string | null> => {
-    if (!orgId) {
-        console.warn("getEffectiveServerUrl: orgId is null, cannot determine organization default.");
-         // Fallback to System Default Server directly if orgId is not available for some reason
-        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
-        const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
-        if (!systemDefaultSnapshot.empty) {
-            const serverData = systemDefaultSnapshot.docs[0].data();
-            if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
-                const fullUrl = `${serverData.protocol}://${serverData.ipAddressWithPort}`;
-                console.log("Using System Default Server (orgId was null):", fullUrl);
-                return fullUrl;
+    if (!currentUser || !orgId) {
+        console.warn("getEffectiveServerUrl: currentUser or orgId is null.");
+        // Fallback to System Default Server directly
+        try {
+            const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
+            const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
+            if (!systemDefaultSnapshot.empty) {
+                const serverData = systemDefaultSnapshot.docs[0].data();
+                if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
+                    const fullUrl = `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+                    console.log("Using System Default Server (orgId or user was null):", fullUrl);
+                    return fullUrl;
+                }
             }
+        } catch (error) {
+             console.error("Error fetching system default server (fallback):", error);
         }
         toast({ variant: "destructive", title: "No Server Available", description: "No system default processing server is currently online or configured."});
         return null;
@@ -733,7 +812,7 @@ const CamerasPage: NextPage = () => {
     try {
       const orgDocRef = doc(db, 'organizations', orgId);
       const orgDocSnap = await getDoc(orgDocRef);
-      let serverToUse: { protocol: string; ipAddressWithPort: string; } | null = null;
+      let serverToUseUrl: string | null = null;
 
       if (orgDocSnap.exists()) {
         const orgData = orgDocSnap.data();
@@ -743,8 +822,8 @@ const CamerasPage: NextPage = () => {
           if (serverDocSnap.exists()) {
             const serverData = serverDocSnap.data();
             if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
-              serverToUse = { protocol: serverData.protocol, ipAddressWithPort: serverData.ipAddressWithPort };
-              console.log("Using Org Default Server:", `${serverToUse.protocol}://${serverToUse.ipAddressWithPort}`);
+              serverToUseUrl = `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+              console.log("Using Org Default Server:", serverToUseUrl);
             } else {
               console.warn(`Org default server ${orgData.orgDefaultServerId} is not online or misconfigured. Falling back to system default.`);
             }
@@ -756,28 +835,26 @@ const CamerasPage: NextPage = () => {
         console.warn(`Organization document ${orgId} not found. Falling back to system default.`);
       }
 
-      if (!serverToUse) {
+      if (!serverToUseUrl) {
         const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
         const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
         if (!systemDefaultSnapshot.empty) {
           const serverData = systemDefaultSnapshot.docs[0].data();
           if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
-            serverToUse = { protocol: serverData.protocol, ipAddressWithPort: serverData.ipAddressWithPort };
-            console.log("Using System Default Server (fallback):", `${serverToUse.protocol}://${serverToUse.ipAddressWithPort}`);
+            serverToUseUrl = `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+            console.log("Using System Default Server (fallback):", serverToUseUrl);
           } else {
             console.warn(`System default server ${systemDefaultSnapshot.docs[0].id} is not online or misconfigured.`);
           }
         }
       }
 
-      if (serverToUse) {
-        return `${serverToUse.protocol}://${serverToUse.ipAddressWithPort}`;
+      if (serverToUseUrl) {
+        return serverToUseUrl;
       }
 
-      if (!currentUser?.email?.endsWith('@octavision.com')) { // Assuming @octavision.com emails are super admins who might bypass this
-        toast({ variant: "destructive", title: "No Server Available", description: "No suitable processing server (org default or system default) is currently online."});
-      }
-      return null; // No online server found
+      toast({ variant: "destructive", title: "No Server Available", description: "No suitable processing server (org default or system default) is currently online or configured."});
+      return null;
 
     } catch (error) {
       console.error("Error fetching effective server URL:", error);
@@ -798,16 +875,17 @@ const CamerasPage: NextPage = () => {
     }
 
     const step1Data = formStep1.getValues();
-    const step2Data = formStep2.getValues();
+    const step2Data = formStep2.getValues(); // Contains sceneDescription
 
     let effectiveServerUrlValue: string | null = null;
     try {
         effectiveServerUrlValue = await getEffectiveServerUrl();
-        if (!effectiveServerUrlValue && !currentUser.email?.endsWith('@octavision.com')) { // Allow super admins to save without a server for testing
-            return;
-        }
+        // Allow saving even if no server URL is found for now, admin will assign.
+        // if (!effectiveServerUrlValue) {
+        //     return;
+        // }
     } catch (error) {
-        return;
+        // return; // Already handled by toast in getEffectiveServerUrl
     }
 
     const batch = writeBatch(db);
@@ -849,19 +927,21 @@ const CamerasPage: NextPage = () => {
       createdAt: now,
       updatedAt: now,
       url: step1Data.rtspUrl,
+      rtspUsername: step1Data.rtspUsername || null,
+      rtspPassword: step1Data.rtspPassword || null, // Store with caution
       protocol: "rtsp",
       activeVSSId: null,
       historicalVSSIds: [],
       currentConfigId: configDocRef.id,
       processingStatus: "waiting_for_approval",
-      snapshotGcsObjectName: snapshotGcsObjectName,
-      resolution: snapshotResolution,
+      snapshotGcsObjectName: snapshotGcsObjectName, // Saved from step 2
+      resolution: snapshotResolution, // Saved from step 2
     });
 
     batch.set(configDocRef, {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: effectiveServerUrlValue, // This can be null if no server is found
+      serverIpAddress: effectiveServerUrlValue, 
       createdAt: now,
       videoChunks: {
         value: parseFloat(configData.videoChunksValue),
@@ -875,7 +955,7 @@ const CamerasPage: NextPage = () => {
       cameraSceneContext: configData.cameraSceneContext,
       aiDetectionTarget: configData.aiDetectionTarget,
       alertEvents: configData.alertEvents.split(',').map(ae => ae.trim()).filter(ae => ae),
-      sceneDescription: step2Data.sceneDescription || null, // Save sceneDescription from formStep2
+      sceneDescription: step2Data.sceneDescription || null, 
       userId: currentUser.uid,
       previousConfigId: null,
     });
@@ -903,11 +983,13 @@ const CamerasPage: NextPage = () => {
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: displayableSnapshotUrl, // Use the temporary signed URL for immediate display
+        imageUrl: displayableSnapshotUrl, 
         dataAiHint: configData.aiDetectionTarget || 'newly added camera',
         processingStatus: "waiting_for_approval",
         resolution: snapshotResolution || undefined,
         snapshotGcsObjectName: snapshotGcsObjectName,
+        rtspUsername: step1Data.rtspUsername || undefined,
+        // Do not add rtspPassword to local state for display
       };
       setCameras(prevCameras => [...prevCameras, newCameraForState]);
       handleDrawerClose();
@@ -936,6 +1018,7 @@ const CamerasPage: NextPage = () => {
     setCurrentChatMessage('');
     setIsSendingMessage(true);
 
+    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = {
       id: 'ai-' + Date.now(),
@@ -1064,13 +1147,13 @@ const handleGenerateSceneDescription = async () => {
         return (
           <div className="p-6">
             <Form {...formStep1}>
-            <form id="add-camera-form-step1" onSubmit={formStep1.handleSubmit(onSubmitStep1)} className="space-y-8">
+            <form id="add-camera-form-step1" onSubmit={formStep1.handleSubmit(onSubmitStep1)} className="space-y-6">
                 <FormField
                 control={formStep1.control}
                 name="rtspUrl"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel className="flex items-center mb-1.5">
+                    <FormLabel className="flex items-center">
                         <Video className="w-4 h-4 mr-2 text-muted-foreground"/> RTSP URL
                     </FormLabel>
                     <FormControl>
@@ -1080,12 +1163,42 @@ const handleGenerateSceneDescription = async () => {
                     </FormItem>
                 )}
                 />
+                 <FormField
+                    control={formStep1.control}
+                    name="rtspUsername"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="flex items-center">
+                            RTSP Username (Optional)
+                        </FormLabel>
+                        <FormControl>
+                            <Input placeholder="Leave blank if none" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={formStep1.control}
+                    name="rtspPassword"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="flex items-center">
+                            RTSP Password (Optional)
+                        </FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="Leave blank if none" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
                 <FormField
                 control={formStep1.control}
                 name="cameraName"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel className="flex items-center mb-1.5">
+                    <FormLabel className="flex items-center">
                         <Edit3 className="w-4 h-4 mr-2 text-muted-foreground"/> Name
                     </FormLabel>
                     <FormControl>
@@ -1100,7 +1213,7 @@ const handleGenerateSceneDescription = async () => {
                 name="group"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel className="flex items-center mb-1.5">
+                    <FormLabel className="flex items-center">
                         <Folder className="w-4 h-4 mr-2 text-muted-foreground"/> Group
                     </FormLabel>
                     <Select onValueChange={handleGroupChange} defaultValue={field.value}>
@@ -1138,7 +1251,7 @@ const handleGenerateSceneDescription = async () => {
                             name="newGroupName"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center mb-1.5">
+                                    <FormLabel className="flex items-center">
                                         <Edit3 className="w-4 h-4 mr-2 text-muted-foreground"/>Group Name
                                     </FormLabel>
                                     <FormControl>
@@ -1153,7 +1266,7 @@ const handleGenerateSceneDescription = async () => {
                             name="groupDefaultCameraSceneContext"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center mb-1.5">
+                                    <FormLabel className="flex items-center">
                                         <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground"/>What does the cameras in this group looking at? (Group Default)
                                     </FormLabel>
                                     <FormControl>
@@ -1168,7 +1281,7 @@ const handleGenerateSceneDescription = async () => {
                             name="groupDefaultAiDetectionTarget"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center mb-1.5">
+                                    <FormLabel className="flex items-center">
                                         <Settings2 className="w-4 h-4 mr-2 text-muted-foreground"/>What does the things you want the AI to detect from this group of cameras? (Group Default)
                                     </FormLabel>
                                     <FormControl>
@@ -1183,7 +1296,7 @@ const handleGenerateSceneDescription = async () => {
                             name="groupDefaultAlertEvents"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center justify-between mb-1.5">
+                                    <FormLabel className="flex items-center justify-between">
                                       <span className="flex items-center">
                                         <ShieldAlert className="w-4 h-4 mr-2 text-muted-foreground"/>Group Alert Events (Default)
                                       </span>
@@ -1235,7 +1348,8 @@ const handleGenerateSceneDescription = async () => {
                     <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
                         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                         <p className="text-sm text-muted-foreground">
-                           {isProcessingStep2Snapshot ? "Connecting to camera and extracting snapshot..." : "Loading snapshot image..."}
+                           {isProcessingStep2Snapshot ? "Connecting to camera and extracting snapshot..." : 
+                           (isLoadingSnapshotUrl ? "Loading snapshot image..." : "Processing...")}
                         </p>
                         <p className="text-xs text-muted-foreground">This may take a moment.</p>
                     </div>
@@ -1247,7 +1361,7 @@ const handleGenerateSceneDescription = async () => {
                     height={300}
                     className="rounded-md border object-cover aspect-video w-full"
                     data-ai-hint="camera snapshot"
-                    unoptimized
+                    unoptimized // Important for external URLs like GCS signed URLs
                     />
                 ) : (
                      <div className="w-full aspect-video bg-muted rounded-md flex flex-col items-center justify-center text-center p-4">
@@ -1403,7 +1517,7 @@ const handleGenerateSceneDescription = async () => {
                                     )}
                                 />
                             </div>
-                             <div className="grid grid-cols-2 gap-x-4">
+                            <div className="grid grid-cols-2 gap-x-4">
                                 <FormField
                                     control={formStep3.control}
                                     name="videoOverlapValue"
@@ -1735,3 +1849,4 @@ const handleGenerateSceneDescription = async () => {
 };
 
 export default CamerasPage;
+
