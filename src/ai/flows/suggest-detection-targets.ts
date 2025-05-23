@@ -23,11 +23,12 @@ export const SuggestDetectionTargetsOutputSchema = z.object({
 });
 export type SuggestDetectionTargetsOutput = z.infer<typeof SuggestDetectionTargetsOutputSchema>;
 
-const suggestDetectionTargetsPrompt = ai.definePrompt({
-  name: 'suggestDetectionTargetsPrompt_local',
-  input: {schema: SuggestDetectionTargetsInputSchema},
-  output: {schema: SuggestDetectionTargetsOutputSchema},
-  prompt: `Based on the following camera scene context and optional scene description, suggest a list of common objects, events, or behaviors that an AI model should typically detect in this environment. Provide the suggestions as a comma-separated list. Respond in {{language}}.
+export async function suggestDetectionTargets(input: SuggestDetectionTargetsInput): Promise<SuggestDetectionTargetsOutput> {
+  const suggestDetectionTargetsPrompt_local = ai.definePrompt({
+    name: 'suggestDetectionTargetsPrompt_local_action', // Unique name
+    input: {schema: SuggestDetectionTargetsInputSchema},
+    output: {schema: SuggestDetectionTargetsOutputSchema},
+    prompt: `Based on the following camera scene context and optional scene description, suggest a list of common objects, events, or behaviors that an AI model should typically detect in this environment. Provide the suggestions as a comma-separated list. Respond in {{language}}.
 
 Camera Scene Context:
 {{{cameraSceneContext}}}
@@ -38,43 +39,38 @@ Scene Description (from snapshot):
 {{/if}}
 
 Suggested AI Detection Targets (comma-separated list):`,
-});
+  });
 
-const suggestDetectionTargetsFlowInternal = ai.defineFlow(
-  {
-    name: 'suggestDetectionTargetsFlow_local',
-    inputSchema: SuggestDetectionTargetsInputSchema,
-    outputSchema: SuggestDetectionTargetsOutputSchema,
-  },
-  async (flowInput) => {
-    try {
-      const {output} = await suggestDetectionTargetsPrompt(flowInput);
-      if (!output?.suggestedTargets) {
-        console.warn('suggestDetectionTargetsFlowInternal: AI model did not return expected "suggestedTargets" structure.', output);
-        let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
-        if (flowInput.language === 'es') {
-            errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
-        } else if (flowInput.language === 'pt') {
-            errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
+  const suggestDetectionTargetsFlowInternal_local_action = ai.defineFlow(
+    {
+      name: 'suggestDetectionTargetsFlow_local_action', // Unique name
+      inputSchema: SuggestDetectionTargetsInputSchema,
+      outputSchema: SuggestDetectionTargetsOutputSchema,
+    },
+    async (flowInput) => {
+      try {
+        const {output} = await suggestDetectionTargetsPrompt_local(flowInput);
+        if (!output?.suggestedTargets) {
+          console.warn('suggestDetectionTargetsFlowInternal: AI model did not return expected "suggestedTargets" structure.', output);
+          let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
+          if (flowInput.language === 'es') errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
+          else if (flowInput.language === 'pt') errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
+          return { suggestedTargets: errorMsg };
         }
-        return { suggestedTargets: errorMsg };
+        return output;
+      } catch (error: any) {
+        console.error('suggestDetectionTargetsFlowInternal: Error during AI prompt execution:', error);
+        let errorMessage = "Failed to communicate with the AI model for detection target suggestions.";
+        if (error?.message) {
+          errorMessage = error.message;
+        } else if (flowInput.language === 'es') {
+          errorMessage = "Falló la comunicación con el modelo IA para sugerencias de objetivos de detección.";
+        } else if (flowInput.language === 'pt') {
+          errorMessage = "Falha na comunicação com o modelo de IA para sugestões de alvos de deteção.";
+        }
+        return { suggestedTargets: `Error: ${errorMessage}` };
       }
-      return output;
-    } catch (error: any) {
-      console.error('suggestDetectionTargetsFlowInternal: Error during AI prompt execution:', error);
-      let errorMessage = "Failed to communicate with the AI model for detection target suggestions.";
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (flowInput.language === 'es') {
-        errorMessage = "Falló la comunicación con el modelo IA para sugerencias de objetivos de detección.";
-      } else if (flowInput.language === 'pt') {
-        errorMessage = "Falha na comunicação com o modelo de IA para sugestões de alvos de deteção.";
-      }
-      return { suggestedTargets: `Error: ${errorMessage}` };
     }
-  }
-);
-
-export async function suggestDetectionTargets(input: SuggestDetectionTargetsInput): Promise<SuggestDetectionTargetsOutput> {
-  return suggestDetectionTargetsFlowInternal(input);
+  );
+  return suggestDetectionTargetsFlowInternal_local_action(input);
 }
