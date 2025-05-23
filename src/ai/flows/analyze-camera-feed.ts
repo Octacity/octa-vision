@@ -28,31 +28,49 @@ const AnalyzeCameraFeedOutputSchema = z.object({
 });
 export type AnalyzeCameraFeedOutput = z.infer<typeof AnalyzeCameraFeedOutputSchema>;
 
-export async function analyzeCameraFeed(input: AnalyzeCameraFeedInput): Promise<AnalyzeCameraFeedOutput> {
-  const prompt = ai.definePrompt({
-    name: 'analyzeCameraFeedPrompt_local',
-    input: {
-      schema: AnalyzeCameraFeedInputSchema,
-    },
-    output: {
-      schema: AnalyzeCameraFeedOutputSchema,
-    },
-    prompt: `You are an AI agent specializing in analyzing security camera footage. You will use the camera feed and the user-provided prompt to determine if the event described in the prompt is detected in the camera feed. If the event is detected, set eventDetected to true and provide an appropriate alert message. If the event is not detected, set eventDetected to false and provide a message indicating that the event was not detected. Respond in {{language}}.
+const analyzeCameraFeedPrompt = ai.definePrompt({
+  name: 'analyzeCameraFeedPrompt_local',
+  input: {
+    schema: AnalyzeCameraFeedInputSchema,
+  },
+  output: {
+    schema: AnalyzeCameraFeedOutputSchema,
+  },
+  prompt: `You are an AI agent specializing in analyzing security camera footage. You will use the camera feed and the user-provided prompt to determine if the event described in the prompt is detected in the camera feed. If the event is detected, set eventDetected to true and provide an appropriate alert message. If the event is not detected, set eventDetected to false and provide a message indicating that the event was not detected. Respond in {{language}}.
 
 User Prompt: {{{prompt}}}
 Camera Feed: {{media url=cameraFeedDataUri}}`,
-  });
+});
 
-  const analyzeCameraFeedFlow = ai.defineFlow(
-    {
-      name: 'analyzeCameraFeedFlow_local',
-      inputSchema: AnalyzeCameraFeedInputSchema,
-      outputSchema: AnalyzeCameraFeedOutputSchema,
-    },
-    async (flowInput) => {
-      const {output} = await prompt(flowInput); // Note: Error handling should be added here
-      return output!;
+const analyzeCameraFeedFlow = ai.defineFlow(
+  {
+    name: 'analyzeCameraFeedFlow_local',
+    inputSchema: AnalyzeCameraFeedInputSchema,
+    outputSchema: AnalyzeCameraFeedOutputSchema,
+  },
+  async (flowInput) => {
+    try {
+        const {output} = await analyzeCameraFeedPrompt(flowInput);
+        if (!output) {
+            console.warn('analyzeCameraFeedFlow: AI model did not return any output.');
+            return { eventDetected: false, alertMessage: "Error: AI model returned no output." };
+        }
+        return output;
+    } catch (error: any) {
+        console.error('analyzeCameraFeedFlow: Error during AI prompt execution:', error);
+        let errorMessage = "Failed to communicate with the AI model.";
+        if (error?.message) {
+            errorMessage = error.message;
+        } else if (flowInput.language === 'es') {
+            errorMessage = "Falló la comunicación con el modelo IA.";
+        } else if (flowInput.language === 'pt') {
+            errorMessage = "Falha na comunicação com o modelo de IA.";
+        }
+        return { eventDetected: false, alertMessage: `Error: ${errorMessage}` };
     }
-  );
+  }
+);
+
+export async function analyzeCameraFeed(input: AnalyzeCameraFeedInput): Promise<AnalyzeCameraFeedOutput> {
   return analyzeCameraFeedFlow(input);
 }

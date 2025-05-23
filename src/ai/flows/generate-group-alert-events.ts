@@ -22,12 +22,11 @@ const GenerateGroupAlertEventsOutputSchema = z.object({
 });
 export type GenerateGroupAlertEventsOutput = z.infer<typeof GenerateGroupAlertEventsOutputSchema>;
 
-export async function generateGroupAlertEvents(input: GenerateGroupAlertEventsInput): Promise<GenerateGroupAlertEventsOutput> {
-  const prompt = ai.definePrompt({
-    name: 'generateGroupAlertEventsPrompt_local',
-    input: {schema: GenerateGroupAlertEventsInputSchema},
-    output: {schema: GenerateGroupAlertEventsOutputSchema},
-    prompt: `You are an AI assistant helping to configure security camera alerts.
+const generateGroupAlertEventsPrompt = ai.definePrompt({
+  name: 'generateGroupAlertEventsPrompt_local',
+  input: {schema: GenerateGroupAlertEventsInputSchema},
+  output: {schema: GenerateGroupAlertEventsOutputSchema},
+  prompt: `You are an AI assistant helping to configure security camera alerts.
 Based on the following "AI Detection Target" provided by the user, suggest a list of relevant "Alert Events".
 The "Alert Events" should be specific and actionable.
 Format the output as a comma-separated string. Each event should be concise and use a prefix like "safety:" or "security:".
@@ -38,41 +37,43 @@ AI Detection Target:
 {{{aiDetectionTarget}}}
 
 Provide your suggested alert events below in {{language}}:`,
-  });
+});
 
-  const generateGroupAlertEventsFlow = ai.defineFlow(
-    {
-      name: 'generateGroupAlertEventsFlow_local',
-      inputSchema: GenerateGroupAlertEventsInputSchema,
-      outputSchema: GenerateGroupAlertEventsOutputSchema,
-    },
-    async (flowInput) => {
-      try {
-        const {output} = await prompt(flowInput);
-        if (!output?.suggestedAlertEvents) {
-          console.warn('AI model did not return expected "suggestedAlertEvents" structure.', output);
-          let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
-          if (flowInput.language === 'es') {
-              errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
-          } else if (flowInput.language === 'pt') {
-              errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
-          }
-          return { suggestedAlertEvents: errorMsg };
-        }
-        return output;
-      } catch (error: any) {
-        console.error('generateGroupAlertEventsFlow: Error during AI prompt execution:', error);
-        let errorMessage = "Failed to communicate with the AI model.";
-        if (error?.message) {
-          errorMessage = error.message;
-        } else if (flowInput.language === 'es') {
-          errorMessage = "Falló la comunicación con el modelo IA.";
+const generateGroupAlertEventsFlowInternal = ai.defineFlow(
+  {
+    name: 'generateGroupAlertEventsFlow_local',
+    inputSchema: GenerateGroupAlertEventsInputSchema,
+    outputSchema: GenerateGroupAlertEventsOutputSchema,
+  },
+  async (flowInput) => {
+    try {
+      const {output} = await generateGroupAlertEventsPrompt(flowInput);
+      if (!output?.suggestedAlertEvents) {
+        console.warn('generateGroupAlertEventsFlowInternal: AI model did not return expected "suggestedAlertEvents" structure.', output);
+        let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
+        if (flowInput.language === 'es') {
+            errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
         } else if (flowInput.language === 'pt') {
-          errorMessage = "Falha na comunicação com o modelo de IA.";
+            errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
         }
-        return { suggestedAlertEvents: `Error: ${errorMessage}` };
+        return { suggestedAlertEvents: errorMsg };
       }
+      return output;
+    } catch (error: any) {
+      console.error('generateGroupAlertEventsFlowInternal: Error during AI prompt execution:', error);
+      let errorMessage = "Failed to communicate with the AI model.";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (flowInput.language === 'es') {
+        errorMessage = "Falló la comunicación con el modelo IA.";
+      } else if (flowInput.language === 'pt') {
+        errorMessage = "Falha na comunicação com o modelo de IA.";
+      }
+      return { suggestedAlertEvents: `Error: ${errorMessage}` };
     }
-  );
-  return generateGroupAlertEventsFlow(input);
+  }
+);
+
+export async function generateGroupAlertEvents(input: GenerateGroupAlertEventsInput): Promise<GenerateGroupAlertEventsOutput> {
+  return generateGroupAlertEventsFlowInternal(input);
 }

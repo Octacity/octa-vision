@@ -28,12 +28,11 @@ export const SuggestAlertEventsOutputSchema = z.object({
 });
 export type SuggestAlertEventsOutput = z.infer<typeof SuggestAlertEventsOutputSchema>;
 
-export async function suggestAlertEvents(input: SuggestAlertEventsInput): Promise<SuggestAlertEventsOutput> {
-  const prompt = ai.definePrompt({
-    name: 'suggestAlertEventsPrompt_local',
-    input: {schema: SuggestAlertEventsInputSchema},
-    output: {schema: SuggestAlertEventsOutputSchema},
-    prompt: `Considering the following camera scene context and the desired AI detection targets, suggest a list of specific events or conditions that should trigger an alert. For each suggested alert, provide a concise name and a brief description of the condition.
+const suggestAlertEventsPrompt = ai.definePrompt({
+  name: 'suggestAlertEventsPrompt_local',
+  input: {schema: SuggestAlertEventsInputSchema},
+  output: {schema: SuggestAlertEventsOutputSchema},
+  prompt: `Considering the following camera scene context and the desired AI detection targets, suggest a list of specific events or conditions that should trigger an alert. For each suggested alert, provide a concise name and a brief description of the condition.
 Format the output as a JSON array of objects, where each object has 'name' and 'condition' keys. Respond in {{language}}.
 
 Example Output:
@@ -49,41 +48,43 @@ AI Detection Targets:
 {{{aiDetectionTarget}}}
 
 Suggested Alert Events (JSON Array):`,
-  });
+});
 
-  const suggestAlertEventsFlow = ai.defineFlow(
-    {
-      name: 'suggestAlertEventsFlow_local',
-      inputSchema: SuggestAlertEventsInputSchema,
-      outputSchema: SuggestAlertEventsOutputSchema,
-    },
-    async (flowInput) => {
-      try {
-        const {output} = await prompt(flowInput);
-        if (!output || !Array.isArray(output.suggestedAlerts)) {
-          console.warn('suggestAlertEventsFlow: AI model did not return expected "suggestedAlerts" array structure.', output);
-          let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
-           if (flowInput.language === 'es') {
-              errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
-          } else if (flowInput.language === 'pt') {
-              errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
-          }
-          return { suggestedAlerts: [{name: errorMsg, condition: ""}] };
-        }
-        return output;
-      } catch (error: any) {
-        console.error('suggestAlertEventsFlow: Error during AI prompt execution:', error);
-        let errorMessage = "Failed to communicate with the AI model.";
-        if (error?.message) {
-          errorMessage = error.message;
-        } else if (flowInput.language === 'es') {
-          errorMessage = "Falló la comunicación con el modelo IA.";
+const suggestAlertEventsFlowInternal = ai.defineFlow(
+  {
+    name: 'suggestAlertEventsFlow_local',
+    inputSchema: SuggestAlertEventsInputSchema,
+    outputSchema: SuggestAlertEventsOutputSchema,
+  },
+  async (flowInput) => {
+    try {
+      const {output} = await suggestAlertEventsPrompt(flowInput);
+      if (!output || !Array.isArray(output.suggestedAlerts)) {
+        console.warn('suggestAlertEventsFlowInternal: AI model did not return expected "suggestedAlerts" array structure.', output);
+        let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
+         if (flowInput.language === 'es') {
+            errorMsg = "Error: La IA no generó sugerencias en el formato esperado.";
         } else if (flowInput.language === 'pt') {
-          errorMessage = "Falha na comunicação com o modelo de IA.";
+            errorMsg = "Erro: A IA não conseguiu gerar sugestões no formato esperado.";
         }
-        return { suggestedAlerts: [{name: `Error: ${errorMessage}`, condition: ""}] };
+        return { suggestedAlerts: [{name: errorMsg, condition: ""}] };
       }
+      return output;
+    } catch (error: any) {
+      console.error('suggestAlertEventsFlowInternal: Error during AI prompt execution:', error);
+      let errorMessage = "Failed to communicate with the AI model.";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (flowInput.language === 'es') {
+        errorMessage = "Falló la comunicación con el modelo IA.";
+      } else if (flowInput.language === 'pt') {
+        errorMessage = "Falha na comunicação com o modelo de IA.";
+      }
+      return { suggestedAlerts: [{name: `Error: ${errorMessage}`, condition: ""}] };
     }
-  );
-  return suggestAlertEventsFlow(input);
+  }
+);
+
+export async function suggestAlertEvents(input: SuggestAlertEventsInput): Promise<SuggestAlertEventsOutput> {
+  return suggestAlertEventsFlowInternal(input);
 }
