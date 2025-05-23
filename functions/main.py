@@ -61,8 +61,8 @@ def get_default_vss_base_url():
         raise ValueError(f"Could not retrieve system default VSS server URL: {e}")
 
 
-# Read allowed origins from environment variable
-allowed_origins_str = os.environ.get('CORS_ALLOWED_ORIGINS')
+# Read allowed origins from environment variable (lowercase for Firebase Functions config)
+allowed_origins_str = os.environ.get('cors_allowed_origins')
 allowed_origins = allowed_origins_str.split(',') if allowed_origins_str else True
 
 

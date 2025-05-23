@@ -33,7 +33,7 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 # Read allowed origins from environment variable
-allowed_origins_str = os.environ.get('CORS_ALLOWED_ORIGINS')
+allowed_origins_str = os.environ.get('cors_allowed_origins')
 if allowed_origins_str:
     ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_str.split(',')]
 else:
