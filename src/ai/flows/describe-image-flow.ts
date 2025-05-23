@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI agent for describing an image.
@@ -49,10 +50,16 @@ const describeImageFlow = ai.defineFlow(
     outputSchema: DescribeImageOutputSchema,
   },
   async (input) => {
+    console.log('describeImageFlow: Input received:', { 
+        language: input.language, 
+        imageDataUriLength: input.imageDataUri?.length  // Log length instead of full URI for brevity
+    });
     try {
       const {output} = await prompt(input);
+      console.log('describeImageFlow: Output from AI prompt:', JSON.stringify(output, null, 2));
+
       if (!output?.description) {
-        console.warn('AI model did not return expected "description" structure.', output);
+        console.warn('describeImageFlow: AI model did not return expected "description" structure.', output);
         let errorMsg = "Error: AI failed to generate a description.";
         if (input.language === 'es') {
             errorMsg = "Error: La IA no pudo generar una descripción.";
