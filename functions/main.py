@@ -1,12 +1,22 @@
 
 from firebase_functions import https_fn
 import firebase_admin
-from auth_helper import verify_firebase_token, get_firestore_client
+from auth_helper import verify_firebase_token
 from firebase_admin import credentials, auth, firestore
 from suggest_apis import suggest_scene_description, suggest_detection_targets, suggest_alert_events
 import os
+import time # Import time for time.time()
 
-firebase_admin.initialize_app()
+# Initialize Firebase Admin SDK (only once)
+try:
+    if not firebase_admin._apps:
+        # Use ApplicationDefaultCredentials for Cloud Functions environment
+        cred = credentials.ApplicationDefault()
+        firebase_admin.initialize_app(cred)
+except ValueError:
+    # Handle case where app is already initialized (e.g., in local testing)
+    pass
+
 
 VSS_API_BASE_URL_CACHE = None
 VSS_API_BASE_URL_CACHE_EXPIRY = None
@@ -15,6 +25,11 @@ CACHE_TTL_SECONDS = 300
 def get_default_vss_base_url():
     global VSS_API_BASE_URL_CACHE, VSS_API_BASE_URL_CACHE_EXPIRY
     current_time = time.time()
+
+# Implement get_firestore_client in main.py
+def get_firestore_client():
+    """Returns a Firestore client instance. Assumes Firebase app is initialized."""
+    return firestore.client()
 
     if VSS_API_BASE_URL_CACHE and VSS_API_BASE_URL_CACHE_EXPIRY and current_time < VSS_API_BASE_URL_CACHE_EXPIRY:
         return VSS_API_BASE_URL_CACHE
@@ -62,7 +77,6 @@ def get_default_vss_base_url():
         raise ValueError(f"Could not retrieve system default VSS server URL: {e}")
 
 
-# Read allowed origins from environment variable (nested lowercase for Firebase Functions config)
 try:
     allowed_origins_str = firebase_admin.functions.config().app.cors_allowed_origins
 except AttributeError:
