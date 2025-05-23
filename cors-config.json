@@ -1,6 +1,7 @@
 [
   {
     "origin": [
+      "https://9000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev",
       "https://6000-idx-studio-1745601753440.cluster-iesosxm5fzdewqvhlwn5qivgry.cloudworkstations.dev",
       "http://localhost:9002",
       "http://localhost:3000"
