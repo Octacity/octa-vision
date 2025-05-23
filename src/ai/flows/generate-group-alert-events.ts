@@ -23,7 +23,7 @@ const GenerateGroupAlertEventsOutputSchema = z.object({
 export type GenerateGroupAlertEventsOutput = z.infer<typeof GenerateGroupAlertEventsOutputSchema>;
 
 export async function generateGroupAlertEvents(input: GenerateGroupAlertEventsInput): Promise<GenerateGroupAlertEventsOutput> {
-  const generateGroupAlertEventsPrompt_local = ai.definePrompt({
+  const generateGroupAlertEventsPrompt_local_action = ai.definePrompt({
     name: 'generateGroupAlertEventsPrompt_local_action', // Unique name
     input: {schema: GenerateGroupAlertEventsInputSchema},
     output: {schema: GenerateGroupAlertEventsOutputSchema},
@@ -48,7 +48,7 @@ Provide your suggested alert events below in {{language}}:`,
     },
     async (flowInput) => {
       try {
-        const {output} = await generateGroupAlertEventsPrompt_local(flowInput);
+        const {output} = await generateGroupAlertEventsPrompt_local_action(flowInput);
         if (!output?.suggestedAlertEvents) {
           console.warn('generateGroupAlertEventsFlowInternal: AI model did not return expected "suggestedAlertEvents" structure.', output);
           let errorMsg = "Error: AI failed to generate suggestions in the expected format.";

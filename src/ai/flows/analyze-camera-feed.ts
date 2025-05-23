@@ -29,7 +29,7 @@ const AnalyzeCameraFeedOutputSchema = z.object({
 export type AnalyzeCameraFeedOutput = z.infer<typeof AnalyzeCameraFeedOutputSchema>;
 
 export async function analyzeCameraFeed(input: AnalyzeCameraFeedInput): Promise<AnalyzeCameraFeedOutput> {
-  const analyzeCameraFeedPrompt_local = ai.definePrompt({
+  const analyzeCameraFeedPrompt_local_action = ai.definePrompt({
     name: 'analyzeCameraFeedPrompt_local_action', // Unique name for this action context
     input: {
       schema: AnalyzeCameraFeedInputSchema,
@@ -51,7 +51,7 @@ Camera Feed: {{media url=cameraFeedDataUri}}`,
     },
     async (flowInput) => {
       try {
-          const {output} = await analyzeCameraFeedPrompt_local(flowInput);
+          const {output} = await analyzeCameraFeedPrompt_local_action(flowInput);
           if (!output) {
               console.warn('analyzeCameraFeedFlow: AI model did not return any output.');
               let errorMsg = "Error: AI model returned no output.";

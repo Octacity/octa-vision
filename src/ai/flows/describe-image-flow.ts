@@ -27,7 +27,7 @@ const DescribeImageOutputSchema = z.object({
 export type DescribeImageOutput = z.infer<typeof DescribeImageOutputSchema>;
 
 export async function describeImage(input: DescribeImageInput): Promise<DescribeImageOutput> {
-  const describeImagePrompt_local = ai.definePrompt({
+  const describeImagePrompt_local_action = ai.definePrompt({
     name: 'describeImagePrompt_local_action', // Unique name
     input: {schema: DescribeImageInputSchema},
     output: {schema: DescribeImageOutputSchema},
@@ -52,7 +52,7 @@ Scene Description:`,
           imageDataUriLength: flowInput.imageDataUri?.length
       });
       try {
-        const {output} = await describeImagePrompt_local(flowInput);
+        const {output} = await describeImagePrompt_local_action(flowInput);
         console.log('describeImageFlowInternal: Output from AI prompt:', JSON.stringify(output, null, 2));
 
         if (!output?.description) {

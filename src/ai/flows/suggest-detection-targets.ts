@@ -24,7 +24,7 @@ export const SuggestDetectionTargetsOutputSchema = z.object({
 export type SuggestDetectionTargetsOutput = z.infer<typeof SuggestDetectionTargetsOutputSchema>;
 
 export async function suggestDetectionTargets(input: SuggestDetectionTargetsInput): Promise<SuggestDetectionTargetsOutput> {
-  const suggestDetectionTargetsPrompt_local = ai.definePrompt({
+  const suggestDetectionTargetsPrompt_local_action = ai.definePrompt({
     name: 'suggestDetectionTargetsPrompt_local_action', // Unique name
     input: {schema: SuggestDetectionTargetsInputSchema},
     output: {schema: SuggestDetectionTargetsOutputSchema},
@@ -49,7 +49,7 @@ Suggested AI Detection Targets (comma-separated list):`,
     },
     async (flowInput) => {
       try {
-        const {output} = await suggestDetectionTargetsPrompt_local(flowInput);
+        const {output} = await suggestDetectionTargetsPrompt_local_action(flowInput);
         if (!output?.suggestedTargets) {
           console.warn('suggestDetectionTargetsFlowInternal: AI model did not return expected "suggestedTargets" structure.', output);
           let errorMsg = "Error: AI failed to generate suggestions in the expected format.";

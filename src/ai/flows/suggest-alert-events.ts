@@ -29,7 +29,7 @@ export const SuggestAlertEventsOutputSchema = z.object({
 export type SuggestAlertEventsOutput = z.infer<typeof SuggestAlertEventsOutputSchema>;
 
 export async function suggestAlertEvents(input: SuggestAlertEventsInput): Promise<SuggestAlertEventsOutput> {
-  const suggestAlertEventsPrompt_local = ai.definePrompt({
+  const suggestAlertEventsPrompt_local_action = ai.definePrompt({
     name: 'suggestAlertEventsPrompt_local_action', // Unique name
     input: {schema: SuggestAlertEventsInputSchema},
     output: {schema: SuggestAlertEventsOutputSchema},
@@ -59,7 +59,7 @@ Suggested Alert Events (JSON Array):`,
     },
     async (flowInput) => {
       try {
-        const {output} = await suggestAlertEventsPrompt_local(flowInput);
+        const {output} = await suggestAlertEventsPrompt_local_action(flowInput);
         if (!output || !Array.isArray(output.suggestedAlerts)) {
           console.warn('suggestAlertEventsFlowInternal: AI model did not return expected "suggestedAlerts" array structure.', output);
           let errorMsg = "Error: AI failed to generate suggestions in the expected format.";
