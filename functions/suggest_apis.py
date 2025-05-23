@@ -5,7 +5,7 @@ import google.generativeai as genai
 import os
 import json
 import base64
-from .auth_helper import verify_firebase_token
+from auth_helper import verify_firebase_token
 
 # Read the Gemini API key from Firebase Functions config
 GEMINI_API_KEY = None

@@ -1,7 +1,7 @@
 
 from firebase_functions import https_fn
 import firebase_admin
-from .auth_helper import verify_firebase_token
+from auth_helper import verify_firebase_token
 from firebase_admin import credentials, auth, firestore
 import time
 import os
