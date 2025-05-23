@@ -7,116 +7,112 @@ import { useFieldArray, useWatch } from 'react-hook-form';
 import type { AddCameraStep3Values } from '@/app/(main)/cameras/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@radix-ui/react-textarea';
+import { Textarea } from '@/components/ui/textarea'; // Corrected import path
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, HelpCircle, Wand2, Diamond, Film, BarChart, AlertCircle as AlertCircleIconLucide, PlusCircle, Trash2, Loader2, Sparkles } from 'lucide-react';
 import { vssBasePromptTemplate, vssCaptionPromptTemplate, vssSummaryPromptTemplate } from '@/lib/vssPrompts';
+import { useLanguage } from '@/contexts/LanguageContext'; // Added for translation if needed
+import { useToast } from '@/hooks/use-toast'; // Added for notifications
+import { suggestDetectionTargets } from '@/ai/flows/suggest-detection-targets'; // Assuming this is the correct path
+import { suggestAlertEvents } from '@/ai/flows/suggest-alert-events'; // Assuming this is the correct path
+
 
 interface AddCameraStep3FormProps {
   formStep3: UseFormReturn<AddCameraStep3Values>;
   onSubmitStep3: (data: AddCameraStep3Values) => void;
+  getStep2Values: () => { sceneDescription?: string | null; cameraSceneContext?: string | null }; // Function to get values from Step 2
 }
 
 const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
   formStep3,
   onSubmitStep3,
+  getStep2Values,
 }) => {
-  const { control, formState } = formStep3;
+  const { control, formState, getValues, setValue } = formStep3;
   const { errors } = formState;
+  const { language } = useLanguage();
+  const { toast } = useToast();
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: 'alertEvents',
   });
 
   const [isGeneratingDetectionTarget, setIsGeneratingDetectionTarget] = useState(false);
-  const [detectionTargetError, setDetectionTargetError] = useState<string | null>(null);
   const [isGeneratingAlertEvents, setIsGeneratingAlertEvents] = useState(false);
 
-  // Watch relevant fields to update VSS prompts
   const watchedFields = useWatch({
     control,
-    name: ['cameraSceneContext', 'aiDetectionTarget', 'alertEvents'],
+    name: ['cameraSceneContext', 'aiDetectionTarget', 'alertEvents', 'sceneDescription'],
   });
+
 
   const handleSuggestDetectionTarget = async () => {
     setIsGeneratingDetectionTarget(true);
-    setDetectionTargetError(null); // Clear previous errors
-
+    const { cameraSceneContext, sceneDescription } = getStep2Values();
     try {
-      const response = await fetch('/api/suggest-detection-targets', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cameraSceneContext: formStep3.getValues('cameraSceneContext'), aiDetectionTarget: formStep3.getValues('aiDetectionTarget') }),
+      const response = await suggestDetectionTargets({
+        cameraSceneContext: cameraSceneContext || '',
+        sceneDescription: sceneDescription || '',
+        language: language,
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to suggest detection targets');
- formStep3.setValue('aiDetectionTarget', data.suggestedTargets);
+      if (response && response.suggestedTargets && !response.suggestedTargets.startsWith("Error:")) {
+        setValue('aiDetectionTarget', response.suggestedTargets);
+        toast({ title: "AI Suggestions", description: "Detection targets suggested." });
+      } else {
+        toast({ variant: "destructive", title: "Suggestion Failed", description: response.suggestedTargets || "Could not suggest detection targets." });
+      }
     } catch (error: any) {
- console.error('Error suggesting detection targets:', error);
- setDetectionTargetError(error.message || 'Failed to get suggestions.');
+      console.error('Error suggesting detection targets:', error);
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to get suggestions." });
     }
     setIsGeneratingDetectionTarget(false);
   };
 
   const handleSuggestAlertEvents = async () => {
     setIsGeneratingAlertEvents(true);
-    // Simulate API call with AI detection target and scene context
-    // In a real scenario, you'd send cameraSceneContext and aiDetectionTarget to your AI API
-    const sceneContext = formStep3.getValues('cameraSceneContext') || '';
-    const detectionTarget = formStep3.getValues('aiDetectionTarget') || '';
-
+    const { cameraSceneContext } = getStep2Values();
+    const aiDetectionTarget = getValues('aiDetectionTarget');
     try {
-      const response = await fetch('/api/suggest-alert-events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cameraSceneContext: sceneContext, aiDetectionTarget: detectionTarget }),
+      const response = await suggestAlertEvents({
+        cameraSceneContext: cameraSceneContext || '',
+        aiDetectionTarget: aiDetectionTarget || '',
+        language: language,
       });
-      const suggestedAlerts = await response.json(); // Assume the API returns the array directly
-      if (!response.ok) throw new Error(suggestedAlerts.error || 'Failed to suggest alert events');
-      replace(suggestedAlerts); // Replace existing alerts with suggestions
+      if (response && Array.isArray(response.suggestedAlerts) && response.suggestedAlerts.length > 0 && !response.suggestedAlerts[0]?.name?.startsWith("Error:")) {
+        replace(response.suggestedAlerts.map(alert => ({ name: alert.name, condition: alert.condition || '' })));
+        toast({ title: "AI Suggestions", description: "Alert events suggested." });
+      } else {
+        let errorMsg = "Could not suggest alert events.";
+        if(response && Array.isArray(response.suggestedAlerts) && response.suggestedAlerts[0]?.name?.startsWith("Error:")){
+            errorMsg = response.suggestedAlerts[0].name;
+        } else if (response && (response as any).error) {
+            errorMsg = (response as any).error;
+        }
+        toast({ variant: "destructive", title: "Suggestion Failed", description: errorMsg });
+      }
     } catch (error: any) {
       console.error('Error suggesting alert events:', error);
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to get alert event suggestions." });
     }
-
     setIsGeneratingAlertEvents(false);
   };
-  // Helper to cast errors for field array
+
   const alertEventsErrors = errors.alertEvents as FieldErrors<{ name: string; condition: string }>[] | undefined;
+
+  // Calculate derived values for VSS prompts
+  const vssData = {
+    cameraSceneContext: getStep2Values().cameraSceneContext || '',
+    aiDetectionTarget: getValues('aiDetectionTarget') || '',
+    alertEvents: getValues('alertEvents') || [],
+    sceneDescription: getStep2Values().sceneDescription || '',
+  };
 
   return (
     <div className="p-6">
-      {/* Use watched fields to generate VSS prompts */}
-      {formStep3.getValues('cameraSceneContext') || formStep3.getValues('aiDetectionTarget') || fields.length > 0 ? (
-        <>
-        {/* VSS Prompts will be displayed here based on watched fields */}
-        </>
-      ) : null}
-
-
       <Form {...formStep3}>
         <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
-          <FormField
-            control={formStep3.control}
-            name="cameraSceneContext"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center">
-                  <HelpCircle className="w-4 h-4 mr-2 text-muted-foreground" />
-                  What does this camera do? (Camera Scene Context)
-                </FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="e.g., Monitors the main entrance and exit points for security."
-                    {...field}
-                    rows={3}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           <FormField
             control={formStep3.control}
             name="aiDetectionTarget"
@@ -148,7 +144,6 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                   />
                 </FormControl>
                 {isGeneratingDetectionTarget && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
-                {detectionTargetError && <p className="text-xs text-destructive mt-1">{detectionTargetError}</p>}
                 <FormMessage />
               </FormItem>
             )}
@@ -165,7 +160,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleSuggestAlertEvents}
-                disabled={isGeneratingAlertEvents}
+                disabled={isGeneratingAlertEvents || !getValues('aiDetectionTarget')}
                 className="text-xs"
               >
                  {isGeneratingAlertEvents ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
@@ -228,20 +223,57 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
             >
               <PlusCircle className="h-4 w-4 mr-2" /> Add New Alert Event
             </Button>
-             {alertEventsErrors?.message && <p className="text-sm font-medium text-destructive mt-2">{alertEventsErrors.message}</p>}
+             {errors.alertEvents?.root?.message && <p className="text-sm font-medium text-destructive mt-2">{errors.alertEvents.root.message}</p>}
           </div>
 
           {/* Video Processing Configuration */}
-          <div className="grid grid-cols-1 gap-y-6 mt-6">
-            <h3 className="text-lg font-semibold">Video Processing Settings</h3>
+          <div className="space-y-4 mt-6">
+            <h3 className="text-base font-semibold flex items-center">
+                <Film className="w-4 h-4 mr-2 text-muted-foreground"/>
+                Video Processing Settings
+            </h3>
             <div className="grid grid-cols-2 gap-x-4">
                 <FormField
                 control={formStep3.control}
-                name="videoOverlapValue" // Make sure this matches the type definition
+                name="videoChunksValue"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel className="flex items-center">
-                        <AlertCircleIconLucide className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <FormLabel className="flex items-center text-xs">Video Chunks</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="e.g., 10" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={formStep3.control}
+                name="videoChunksUnit"
+                render={({ field }) => (
+                    <FormItem className="self-end">
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Unit" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        <SelectItem value="seconds">Seconds</SelectItem>
+                        <SelectItem value="minutes">Minutes</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+             <div className="grid grid-cols-2 gap-x-4">
+                <FormField
+                control={formStep3.control}
+                name="videoOverlapValue"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel className="flex items-center text-xs">
                         Video Overlap
                     </FormLabel>
                     <FormControl>
@@ -277,9 +309,9 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 name="numFrames"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel className="flex items-center">
+                    <FormLabel className="flex items-center text-xs">
                         <BarChart className="w-4 h-4 mr-2 text-muted-foreground" />
-                        No. of Frames
+                        No. of Frames (per chunk)
                     </FormLabel>
                     <FormControl>
                         <Input type="number" placeholder="e.g., 5" {...field} />
@@ -296,62 +328,46 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
         </form>
 
         {/* Display Generated VSS Prompts */}
-        {(formStep3.getValues('cameraSceneContext') || formStep3.getValues('aiDetectionTarget') || fields.length > 0) && (
+        {(vssData.cameraSceneContext || vssData.aiDetectionTarget || (vssData.alertEvents && vssData.alertEvents.length > 0)) && (
           <div className="mt-8 space-y-6">
-            <h3 className="text-lg font-semibold">Generated VSS Prompts (Read-only)</h3>
+            <h3 className="text-base font-semibold">Generated VSS Prompts (Read-only for review)</h3>
             <FormItem>
-              <FormLabel className="flex items-center">VSS Base Prompt</FormLabel>
+              <FormLabel className="flex items-center text-sm">VSS Base Prompt</FormLabel>
               <FormControl>
                 <Textarea
-                  value={vssBasePromptTemplate({
-                    cameraSceneContext: formStep3.getValues('cameraSceneContext'),
-                    aiDetectionTarget: formStep3.getValues('aiDetectionTarget'),
-                    alertEvents: fields, // Use the fields array from useFieldArray
-                    sceneDescription: formStep3.getValues('sceneDescription'), // Include sceneDescription if available
-                  })}
+                  value={vssBasePromptTemplate(vssData)}
                   readOnly
                   rows={6}
-                  className="font-mono text-xs"
+                  className="font-mono text-xs bg-muted/50"
                 />
               </FormControl>
             </FormItem>
 
             <FormItem>
-              <FormLabel className="flex items-center">VSS Caption Prompt</FormLabel>
+              <FormLabel className="flex items-center text-sm">VSS Caption Prompt</FormLabel>
               <FormControl>
                 <Textarea
-                   value={vssCaptionPromptTemplate({
-                    cameraSceneContext: formStep3.getValues('cameraSceneContext'),
-                    aiDetectionTarget: formStep3.getValues('aiDetectionTarget'),
-                    alertEvents: fields, // Use the fields array
-                     sceneDescription: formStep3.getValues('sceneDescription'), // Include sceneDescription
-                  })}
+                   value={vssCaptionPromptTemplate(vssData)}
                   readOnly
                   rows={6}
-                  className="font-mono text-xs"
+                  className="font-mono text-xs bg-muted/50"
                 />
               </FormControl>
             </FormItem>
 
             <FormItem>
-              <FormLabel className="flex items-center">VSS Summary Prompt</FormLabel>
+              <FormLabel className="flex items-center text-sm">VSS Summary Prompt</FormLabel>
               <FormControl>
                  <Textarea
-                   value={vssSummaryPromptTemplate({
-                    cameraSceneContext: formStep3.getValues('cameraSceneContext'),
-                    aiDetectionTarget: formStep3.getValues('aiDetectionTarget'),
-                    alertEvents: fields, // Use the fields array
-                     sceneDescription: formStep3.getValues('sceneDescription'), // Include sceneDescription
-                  })}
+                   value={vssSummaryPromptTemplate(vssData)}
                   readOnly
                   rows={10}
-                  className="font-mono text-xs"
+                  className="font-mono text-xs bg-muted/50"
                 />
               </FormControl>
             </FormItem>
           </div>
         )}
-
       </Form>
     </div>
   );
