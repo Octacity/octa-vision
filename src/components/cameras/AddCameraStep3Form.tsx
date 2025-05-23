@@ -3,111 +3,52 @@
 
 import { useState } from 'react';
 import type { UseFormReturn, FieldErrors } from 'react-hook-form';
-import { useFieldArray, useWatch } from 'react-hook-form';
+import { useFieldArray } from 'react-hook-form';
 import type { AddCameraStep3Values } from '@/app/(main)/cameras/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea'; // Corrected import path
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, HelpCircle, Wand2, Diamond, Film, BarChart, AlertCircle as AlertCircleIconLucide, PlusCircle, Trash2, Loader2, Sparkles } from 'lucide-react';
 import { vssBasePromptTemplate, vssCaptionPromptTemplate, vssSummaryPromptTemplate } from '@/lib/vssPrompts';
-import { useLanguage } from '@/contexts/LanguageContext'; // Added for translation if needed
-import { useToast } from '@/hooks/use-toast'; // Added for notifications
-import { suggestDetectionTargets } from '@/ai/flows/suggest-detection-targets'; // Assuming this is the correct path
-import { suggestAlertEvents } from '@/ai/flows/suggest-alert-events'; // Assuming this is the correct path
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface AddCameraStep3FormProps {
   formStep3: UseFormReturn<AddCameraStep3Values>;
   onSubmitStep3: (data: AddCameraStep3Values) => void;
-  getStep2Values: () => { sceneDescription?: string | null; cameraSceneContext?: string | null }; // Function to get values from Step 2
+  handleSuggestDetectionTargets: () => Promise<void>;
+  isSuggestingDetectionTargets: boolean;
+  handleSuggestAlertEvents: () => Promise<void>;
+  isSuggestingAlertEvents: boolean;
 }
 
 const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
   formStep3,
   onSubmitStep3,
-  getStep2Values,
+  handleSuggestDetectionTargets,
+  isSuggestingDetectionTargets,
+  handleSuggestAlertEvents,
+  isSuggestingAlertEvents,
 }) => {
   const { control, formState, getValues, setValue } = formStep3;
   const { errors } = formState;
-  const { language } = useLanguage();
-  const { toast } = useToast();
 
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: 'alertEvents',
   });
 
-  const [isGeneratingDetectionTarget, setIsGeneratingDetectionTarget] = useState(false);
-  const [isGeneratingAlertEvents, setIsGeneratingAlertEvents] = useState(false);
-
-  const watchedFields = useWatch({
-    control,
-    name: ['cameraSceneContext', 'aiDetectionTarget', 'alertEvents', 'sceneDescription'],
-  });
-
-
-  const handleSuggestDetectionTarget = async () => {
-    setIsGeneratingDetectionTarget(true);
-    const { cameraSceneContext, sceneDescription } = getStep2Values();
-    try {
-      const response = await suggestDetectionTargets({
-        cameraSceneContext: cameraSceneContext || '',
-        sceneDescription: sceneDescription || '',
-        language: language,
-      });
-      if (response && response.suggestedTargets && !response.suggestedTargets.startsWith("Error:")) {
-        setValue('aiDetectionTarget', response.suggestedTargets);
-        toast({ title: "AI Suggestions", description: "Detection targets suggested." });
-      } else {
-        toast({ variant: "destructive", title: "Suggestion Failed", description: response.suggestedTargets || "Could not suggest detection targets." });
-      }
-    } catch (error: any) {
-      console.error('Error suggesting detection targets:', error);
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to get suggestions." });
-    }
-    setIsGeneratingDetectionTarget(false);
-  };
-
-  const handleSuggestAlertEvents = async () => {
-    setIsGeneratingAlertEvents(true);
-    const { cameraSceneContext } = getStep2Values();
-    const aiDetectionTarget = getValues('aiDetectionTarget');
-    try {
-      const response = await suggestAlertEvents({
-        cameraSceneContext: cameraSceneContext || '',
-        aiDetectionTarget: aiDetectionTarget || '',
-        language: language,
-      });
-      if (response && Array.isArray(response.suggestedAlerts) && response.suggestedAlerts.length > 0 && !response.suggestedAlerts[0]?.name?.startsWith("Error:")) {
-        replace(response.suggestedAlerts.map(alert => ({ name: alert.name, condition: alert.condition || '' })));
-        toast({ title: "AI Suggestions", description: "Alert events suggested." });
-      } else {
-        let errorMsg = "Could not suggest alert events.";
-        if(response && Array.isArray(response.suggestedAlerts) && response.suggestedAlerts[0]?.name?.startsWith("Error:")){
-            errorMsg = response.suggestedAlerts[0].name;
-        } else if (response && (response as any).error) {
-            errorMsg = (response as any).error;
-        }
-        toast({ variant: "destructive", title: "Suggestion Failed", description: errorMsg });
-      }
-    } catch (error: any) {
-      console.error('Error suggesting alert events:', error);
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to get alert event suggestions." });
-    }
-    setIsGeneratingAlertEvents(false);
-  };
-
   const alertEventsErrors = errors.alertEvents as FieldErrors<{ name: string; condition: string }>[] | undefined;
-
-  // Calculate derived values for VSS prompts
-  const vssData = {
-    cameraSceneContext: getStep2Values().cameraSceneContext || '',
-    aiDetectionTarget: getValues('aiDetectionTarget') || '',
-    alertEvents: getValues('alertEvents') || [],
-    sceneDescription: getStep2Values().sceneDescription || '',
-  };
+  
+  // This part is problematic as formStep2 is not available here.
+  // The necessary values (cameraSceneContext, sceneDescription) for prompt generation
+  // need to be passed from the parent (CamerasPage) or fetched if not available.
+  // For now, I'll assume CamerasPage will pass the necessary context if these prompts are to be displayed here.
+  // For simplicity of this component, I will remove the direct VSS prompt display from here.
+  // The VSS prompts are generated in CamerasPage onSubmitStep3.
 
   return (
     <div className="p-6">
@@ -127,11 +68,11 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleSuggestDetectionTarget}
-                    disabled={isGeneratingDetectionTarget}
+                    onClick={handleSuggestDetectionTargets}
+                    disabled={isSuggestingDetectionTargets}
                     className="text-xs"
                   >
-                    {isGeneratingDetectionTarget ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                    {isSuggestingDetectionTargets ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
                     Suggest
                   </Button>
                 </div>
@@ -139,11 +80,12 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                   <Textarea
                     placeholder="e.g., People, vehicles, packages, safety vests"
                     {...field}
+                    value={field.value || ''}
                     rows={3}
-                    disabled={isGeneratingDetectionTarget}
+                    disabled={isSuggestingDetectionTargets}
                   />
                 </FormControl>
-                {isGeneratingDetectionTarget && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
+                {isSuggestingDetectionTargets && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
                 <FormMessage />
               </FormItem>
             )}
@@ -160,10 +102,10 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleSuggestAlertEvents}
-                disabled={isGeneratingAlertEvents || !getValues('aiDetectionTarget')}
+                disabled={isSuggestingAlertEvents || !getValues('aiDetectionTarget')}
                 className="text-xs"
               >
-                 {isGeneratingAlertEvents ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                 {isSuggestingAlertEvents ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
                 Suggest Alert Events
               </Button>
             </div>
@@ -177,7 +119,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                       <FormItem>
                         <FormLabel className="flex items-center text-xs">Alert Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Unauthorized Entry" {...field} />
+                          <Input placeholder="e.g., Unauthorized Entry" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage>{alertEventsErrors?.[index]?.name?.message}</FormMessage>
                       </FormItem>
@@ -190,7 +132,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                       <FormItem>
                         <FormLabel className="flex items-center text-xs">Alert Condition/Description</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Person detected in restricted area" {...field} />
+                          <Input placeholder="e.g., Person detected in restricted area" {...field} value={field.value || ''} />
                         </FormControl>
                          <FormMessage>{alertEventsErrors?.[index]?.condition?.message}</FormMessage>
                       </FormItem>
@@ -210,8 +152,8 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 </div>
               ))}
             </div>
-             {isGeneratingAlertEvents && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
-             {fields.length === 0 && !isGeneratingAlertEvents && (
+             {isSuggestingAlertEvents && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
+             {fields.length === 0 && !isSuggestingAlertEvents && (
                 <p className="text-sm text-muted-foreground text-center mt-4">Click below to add your first alert event or use the AI suggestions.</p>
              )}
             <Button
@@ -226,7 +168,6 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
              {errors.alertEvents?.root?.message && <p className="text-sm font-medium text-destructive mt-2">{errors.alertEvents.root.message}</p>}
           </div>
 
-          {/* Video Processing Configuration */}
           <div className="space-y-4 mt-6">
             <h3 className="text-base font-semibold flex items-center">
                 <Film className="w-4 h-4 mr-2 text-muted-foreground"/>
@@ -326,48 +267,6 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
             <p className="text-sm text-muted-foreground">Total no. of frames processed in a day: <span className="font-medium text-foreground"> (Calculated based on above values)</span></p>
           </div>
         </form>
-
-        {/* Display Generated VSS Prompts */}
-        {(vssData.cameraSceneContext || vssData.aiDetectionTarget || (vssData.alertEvents && vssData.alertEvents.length > 0)) && (
-          <div className="mt-8 space-y-6">
-            <h3 className="text-base font-semibold">Generated VSS Prompts (Read-only for review)</h3>
-            <FormItem>
-              <FormLabel className="flex items-center text-sm">VSS Base Prompt</FormLabel>
-              <FormControl>
-                <Textarea
-                  value={vssBasePromptTemplate(vssData)}
-                  readOnly
-                  rows={6}
-                  className="font-mono text-xs bg-muted/50"
-                />
-              </FormControl>
-            </FormItem>
-
-            <FormItem>
-              <FormLabel className="flex items-center text-sm">VSS Caption Prompt</FormLabel>
-              <FormControl>
-                <Textarea
-                   value={vssCaptionPromptTemplate(vssData)}
-                  readOnly
-                  rows={6}
-                  className="font-mono text-xs bg-muted/50"
-                />
-              </FormControl>
-            </FormItem>
-
-            <FormItem>
-              <FormLabel className="flex items-center text-sm">VSS Summary Prompt</FormLabel>
-              <FormControl>
-                 <Textarea
-                   value={vssSummaryPromptTemplate(vssData)}
-                  readOnly
-                  rows={10}
-                  className="font-mono text-xs bg-muted/50"
-                />
-              </FormControl>
-            </FormItem>
-          </div>
-        )}
       </Form>
     </div>
   );
