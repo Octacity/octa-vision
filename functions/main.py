@@ -1,14 +1,11 @@
 
 from firebase_functions import https_fn
 import firebase_admin
-from auth_helper import verify_firebase_token
+from auth_helper import verify_firebase_token, get_firestore_client
 from firebase_admin import credentials, auth, firestore
 import time
 import os
 
-import requests
-
-db = firestore.client()
 
 VSS_API_BASE_URL_CACHE = None
 VSS_API_BASE_URL_CACHE_EXPIRY = None
@@ -22,6 +19,7 @@ def get_default_vss_base_url():
         return VSS_API_BASE_URL_CACHE
 
     try:
+        db = get_firestore_client() # Get Firestore client from auth_helper
         servers_ref = db.collection('servers')
         query_ref = servers_ref.where('isSystemDefault', '==', True).limit(1) # Changed from isDefault
         results = query_ref.stream()

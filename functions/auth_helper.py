@@ -1,5 +1,5 @@
 import firebase_admin
-from firebase_admin import auth, credentials
+from firebase_admin import auth, credentials, firestore
 from firebase_functions import https_fn
 
 # Initialize Firebase Admin SDK (only once)
@@ -11,6 +11,16 @@ try:
 except ValueError:
     # Handle case where app is already initialized (e.g., in local testing)
     pass
+
+def get_firestore_client():
+    """Initializes Firebase Admin SDK if not already initialized and returns the Firestore client."""
+    try:
+        if not firebase_admin._apps:
+            # Use ApplicationDefaultCredentials for Cloud Functions environment
+            cred = credentials.ApplicationDefault()
+            firebase_admin.initialize_app(cred)
+    except ValueError:
+        pass
 
 def verify_firebase_token(req: https_fn.Request):
     auth_header = req.headers.get('Authorization')
