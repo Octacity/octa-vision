@@ -1,47 +1,24 @@
-# functions/suggest_apis.py
 
-import functions_framework
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_functions import https_fn
 import google.generativeai as genai
 import os
 import json
 import base64
-from .main import verify_firebase_token # Assuming verify_firebase_token is in main.py
+from .auth_helper import verify_firebase_token
 
-# Initialize Firebase Admin SDK (only once)
-# Important: Initialize before accessing functions.config()
-try:
-    if not firebase_admin._apps:
-        # Use ApplicationDefaultCredentials for Cloud Functions environment
-        cred = firebase_admin.credentials.ApplicationDefault()
-        firebase_admin.initialize_app(cred)
-except ValueError:
-    # Handle case where app is already initialized (e.g., in local testing)
-    pass
-
-# Initialize Firebase Admin SDK (only once)
-try:
-    if not firebase_admin._apps:
-        # Use ApplicationDefaultCredentials for Cloud Functions environment
-        cred = credentials.ApplicationDefault()
-        firebase_admin.initialize_app(cred)
-except ValueError:
-    # Handle case where app is already initialized (e.g., in local testing)
-    pass
-
-# Access the nested environment variable set by Firebase CLI
-# and assign it to the uppercase GEMINI_API_KEY variable.
+# Read the Gemini API key from Firebase Functions config
 GEMINI_API_KEY = None
 try:
     firebase_config = firebase_admin.functions.config()
-    # Access the nested key gemini.api_key
     GEMINI_API_KEY = firebase_config.gemini.api_key
-except AttributeError:
-    # Handle the case where the config is not set (e.g., in local development)
+except (AttributeError, KeyError):
+ # Handle cases where 'gemini' or 'api_key' are not in the config
     print("Warning: Firebase Functions config 'gemini.api_key' not found. Ensure you have set it using 'firebase functions:config:set gemini.api_key=\"YOUR_API_KEY\"'")
+    # You might want to raise an exception or handle this more robustly in production
 
-# Helper to handle Gemini API configuration check before model calls
+
+# Helper to handle Gemini API configuration check before model calls.
 # This function now uses the GEMINI_API_KEY variable set above.
 def get_gemini_model(model_name):
     if not GEMINI_API_KEY:
@@ -57,28 +34,28 @@ if GEMINI_API_KEY:
 
 
 # --- Suggest Scene Description Function ---
-@functions_framework.http
-def suggest_scene_description(request):
+@https_fn.on_request()
+def suggest_scene_description(req: https_fn.Request) -> https_fn.Response:
     """HTTP Cloud Function to suggest a scene description based on an image."""
-
+    # Authentication logic should be handled by the caller or middleware if not public
     # Authentication logic
-    decoded_token, error_message = verify_firebase_token(request)
+    decoded_token, error_message = verify_firebase_token(req)
     if error_message:
-        return functions_framework.Response(error_message, status=401)
+        return https_fn.Response(error_message, status=401)
 
     # Get image data from the request
     # Assuming image data is sent as base64 encoded string in the request body
-    request_json = request.get_json(silent=True)
+    request_json = req.get_json(silent=True)
     if request_json is None or 'imageData' not in request_json:
-        return {'error': 'No image data provided'}, 400
+        return https_fn.Response(json.dumps({'error': 'No image data provided'}), status=400, mimetype='application/json')
 
     image_data = request_json['imageData']
 
     try:
         # Decode the base64 string
         decoded_image_data = base64.b64decode(image_data)
-    except Exception as e:
-        return {'error': f'Failed to decode image data: {e}'}, 400
+    except Exception as e: # Catching a general Exception is broad, consider more specific exceptions if known
+        return https_fn.Response(json.dumps({'error': f'Failed to decode image data: {e}'}), status=400, mimetype='application/json')
 
     # Create the content for the model (text prompt + image)
     image_part = {
@@ -92,34 +69,34 @@ def suggest_scene_description(request):
     try:
         model, error = get_gemini_model('gemini-pro-vision')
         if error:
-            return {'error': error}, 500
+            return https_fn.Response(json.dumps({'error': error}), status=500, mimetype='application/json')
 
         response = model.generate_content(content)
         suggested_description = response.text.strip()
         if not suggested_description:
             suggested_description = "Could not generate a detailed scene description."
 
-    except Exception as e:
+    except Exception as e: # Catching a general Exception is broad, consider more specific exceptions if known
         print(f"Gemini API error for scene description: {e}")
-        return {'error': f'Error generating scene description: {e}'}, 500
+        return https_fn.Response(json.dumps({'error': f'Error generating scene description: {e}'}), status=500, mimetype='application/json')
 
-    return {'sceneDescription': suggested_description}, 200
+    return https_fn.Response(json.dumps({'sceneDescription': suggested_description}), status=200, mimetype='application/json')
 
 
 # --- Suggest Detection Targets Function ---
-@functions_framework.http
-def suggest_detection_targets(request):
+@https_fn.on_request()
+def suggest_detection_targets(req: https_fn.Request) -> https_fn.Response:
     """HTTP Cloud Function to suggest detection targets."""
 
     # Authentication logic
-    decoded_token, error_message = verify_firebase_token(request)
+    decoded_token, error_message = verify_firebase_token(req)
     if error_message:
-        return functions_framework.Response(error_message, status=401)
+        return https_fn.Response(error_message, status=401)
 
     # Get input data
-    request_json = request.get_json(silent=True)
+    request_json = req.get_json(silent=True)
     if request_json is None or 'cameraSceneContext' not in request_json:
-        return {'error': 'Missing cameraSceneContext in request body'}, 400
+        return https_fn.Response(json.dumps({'error': 'Missing cameraSceneContext in request body'}), status=400, mimetype='application/json')
 
     camera_scene_context = request_json.get('cameraSceneContext', '')
     scene_description = request_json.get('sceneDescription', '') # Optional: Use sceneDescription if available
@@ -133,31 +110,31 @@ Suggest a concise comma-separated list of detection targets (e.g., "Person, Vehi
         model, error = get_gemini_model('gemini-pro')
         if error:
             return {'error': error}, 500
+            return https_fn.Response(json.dumps({'error': error}), status=500, mimetype='application/json')
 
         response = model.generate_content(prompt)
         suggested_targets_string = response.text.strip()
         # Optional: Basic cleaning of the response if it includes unwanted characters
         suggested_targets_string = suggested_targets_string.replace('"', '').replace("'", '')
 
-    except Exception as e:
+    except Exception as e: # Catching a general Exception is broad, consider more specific exceptions if known
         print(f"Gemini API error for detection targets: {e}")
-        return {'error': f'Error generating detection targets: {e}'}, 500
+        return https_fn.Response(json.dumps({'error': f'Error generating detection targets: {e}'}), status=500, mimetype='application/json')
 
-    return {'suggestedTargets': suggested_targets_string}, 200
-
+    return https_fn.Response(json.dumps({'suggestedTargets': suggested_targets_string}), status=200, mimetype='application/json')
 
 # --- Suggest Alert Events Function ---
-@functions_framework.http
-def suggest_alert_events(request):
+@https_fn.on_request()
+def suggest_alert_events(req: https_fn.Request) -> https_fn.Response:
     """HTTP Cloud Function to suggest alert events."""
 
     # Authentication logic
-    decoded_token, error_message = verify_firebase_token(request)
+    decoded_token, error_message = verify_firebase_token(req)
     if error_message:
-        return functions_framework.Response(error_message, status=401)
+        return https_fn.Response(error_message, status=401)
 
-    # Get input data
-    request_json = request.get_json(silent=True)
+    # Get input data from the request body
+    request_json = req.get_json(silent=True)
     if request_json is None or 'cameraSceneContext' not in request_json or 'aiDetectionTarget' not in request_json:
          return {'error': 'Missing required data (cameraSceneContext or aiDetectionTarget) in request body'}, 400
 
@@ -180,6 +157,7 @@ Example format:
         model, error = get_gemini_model('gemini-pro')
         if error:
             return {'error': error}, 500
+            return https_fn.Response(json.dumps({'error': error}), status=500, mimetype='application/json')
 
         response = model.generate_content(prompt)
         response_text = response.text.strip()
@@ -191,14 +169,14 @@ Example format:
             if not isinstance(suggested_events, list) or not all(isinstance(item, dict) and 'name' in item and 'condition' in item for item in suggested_events):
                 print(f"Warning: Gemini response format unexpected for alert events: {response_text}")
                 # Return an error if the AI didn't return the expected JSON structure
-                return {'error': 'AI model did not return the expected JSON format for alert events.'}, 500
+                return https_fn.Response(json.dumps({'error': 'AI model did not return the expected JSON format for alert events.'}), status=500, mimetype='application/json')
 
         except json.JSONDecodeError:
             print(f"Warning: Gemini response was not valid JSON for alert events: {response_text}")
-            return {'error': 'AI model did not return valid JSON for alert events.'}, 500
+            return https_fn.Response(json.dumps({'error': 'AI model did not return valid JSON for alert events.'}), status=500, mimetype='application/json')
 
-    except Exception as e:
+    except Exception as e: # Catching a general Exception is broad, consider more specific exceptions if known
         print(f"Gemini API error for alert events: {e}")
-        return {'error': f'Error generating alert events: {e}'}, 500
+        return https_fn.Response(json.dumps({'error': f'Error generating alert events: {e}'}), status=500, mimetype='application/json')
 
-    return {'suggestedEvents': suggested_events}, 200 # Return the parsed JSON array
+    return https_fn.Response(json.dumps({'suggestedEvents': suggested_events}), status=200, mimetype='application/json') # Return the parsed JSON array
