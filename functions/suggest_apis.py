@@ -32,10 +32,15 @@ def get_gemini_model(model_name):
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# Read allowed origins from environment variable
-allowed_origins_str = os.environ.get('cors_allowed_origins')
+# Read allowed origins from Firebase Functions config
+allowed_origins_str = None
+try:
+    allowed_origins_str = firebase_admin.functions.config().app.cors_allowed_origins
+except (AttributeError, KeyError):
+    print("Warning: Firebase Functions config 'app.cors_allowed_origins' not found. Allowing all origins.")
+
 if allowed_origins_str:
-    ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_str.split(',')]
+    ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_str.split(',') if origin.strip()]
 else:
     # Allow all origins if environment variable is not set
     ALLOWED_ORIGINS = True

@@ -6,6 +6,7 @@ from firebase_admin import credentials, auth, firestore
 from suggest_apis import suggest_scene_description, suggest_detection_targets, suggest_alert_events
 import os
 
+firebase_admin.initialize_app()
 
 VSS_API_BASE_URL_CACHE = None
 VSS_API_BASE_URL_CACHE_EXPIRY = None
@@ -61,8 +62,11 @@ def get_default_vss_base_url():
         raise ValueError(f"Could not retrieve system default VSS server URL: {e}")
 
 
-# Read allowed origins from environment variable (lowercase for Firebase Functions config)
-allowed_origins_str = os.environ.get('cors_allowed_origins')
+# Read allowed origins from environment variable (nested lowercase for Firebase Functions config)
+try:
+    allowed_origins_str = firebase_admin.functions.config().app.cors_allowed_origins
+except AttributeError:
+    allowed_origins_str = None # Config not set
 allowed_origins = allowed_origins_str.split(',') if allowed_origins_str else True
 
 
