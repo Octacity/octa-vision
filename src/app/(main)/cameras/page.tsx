@@ -3,8 +3,8 @@
 
 import type { NextPage } from 'next';
 import Image from 'next/image';
-import { useState, useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
 import { doc, getDoc, addDoc, collection, serverTimestamp, writeBatch, arrayUnion, updateDoc, Timestamp, query, where, getDocs, limit } from 'firebase/firestore';
@@ -19,8 +19,10 @@ import RightDrawer from '@/components/RightDrawer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNotificationDrawer } from '@/contexts/NotificationDrawerContext';
 import { useToast } from '@/hooks/use-toast';
-import { generateGroupAlertEvents } from '@/ai/flows/generate-group-alert-events'; // This Genkit flow remains for now
+import { generateGroupAlertEvents } from '@/ai/flows/generate-group-alert-events';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { vssBasePromptTemplate, vssCaptionPromptTemplate, vssSummaryPromptTemplate } from '@/lib/vssPrompts';
+
 
 import type { Group, Camera, ChatMessage, AddCameraStep1Values, AddCameraStep2Values, AddCameraStep3Values } from './types';
 import { addCameraStep1Schema, addCameraStep2Schema, addCameraStep3Schema } from './types';
@@ -40,7 +42,7 @@ const CamerasPage: NextPage = () => {
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
 
   const [isProcessingStep1Submitting, setIsProcessingStep1Submitting] = useState(false);
-  const [isProcessingStep2Snapshot, setIsProcessingStep2Snapshot] = useState(false); // For snapshot capture process in Step 2
+  const [isProcessingStep2, setIsProcessingStep2] = useState(false); // Combined loading for snapshot and description
 
   const [currentRtspUrlForSnapshot, setCurrentRtspUrlForSnapshot] = useState<string | null>(null);
   const [rtspUrlUsedForLastSnapshot, setRtspUrlUsedForLastSnapshot] = useState<string | null>(null);
@@ -48,7 +50,7 @@ const CamerasPage: NextPage = () => {
   const [snapshotGcsObjectName, setSnapshotGcsObjectName] = useState<string | null>(null);
   const [displayableSnapshotUrl, setDisplayableSnapshotUrl] = useState<string | null>(null);
   const [snapshotResolution, setSnapshotResolution] = useState<string | null>(null);
-  const [isLoadingSnapshotUrl, setIsLoadingSnapshotUrl] = useState(false);
+  const [isLoadingSnapshotUrl, setIsLoadingSnapshotUrl] = useState(false); // Specifically for signed URL
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [isSuggestingDetectionTargets, setIsSuggestingDetectionTargets] = useState(false);
   const [isSuggestingAlertEvents, setIsSuggestingAlertEvents] = useState(false);
@@ -103,7 +105,7 @@ const CamerasPage: NextPage = () => {
     return () => unsubscribe();
   }, []);
 
-  const fetchCamerasForOrg = async (currentOrgId: string) => {
+  const fetchCamerasForOrg = useCallback(async (currentOrgId: string) => {
     setIsLoadingCameras(true);
     setCameras([]);
     try {
@@ -147,10 +149,11 @@ const CamerasPage: NextPage = () => {
           imageUrl: imageUrlToDisplay,
           snapshotGcsObjectName: data.snapshotGcsObjectName || null,
           resolution: data.resolution || null,
-          dataAiHint: data.aiDetectionTarget || 'camera security',
+          dataAiHint: data.aiDetectionTarget || 'camera security', // Assuming aiDetectionTarget is stored in camera doc now
           processingStatus: data.processingStatus,
           rtspUsername: data.rtspUsername || null,
           rtspPassword: data.rtspPassword || null,
+          rtspUrl: data.url, // Assuming 'url' field stores the RTSP URL
         } as Camera;
       });
       const fetchedCameras = await Promise.all(fetchedCamerasPromises);
@@ -160,7 +163,7 @@ const CamerasPage: NextPage = () => {
       toast({ variant: "destructive", title: "Error", description: "Could not fetch cameras." });
     }
     setIsLoadingCameras(false);
-  };
+  }, [toast]); // Added toast to dependency array
 
   const fetchGroupsForOrg = async (currentOrgId: string) => {
     try {
@@ -194,6 +197,7 @@ const CamerasPage: NextPage = () => {
         formStep1.setValue('rtspUsername', decodeURIComponent(url.username) || '', { shouldValidate: true });
         formStep1.setValue('rtspPassword', decodeURIComponent(url.password) || '', { shouldValidate: true });
       } catch (error) {
+        // If URL is invalid, don't auto-fill if user has already typed in these fields
         if (!formStep1.formState.dirtyFields.rtspUsername && formStep1.getValues('rtspUsername') !== '') {
           formStep1.setValue('rtspUsername', '', { shouldValidate: true });
         }
@@ -202,10 +206,12 @@ const CamerasPage: NextPage = () => {
         }
       }
     } else {
+       // Clear only if not dirty (user hasn't manually edited them)
       if (!formStep1.formState.dirtyFields.rtspUsername) formStep1.setValue('rtspUsername', '', { shouldValidate: true });
       if (!formStep1.formState.dirtyFields.rtspPassword) formStep1.setValue('rtspPassword', '', { shouldValidate: true });
     }
   }, [watchedRtspUrl, formStep1]);
+
 
   const formStep2 = useForm<AddCameraStep2Values>({
     resolver: zodResolver(addCameraStep2Schema),
@@ -244,7 +250,7 @@ const CamerasPage: NextPage = () => {
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null); setSnapshotResolution(null);
     setIsGeneratingDescription(false); setShowRtspPassword(false);
-    setIsProcessingStep1Submitting(false); setIsProcessingStep2Snapshot(false); setIsLoadingSnapshotUrl(false);
+    setIsProcessingStep1Submitting(false); setIsProcessingStep2(false); setIsLoadingSnapshotUrl(false);
   };
 
   const handleChatIconClick = (camera: Camera) => {
@@ -277,7 +283,7 @@ const CamerasPage: NextPage = () => {
     setSnapshotGcsObjectName(null);
     setDisplayableSnapshotUrl(null); setSnapshotResolution(null);
     setIsGeneratingDescription(false); setShowRtspPassword(false);
-    setIsProcessingStep1Submitting(false); setIsProcessingStep2Snapshot(false); setIsLoadingSnapshotUrl(false);
+    setIsProcessingStep1Submitting(false); setIsProcessingStep2(false); setIsLoadingSnapshotUrl(false);
   };
 
   const handleGroupChange = (value: string) => {
@@ -341,186 +347,53 @@ const CamerasPage: NextPage = () => {
   const handleCancelAddNewGroup = () => {
     setShowNewGroupForm(false); formStep1.setValue('group', undefined); setSelectedGroup(undefined);
     formStep1.resetField('newGroupName');
-    formStep1.setValue('groupDefaultCameraSceneContext', ''); formStep1.setValue('groupDefaultAiDetectionTarget', '');
-    formStep1.setValue('groupDefaultAlertEvents', ''); formStep1.setValue('groupDefaultVideoChunksValue', '10');
-    formStep1.setValue('groupDefaultVideoChunksUnit', 'seconds'); formStep1.setValue('groupDefaultNumFrames', '5');
-    formStep1.setValue('groupDefaultVideoOverlapValue', '2'); formStep1.setValue('groupDefaultVideoOverlapUnit', 'seconds');
-    formStep2.reset({ sceneDescription: '', cameraSceneContext: '' });
-    formStep3.reset({
+    // Also reset default values that might have been typed into new group form
+    formStep1.setValue('groupDefaultCameraSceneContext', '');
+    formStep1.setValue('groupDefaultAiDetectionTarget', '');
+    formStep1.setValue('groupDefaultAlertEvents', '');
+    formStep1.setValue('groupDefaultVideoChunksValue', '10');
+    formStep1.setValue('groupDefaultVideoChunksUnit', 'seconds');
+    formStep1.setValue('groupDefaultNumFrames', '5');
+    formStep1.setValue('groupDefaultVideoOverlapValue', '2');
+    formStep1.setValue('groupDefaultVideoOverlapUnit', 'seconds');
+    formStep2.reset({ sceneDescription: '', cameraSceneContext: '' }); // Reset step 2 based on no group default
+    formStep3.reset({ // Reset step 3 based on no group default
       aiDetectionTarget: '', alertEvents: [{ name: '', condition: '' }],
       videoChunksValue: '10', videoChunksUnit: 'seconds', numFrames: '5',
       videoOverlapValue: '2', videoOverlapUnit: 'seconds',
     });
   };
 
-  const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data_step1_form) => {
+ const onSubmitStep1: SubmitHandler<AddCameraStep1Values> = async (data_step1_form) => {
     if (!formStep1.formState.isValid) return;
-    setIsProcessingStep1Submitting(true);
+    setIsProcessingStep1Submitting(true); // Indicates Step 1 is being processed
 
     const currentRTSP = data_step1_form.rtspUrl;
-    setCurrentRtspUrlForSnapshot(currentRTSP);
+    setCurrentRtspUrlForSnapshot(currentRTSP); // Store RTSP for Step 2's useEffect to pick up
 
+    let sceneContextForStep2Init = '';
+    if (data_step1_form.group === 'add_new_group') {
+        sceneContextForStep2Init = data_step1_form.groupDefaultCameraSceneContext || '';
+    } else if (data_step1_form.group) {
+        const groupData = groups.find(g => g.id === data_step1_form.group);
+        sceneContextForStep2Init = groupData?.defaultCameraSceneContext || '';
+    }
+    // Reset formStep2, ensuring sceneDescription is cleared or set by group default
+    formStep2.reset({
+        sceneDescription: '', // Start with empty scene description
+        cameraSceneContext: sceneContextForStep2Init
+    });
+
+
+    // If RTSP URL has changed, clear previous snapshot data
     if (currentRTSP !== rtspUrlUsedForLastSnapshot) {
         setSnapshotGcsObjectName(null);
         setDisplayableSnapshotUrl(null);
         setSnapshotResolution(null);
-        setIsGeneratingDescription(false);
-
-        let sceneContextForStep2Init = '';
-        const selectedGroupFromForm = data_step1_form.group;
-        if (selectedGroupFromForm && selectedGroupFromForm !== 'add_new_group') {
-            const groupData = groups.find(g => g.id === selectedGroupFromForm);
-            sceneContextForStep2Init = groupData?.defaultCameraSceneContext || '';
-        } else if (selectedGroupFromForm === 'add_new_group') {
-            sceneContextForStep2Init = data_step1_form.groupDefaultCameraSceneContext || '';
-        }
-        formStep2.reset({ sceneDescription: '', cameraSceneContext: sceneContextForStep2Init });
-    } else {
-      formStep2.setValue('cameraSceneContext', formStep2.getValues('cameraSceneContext') || (data_step1_form.group === 'add_new_group' ? data_step1_form.groupDefaultCameraSceneContext : groups.find(g => g.id === data_step1_form.group)?.defaultCameraSceneContext) || '');
     }
+    setRtspUrlUsedForLastSnapshot(currentRTSP); // Update the last used RTSP URL
 
-    setRtspUrlUsedForLastSnapshot(currentRTSP);
-
-    let aiTargetForStep3 = '';
-    let alertEventsForStep3: Array<{ name: string; condition: string }> = [{ name: '', condition: '' }];
-    let videoChunksValueForStep3 = '10'; let videoChunksUnitForStep3: 'seconds' | 'minutes' = 'seconds';
-    let numFramesForStep3 = '5'; let videoOverlapValueForStep3 = '2'; let videoOverlapUnitForStep3: 'seconds' | 'minutes' = 'seconds';
-
-    const selectedGroupFromForm = data_step1_form.group;
-    if (selectedGroupFromForm && selectedGroupFromForm !== 'add_new_group') {
-      const groupData = groups.find(g => g.id === selectedGroupFromForm);
-      if (groupData) {
-        aiTargetForStep3 = groupData.defaultAiDetectionTarget || '';
-        alertEventsForStep3 = groupData.defaultAlertEvents ? groupData.defaultAlertEvents.map(ae_name => ({ name: ae_name, condition: '' })) : [{ name: '', condition: '' }];
-        videoChunksValueForStep3 = groupData.defaultVideoChunks?.value?.toString() || '10';
-        videoChunksUnitForStep3 = groupData.defaultVideoChunks?.unit || 'seconds';
-        numFramesForStep3 = groupData.defaultNumFrames?.toString() || '5';
-        videoOverlapValueForStep3 = groupData.defaultVideoOverlap?.value?.toString() || '2';
-        videoOverlapUnitForStep3 = groupData.defaultVideoOverlap?.unit || 'seconds';
-      }
-    } else if (selectedGroupFromForm === 'add_new_group') {
-      aiTargetForStep3 = data_step1_form.groupDefaultAiDetectionTarget || '';
-      alertEventsForStep3 = data_step1_form.groupDefaultAlertEvents ? data_step1_form.groupDefaultAlertEvents.split(',').map(ae => ({ name: ae.trim(), condition: '' })) : [{ name: '', condition: '' }];
-      videoChunksValueForStep3 = data_step1_form.groupDefaultVideoChunksValue || '10';
-      videoChunksUnitForStep3 = data_step1_form.groupDefaultVideoChunksUnit || 'seconds';
-      numFramesForStep3 = data_step1_form.groupDefaultNumFrames || '5';
-      videoOverlapValueForStep3 = data_step1_form.groupDefaultVideoOverlapValue || '2';
-      videoOverlapUnitForStep3 = data_step1_form.groupDefaultVideoOverlapUnit || 'seconds';
-    }
-    formStep3.reset({
-      aiDetectionTarget: aiTargetForStep3, alertEvents: alertEventsForStep3,
-      videoChunksValue: videoChunksValueForStep3, videoChunksUnit: videoChunksUnitForStep3, numFrames: numFramesForStep3,
-      videoOverlapValue: videoOverlapValueForStep3, videoOverlapUnit: videoOverlapUnitForStep3,
-    });
-
-    setIsProcessingStep1Submitting(false);
-    setDrawerStep(2);
-  };
-
-  useEffect(() => {
-    const fetchSnapshotAndDetails = async () => {
-      if (drawerStep === 2 && currentRtspUrlForSnapshot && !isProcessingStep2Snapshot && !isLoadingSnapshotUrl) {
-        if (snapshotGcsObjectName && currentRtspUrlForSnapshot === formStep1.getValues('rtspUrl') && rtspUrlUsedForLastSnapshot === currentRtspUrlForSnapshot) {
-           return;
-        }
-        setIsProcessingStep2Snapshot(true);
-        setSnapshotGcsObjectName(null);
-        setDisplayableSnapshotUrl(null);
-        setSnapshotResolution(null);
-
-        try {
-          const auth = getAuth(); const user = auth.currentUser;
-          if (!user) { toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in." }); setIsProcessingStep2Snapshot(false); return; }
-          const idToken = await user.getIdToken();
-
-          const takeSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_URL;
-          if (!takeSnapshotServiceUrl) { throw new Error("Snapshot service URL (NEXT_PUBLIC_TAKE_SNAPSHOT_URL) is not configured."); }
-
-          console.log(`Frontend: Attempting to call /take-snapshot: ${takeSnapshotServiceUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
-          const snapshotResponse = await fetch(takeSnapshotServiceUrl, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-            body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
-          });
-
-          let errorMessageText = `Snapshot service returned an invalid response format. Status: ${snapshotResponse.status}. Check service logs.`;
-          if (!snapshotResponse.ok) {
-            try { const errorData = await snapshotResponse.json(); errorMessageText = errorData.message || errorData.error || errorMessageText; }
-            catch (e) { const rawErrorText = await snapshotResponse.text(); errorMessageText = rawErrorText || errorMessageText; }
-            throw new Error(errorMessageText);
-          }
-          const snapshotData = await snapshotResponse.json();
-          if (snapshotData.status === 'success' && snapshotData.gcsObjectName && snapshotData.resolution) {
-            setSnapshotGcsObjectName(snapshotData.gcsObjectName);
-            setSnapshotResolution(snapshotData.resolution);
-          } else {
-            throw new Error(snapshotData.message || "Snapshot API call succeeded but returned invalid data (gcsObjectName/resolution).");
-          }
-        } catch (error: any) {
-          console.error("Error fetching snapshot GCS object name in Step 2:", error);
-          toast({ variant: "destructive", title: "Snapshot Error", description: error.message || "Could not retrieve camera snapshot details." });
-          setSnapshotGcsObjectName(null); setSnapshotResolution(null);
-        } finally {
-          setIsProcessingStep2Snapshot(false);
-        }
-      }
-    };
-    if (drawerStep === 2 && currentRtspUrlForSnapshot) {
-      fetchSnapshotAndDetails();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerStep, currentRtspUrlForSnapshot]);
-
-  useEffect(() => {
-    const fetchDisplayableSnapshotUrl = async () => {
-      if (drawerStep === 2 && snapshotGcsObjectName && !isLoadingSnapshotUrl) {
-          if(displayableSnapshotUrl && rtspUrlUsedForLastSnapshot === currentRtspUrlForSnapshot) {
-              return;
-          }
-        setIsLoadingSnapshotUrl(true);
-        setDisplayableSnapshotUrl(null);
-        try {
-          const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
-          if (!retrieveSnapshotServiceUrl) { throw new Error("Retrieve snapshot service URL (NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL) is not configured."); }
-          const auth = getAuth(); const user = auth.currentUser;
-          if (!user) throw new Error("User not authenticated for retrieving snapshot URL.");
-          const idToken = await user.getIdToken();
-
-          console.log(`Frontend: Attempting to call /retrieve-snapshot: ${retrieveSnapshotServiceUrl} for GCS Object: ${snapshotGcsObjectName}`);
-          const signedUrlResponse = await fetch(retrieveSnapshotServiceUrl, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-            body: JSON.stringify({ gcsObjectName: snapshotGcsObjectName }),
-          });
-
-          let errorMessageText = `Failed to get signed URL for snapshot. Status: ${signedUrlResponse.status}. Check service logs.`;
-          if (!signedUrlResponse.ok) {
-            try { const errorData = await signedUrlResponse.json(); errorMessageText = errorData.message || errorData.error || errorMessageText; }
-            catch (e) { const rawErrorText = await signedUrlResponse.text(); errorMessageText = rawErrorText || errorMessageText; }
-            throw new Error(errorMessageText);
-          }
-          const signedUrlData = await signedUrlResponse.json();
-          if (signedUrlData.status === 'success' && signedUrlData.signedUrl) {
-            setDisplayableSnapshotUrl(signedUrlData.signedUrl);
-          } else { throw new Error(signedUrlData.message || "Failed to get signed URL from retrieve snapshot service."); }
-        } catch (error: any) {
-          console.error("Error retrieving displayable snapshot URL:", error);
-          toast({ variant: "destructive", title: "Snapshot Display Error", description: error.message || "Could not load snapshot image." });
-          setDisplayableSnapshotUrl(null);
-        } finally {
-          setIsLoadingSnapshotUrl(false);
-        }
-      }
-    };
-    if (drawerStep === 2 && snapshotGcsObjectName) { fetchDisplayableSnapshotUrl(); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawerStep, snapshotGcsObjectName]);
-
-
-  const handleStep2Back = () => {
-    setDrawerStep(1);
-  };
-
-  const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data_step2_form) => {
-    const step1Values = formStep1.getValues();
+    // Pre-fill Step 3 defaults based on Step 1 group selections
     let aiTargetForStep3 = '';
     let alertEventsForStep3: Array<{ name: string; condition: string }> = [{ name: '', condition: '' }];
     let videoChunksValueForStep3 = '10';
@@ -529,31 +402,177 @@ const CamerasPage: NextPage = () => {
     let videoOverlapValueForStep3 = '2';
     let videoOverlapUnitForStep3: 'seconds' | 'minutes' = 'seconds';
 
-    if (step1Values.group && step1Values.group !== 'add_new_group') {
-      const selectedGroupData = groups.find(g => g.id === step1Values.group);
-      if (selectedGroupData) {
-        aiTargetForStep3 = selectedGroupData.defaultAiDetectionTarget || '';
-        alertEventsForStep3 = selectedGroupData.defaultAlertEvents ? selectedGroupData.defaultAlertEvents.map(ae_name => ({ name: ae_name, condition: '' })) : [{ name: '', condition: '' }];
-        videoChunksValueForStep3 = selectedGroupData.defaultVideoChunks?.value?.toString() || '10';
-        videoChunksUnitForStep3 = selectedGroupData.defaultVideoChunks?.unit || 'seconds';
-        numFramesForStep3 = selectedGroupData.defaultNumFrames?.toString() || '5';
-        videoOverlapValueForStep3 = selectedGroupData.defaultVideoOverlap?.value?.toString() || '2';
-        videoOverlapUnitForStep3 = selectedGroupData.defaultVideoOverlap?.unit || 'seconds';
+    if (data_step1_form.group === 'add_new_group') {
+        aiTargetForStep3 = data_step1_form.groupDefaultAiDetectionTarget || '';
+        alertEventsForStep3 = data_step1_form.groupDefaultAlertEvents ? data_step1_form.groupDefaultAlertEvents.split(',').map(ae => ({ name: ae.trim(), condition: '' })) : [{ name: '', condition: '' }];
+        videoChunksValueForStep3 = data_step1_form.groupDefaultVideoChunksValue || '10';
+        videoChunksUnitForStep3 = data_step1_form.groupDefaultVideoChunksUnit || 'seconds';
+        numFramesForStep3 = data_step1_form.groupDefaultNumFrames || '5';
+        videoOverlapValueForStep3 = data_step1_form.groupDefaultVideoOverlapValue || '2';
+        videoOverlapUnitForStep3 = data_step1_form.groupDefaultVideoOverlapUnit || 'seconds';
+    } else if (data_step1_form.group) {
+        const groupData = groups.find(g => g.id === data_step1_form.group);
+        if (groupData) {
+            aiTargetForStep3 = groupData.defaultAiDetectionTarget || '';
+            alertEventsForStep3 = groupData.defaultAlertEvents ? groupData.defaultAlertEvents.map(ae_name => ({ name: ae_name, condition: '' })) : [{ name: '', condition: '' }];
+            videoChunksValueForStep3 = groupData.defaultVideoChunks?.value?.toString() || '10';
+            videoChunksUnitForStep3 = groupData.defaultVideoChunks?.unit || 'seconds';
+            numFramesForStep3 = groupData.defaultNumFrames?.toString() || '5';
+            videoOverlapValueForStep3 = groupData.defaultVideoOverlap?.value?.toString() || '2';
+            videoOverlapUnitForStep3 = groupData.defaultVideoOverlap?.unit || 'seconds';
+        }
+    }
+    formStep3.reset({
+        aiDetectionTarget: aiTargetForStep3, alertEvents: alertEventsForStep3,
+        videoChunksValue: videoChunksValueForStep3, videoChunksUnit: videoChunksUnitForStep3, numFrames: numFramesForStep3,
+        videoOverlapValue: videoOverlapValueForStep3, videoOverlapUnit: videoOverlapUnitForStep3,
+    });
+
+    setIsProcessingStep1Submitting(false);
+    setDrawerStep(2); // Move to Step 2 UI
+  };
+
+
+  // useEffect for fetching snapshot and signed URL for Step 2
+  useEffect(() => {
+    const fetchSnapshotAndUrl = async () => {
+      if (drawerStep === 2 && currentRtspUrlForSnapshot && !isProcessingStep2 && !isLoadingSnapshotUrl) {
+        // Only fetch if RTSP URL is new or snapshotGcsObjectName is not already set for this RTSP
+        if (currentRtspUrlForSnapshot !== rtspUrlUsedForLastSnapshot || !snapshotGcsObjectName) {
+            setIsProcessingStep2(true); // Covers snapshot capture
+            setSnapshotGcsObjectName(null);
+            setDisplayableSnapshotUrl(null);
+            setSnapshotResolution(null);
+
+            try {
+                const auth = getAuth(); const user = auth.currentUser;
+                if (!user) { toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in." }); setIsProcessingStep2(false); return; }
+                const idToken = await user.getIdToken();
+
+                const takeSnapshotServiceUrl = process.env.NEXT_PUBLIC_TAKE_SNAPSHOT_URL;
+                if (!takeSnapshotServiceUrl) { throw new Error("Snapshot service URL (NEXT_PUBLIC_TAKE_SNAPSHOT_URL) is not configured."); }
+                
+                console.log(`Frontend: Attempting to call /take-snapshot: ${takeSnapshotServiceUrl} for RTSP: ${currentRtspUrlForSnapshot}`);
+                const snapshotResponse = await fetch(takeSnapshotServiceUrl, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                    body: JSON.stringify({ rtsp_url: currentRtspUrlForSnapshot }),
+                });
+
+                let errorMessageText = `Snapshot service returned an invalid response format. Status: ${snapshotResponse.status}. Check service logs.`;
+                if (!snapshotResponse.ok) {
+                    try { const errorData = await snapshotResponse.json(); errorMessageText = errorData.message || errorData.error || errorMessageText; }
+                    catch (e) { const rawErrorText = await snapshotResponse.text(); errorMessageText = rawErrorText || errorMessageText; }
+                    throw new Error(errorMessageText);
+                }
+                const snapshotData = await snapshotResponse.json();
+                if (snapshotData.status === 'success' && snapshotData.gcsObjectName && snapshotData.resolution) {
+                    setSnapshotGcsObjectName(snapshotData.gcsObjectName);
+                    setSnapshotResolution(snapshotData.resolution);
+                    // Now that we have gcsObjectName, trigger signed URL fetching
+                } else {
+                    throw new Error(snapshotData.message || "Snapshot API call succeeded but returned invalid data (gcsObjectName/resolution).");
+                }
+            } catch (error: any) {
+                console.error("Error fetching snapshot GCS object name in Step 2:", error);
+                toast({ variant: "destructive", title: "Snapshot Error", description: error.message || "Could not retrieve camera snapshot details." });
+                setSnapshotGcsObjectName(null); setSnapshotResolution(null);
+            } finally {
+                setIsProcessingStep2(false); // Snapshot capture done
+            }
+        }
       }
-    } else if (step1Values.group === 'add_new_group') {
-      aiTargetForStep3 = step1Values.groupDefaultAiDetectionTarget || '';
-      alertEventsForStep3 = step1Values.groupDefaultAlertEvents ? step1Values.groupDefaultAlertEvents.split(',').map(ae => ({ name: ae.trim(), condition: '' })) : [{ name: '', condition: '' }];
-      videoChunksValueForStep3 = step1Values.groupDefaultVideoChunksValue || '10';
-      videoChunksUnitForStep3 = step1Values.groupDefaultVideoChunksUnit || 'seconds';
-      numFramesForStep3 = step1Values.groupDefaultNumFrames || '5';
-      videoOverlapValueForStep3 = step1Values.groupDefaultVideoOverlapValue || '2';
-      videoOverlapUnitForStep3 = step1Values.groupDefaultVideoOverlapUnit || 'seconds';
+    };
+
+    const fetchDisplayableUrl = async () => {
+        if (drawerStep === 2 && snapshotGcsObjectName && !isLoadingSnapshotUrl && !displayableSnapshotUrl) {
+            setIsLoadingSnapshotUrl(true);
+            try {
+                const retrieveSnapshotServiceUrl = process.env.NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL;
+                if (!retrieveSnapshotServiceUrl) { throw new Error("Retrieve snapshot service URL (NEXT_PUBLIC_RETRIEVE_SNAPSHOT_URL) is not configured."); }
+                const auth = getAuth(); const user = auth.currentUser;
+                if (!user) throw new Error("User not authenticated for retrieving snapshot URL.");
+                const idToken = await user.getIdToken();
+
+                console.log(`Frontend: Attempting to call /retrieve-snapshot for Step 2 display: ${retrieveSnapshotServiceUrl} for GCS Object: ${snapshotGcsObjectName}`);
+                const signedUrlResponse = await fetch(retrieveSnapshotServiceUrl, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+                    body: JSON.stringify({ gcsObjectName: snapshotGcsObjectName }),
+                });
+
+                let errorMessageText = `Failed to get signed URL for snapshot. Status: ${signedUrlResponse.status}. Check service logs.`;
+                if (!signedUrlResponse.ok) {
+                    try { const errorData = await signedUrlResponse.json(); errorMessageText = errorData.message || errorData.error || errorMessageText; }
+                    catch (e) { const rawErrorText = await signedUrlResponse.text(); errorMessageText = rawErrorText || errorMessageText; }
+                    throw new Error(errorMessageText);
+                }
+                const signedUrlData = await signedUrlResponse.json();
+                if (signedUrlData.status === 'success' && signedUrlData.signedUrl) {
+                    setDisplayableSnapshotUrl(signedUrlData.signedUrl);
+                } else { throw new Error(signedUrlData.message || "Failed to get signed URL from retrieve snapshot service."); }
+            } catch (error: any) {
+                console.error("Error retrieving displayable snapshot URL:", error);
+                toast({ variant: "destructive", title: "Snapshot Display Error", description: error.message || "Could not load snapshot image." });
+                setDisplayableSnapshotUrl(null);
+            } finally {
+                setIsLoadingSnapshotUrl(false);
+            }
+        }
+    };
+    
+    fetchSnapshotAndUrl();
+    fetchDisplayableUrl(); // This will run if snapshotGcsObjectName becomes available
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerStep, currentRtspUrlForSnapshot, snapshotGcsObjectName]); // Added snapshotGcsObjectName as dependency
+
+
+  const handleStep2Back = () => {
+    setDrawerStep(1);
+    // Snapshot data (gcsObjectName, resolution, displayableSnapshotUrl) is preserved
+    // It will only be cleared if RTSP URL changes when submitting Step 1 again.
+  };
+
+  const onSubmitStep2: SubmitHandler<AddCameraStep2Values> = async (data_step2_form) => {
+    const step1Values = formStep1.getValues();
+    // Initialize Step 3 defaults
+    let aiTargetForStep3 = '';
+    let alertEventsForStep3: Array<{ name: string; condition: string }> = [{ name: '', condition: '' }];
+    let videoChunksValueForStep3 = '10';
+    let videoChunksUnitForStep3: 'seconds' | 'minutes' = 'seconds';
+    let numFramesForStep3 = '5';
+    let videoOverlapValueForStep3 = '2';
+    let videoOverlapUnitForStep3: 'seconds' | 'minutes' = 'seconds';
+
+    // Derive Step 3 defaults from selected group or new group defaults from Step 1
+    if (step1Values.group === 'add_new_group') {
+        aiTargetForStep3 = step1Values.groupDefaultAiDetectionTarget || '';
+        alertEventsForStep3 = step1Values.groupDefaultAlertEvents ? step1Values.groupDefaultAlertEvents.split(',').map(ae => ({ name: ae.trim(), condition: '' })) : [{ name: '', condition: '' }];
+        videoChunksValueForStep3 = step1Values.groupDefaultVideoChunksValue || '10';
+        videoChunksUnitForStep3 = step1Values.groupDefaultVideoChunksUnit || 'seconds';
+        numFramesForStep3 = step1Values.groupDefaultNumFrames || '5';
+        videoOverlapValueForStep3 = step1Values.groupDefaultVideoOverlapValue || '2';
+        videoOverlapUnitForStep3 = step1Values.groupDefaultVideoOverlapUnit || 'seconds';
+    } else if (step1Values.group) {
+        const selectedGroupData = groups.find(g => g.id === step1Values.group);
+        if (selectedGroupData) {
+            aiTargetForStep3 = selectedGroupData.defaultAiDetectionTarget || '';
+            alertEventsForStep3 = selectedGroupData.defaultAlertEvents ? selectedGroupData.defaultAlertEvents.map(ae_name => ({ name: ae_name, condition: '' })) : [{ name: '', condition: '' }];
+            videoChunksValueForStep3 = selectedGroupData.defaultVideoChunks?.value?.toString() || '10';
+            videoChunksUnitForStep3 = selectedGroupData.defaultVideoChunks?.unit || 'seconds';
+            numFramesForStep3 = selectedGroupData.defaultNumFrames?.toString() || '5';
+            videoOverlapValueForStep3 = selectedGroupData.defaultVideoOverlap?.value?.toString() || '2';
+            videoOverlapUnitForStep3 = selectedGroupData.defaultVideoOverlap?.unit || 'seconds';
+        }
     }
 
     formStep3.reset({
-      aiDetectionTarget: aiTargetForStep3, alertEvents: alertEventsForStep3,
-      videoChunksValue: videoChunksValueForStep3, videoChunksUnit: videoChunksUnitForStep3, numFrames: numFramesForStep3,
-      videoOverlapValue: videoOverlapValueForStep3, videoOverlapUnit: videoOverlapUnitForStep3,
+      aiDetectionTarget: aiTargetForStep3,
+      alertEvents: alertEventsForStep3,
+      videoChunksValue: videoChunksValueForStep3,
+      videoChunksUnit: videoChunksUnitForStep3,
+      numFrames: numFramesForStep3,
+      videoOverlapValue: videoOverlapValueForStep3,
+      videoOverlapUnit: videoOverlapUnitForStep3,
     });
     setDrawerStep(3);
   };
@@ -567,19 +586,13 @@ const CamerasPage: NextPage = () => {
       const orgDocRef = doc(db, 'organizations', orgId);
       const orgDocSnap = await getDoc(orgDocRef);
       let serverIdToUse: string | null = null;
+      let serverProtocol: string | null = null;
+      let serverIpPort: string | null = null;
 
       if (orgDocSnap.exists()) {
         const orgData = orgDocSnap.data();
         if (orgData.orgDefaultServerId) {
           serverIdToUse = orgData.orgDefaultServerId;
-        }
-      }
-
-      if (!serverIdToUse) {
-        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
-        const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
-        if (!systemDefaultSnapshot.empty) {
-          serverIdToUse = systemDefaultSnapshot.docs[0].id;
         }
       }
 
@@ -589,10 +602,29 @@ const CamerasPage: NextPage = () => {
         if (serverDocSnap.exists()) {
           const serverData = serverDocSnap.data();
           if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
-            return `${serverData.protocol}://${serverData.ipAddressWithPort}`;
+            serverProtocol = serverData.protocol;
+            serverIpPort = serverData.ipAddressWithPort;
           }
         }
       }
+      
+      // Fallback to System Default if Org Default is not set or invalid
+      if (!serverIpPort) {
+        const systemDefaultServerQuery = query(collection(db, 'servers'), where('isSystemDefault', '==', true), limit(1));
+        const systemDefaultSnapshot = await getDocs(systemDefaultServerQuery);
+        if (!systemDefaultSnapshot.empty) {
+          const serverData = systemDefaultSnapshot.docs[0].data();
+           if (serverData.status === 'online' && serverData.ipAddressWithPort && serverData.protocol) {
+            serverProtocol = serverData.protocol;
+            serverIpPort = serverData.ipAddressWithPort;
+          }
+        }
+      }
+
+      if (serverProtocol && serverIpPort) {
+        return `${serverProtocol}://${serverIpPort}`;
+      }
+
       toast({ variant: "destructive", title: "No Server Available", description: "No suitable default server (Org or System) is online or configured." });
       return null;
     } catch (error) {
@@ -625,35 +657,55 @@ const CamerasPage: NextPage = () => {
         createdAt: now, updatedAt: now,
       };
       batch.set(groupDocRef, newGroup);
-      setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id, createdAt: now, updatedAt: now }]);
+      setGroups(prev => [...prev, { ...newGroup, id: groupDocRef.id, createdAt: now, updatedAt: now, cameras: [], videos: [] }]);
     } else if (step1Data.group) { finalGroupId = step1Data.group; }
 
     const cameraDocRef = doc(collection(db, 'cameras'));
     const configDocRef = doc(collection(db, 'configurations'));
 
-    batch.set(cameraDocRef, {
-      cameraName: step1Data.cameraName,
-      groupId: finalGroupId,
-      userId: currentUser.uid,
-      orgId: orgId,
-      createdAt: now,
-      updatedAt: now,
-      url: step1Data.rtspUrl,
-      rtspUsername: step1Data.rtspUsername || null,
-      rtspPassword: step1Data.rtspPassword || null,
-      protocol: "rtsp",
-      activeVSSId: null,
-      historicalVSSIds: [],
-      currentConfigId: configDocRef.id,
-      processingStatus: "waiting_for_approval",
-      snapshotGcsObjectName: snapshotGcsObjectName,
-      resolution: snapshotResolution,
+    const cameraDataToSave = {
+        cameraName: step1Data.cameraName,
+        groupId: finalGroupId,
+        userId: currentUser.uid,
+        orgId: orgId,
+        createdAt: now,
+        updatedAt: now,
+        url: step1Data.rtspUrl,
+        rtspUsername: step1Data.rtspUsername || null,
+        rtspPassword: step1Data.rtspPassword || null,
+        protocol: "rtsp",
+        activeVSSId: null,
+        historicalVSSIds: [],
+        currentConfigId: configDocRef.id,
+        processingStatus: "waiting_for_approval",
+        snapshotGcsObjectName: snapshotGcsObjectName, // Saved from Step 2
+        resolution: snapshotResolution, // Saved from Step 2
+    };
+    batch.set(cameraDocRef, cameraDataToSave);
+
+    const vssBase = vssBasePromptTemplate({
+        cameraSceneContext: step2Data.cameraSceneContext,
+        aiDetectionTarget: configData.aiDetectionTarget,
+        alertEvents: configData.alertEvents,
+        sceneDescription: step2Data.sceneDescription,
+    });
+    const vssCaption = vssCaptionPromptTemplate({
+        cameraSceneContext: step2Data.cameraSceneContext,
+        aiDetectionTarget: configData.aiDetectionTarget,
+        alertEvents: configData.alertEvents,
+        sceneDescription: step2Data.sceneDescription,
+    });
+    const vssSummary = vssSummaryPromptTemplate({
+        cameraSceneContext: step2Data.cameraSceneContext,
+        aiDetectionTarget: configData.aiDetectionTarget,
+        alertEvents: configData.alertEvents,
+        sceneDescription: step2Data.sceneDescription,
     });
 
-    batch.set(configDocRef, {
+    const configDataToSave = {
       sourceId: cameraDocRef.id,
       sourceType: "camera",
-      serverIpAddress: effectiveServerUrlValue,
+      serverIpAddress: effectiveServerUrlValue, // Determined by getEffectiveServerUrl
       createdAt: now,
       videoChunks: { value: parseFloat(configData.videoChunksValue), unit: configData.videoChunksUnit },
       numFrames: parseInt(configData.numFrames, 10),
@@ -664,7 +716,11 @@ const CamerasPage: NextPage = () => {
       sceneDescription: step2Data.sceneDescription || null,
       userId: currentUser.uid,
       previousConfigId: null,
-    });
+      vssBasePrompt: vssBase,
+      vssCaptionPrompt: vssCaption,
+      vssSummaryPrompt: vssSummary,
+    };
+    batch.set(configDocRef, configDataToSave);
 
     batch.update(cameraDocRef, { currentConfigId: configDocRef.id });
 
@@ -677,31 +733,41 @@ const CamerasPage: NextPage = () => {
     try {
       await batch.commit();
       toast({ title: "Camera Saved", description: `${step1Data.cameraName} has been added. It is awaiting approval by an administrator.` });
+      
+      // Optimistically add to local state to update UI immediately
       const newCameraForState: Camera = {
         id: cameraDocRef.id,
         cameraName: step1Data.cameraName,
-        imageUrl: displayableSnapshotUrl, // This is the GCS signed URL
-        snapshotGcsObjectName: snapshotGcsObjectName,
-        resolution: snapshotResolution,
-        dataAiHint: configData.aiDetectionTarget || 'newly added camera',
-        processingStatus: "waiting_for_approval",
-        rtspUsername: step1Data.rtspUsername || undefined,
-        rtspPassword: step1Data.rtspPassword || undefined,
-        // Ensure all other required fields from Camera interface are here, possibly with defaults or null
         orgId: orgId,
         userId: currentUser.uid,
         createdAt: now,
         updatedAt: now,
         rtspUrl: step1Data.rtspUrl,
-        // cameraSceneContext: step2Data.cameraSceneContext || undefined,
-        // aiDetectionTarget: configData.aiDetectionTarget,
-        // alertEvents: configData.alertEvents,
-        // videoChunksValue: parseFloat(configData.videoChunksValue),
-        // videoChunksUnit: configData.videoChunksUnit,
-        // videoOverlapValue: parseFloat(configData.videoOverlapValue),
-        // videoOverlapUnit: configData.videoOverlapUnit,
-        // numFrames: parseInt(configData.numFrames, 10),
-        // sceneDescription: step2Data.sceneDescription || undefined,
+        rtspUsername: step1Data.rtspUsername || undefined,
+        rtspPassword: step1Data.rtspPassword || undefined,
+        groupId: finalGroupId || undefined,
+        
+        // These come from the saved configuration
+        cameraSceneContext: step2Data.cameraSceneContext || undefined,
+        aiDetectionTarget: configData.aiDetectionTarget,
+        alertEvents: configData.alertEvents, // This is Array<{name, condition}>
+        sceneDescription: step2Data.sceneDescription || undefined,
+        videoChunksValue: parseFloat(configData.videoChunksValue),
+        videoChunksUnit: configData.videoChunksUnit,
+        videoOverlapValue: parseFloat(configData.videoOverlapValue),
+        videoOverlapUnit: configData.videoOverlapUnit,
+        numFrames: parseInt(configData.numFrames, 10),
+        vssBasePrompt: vssBase,
+        vssCaptionPrompt: vssCaption,
+        vssSummaryPrompt: vssSummary,
+        
+        // From snapshot process & camera document
+        imageUrl: displayableSnapshotUrl, // This is the GCS signed URL
+        snapshotGcsObjectName: snapshotGcsObjectName,
+        resolution: snapshotResolution,
+        processingStatus: "waiting_for_approval",
+        currentConfigId: configDocRef.id,
+        // Other fields like activeVSSId, historicalVSSIds will be null/empty initially
       };
       setCameras(prevCameras => [...prevCameras, newCameraForState]);
       handleDrawerClose();
@@ -713,7 +779,7 @@ const CamerasPage: NextPage = () => {
 
   const handleSendChatMessage = async () => {
     if (!currentChatMessage.trim() || !selectedCameraForChat) return;
-    const userMessage: ChatMessage = { id: 'user-' + Date.now(), sender: 'user', text: currentChatMessage, timestamp: new Date(), avatar: 'https://placehold.co/50x50.png?data-ai-hint=user+avatar' };
+    const userMessage: ChatMessage = { id: 'user-' + Date.now(), sender: 'user', text: currentChatMessage, timestamp: new Date(), avatar: 'https://placehold.co/50x50.png' };
     setChatMessages(prev => [...prev, userMessage]); setCurrentChatMessage(''); setIsSendingMessage(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     const aiResponse: ChatMessage = { id: 'ai-' + Date.now(), sender: 'ai', text: `Okay, I've processed your message about ${selectedCameraForChat.cameraName}: "${userMessage.text}". What else can I help you with?`, timestamp: new Date() };
@@ -789,7 +855,7 @@ const CamerasPage: NextPage = () => {
             const aiDescriptionResponse = await aiResponse.json();
             console.log("Frontend: AI Description Response received:", JSON.stringify(aiDescriptionResponse, null, 2));
 
-            const description = aiDescriptionResponse?.sceneDescription; // Matches Python CF output
+            const description = aiDescriptionResponse?.sceneDescription;
             let isLikelyError = false;
             if (typeof description === 'string' && description.trim() !== '') {
               const errorKeywords = ["failed to generate", "no pudo generar", "não conseguiu gerar", "Error:", "failed to communicate", "Could not generate"];
@@ -801,6 +867,7 @@ const CamerasPage: NextPage = () => {
               formStep2.setValue('sceneDescription', description);
               formStep2.trigger('sceneDescription');
               console.log("Frontend: Value of sceneDescription after setValue:", formStep2.getValues('sceneDescription'));
+              // Toast for success removed as per previous request
             } else {
               const descErrorMsg = description || "AI failed to generate a valid description or returned an error.";
               console.error("Frontend: AI Description error or malformed response:", descErrorMsg, aiDescriptionResponse);
@@ -823,7 +890,7 @@ const CamerasPage: NextPage = () => {
   
   const handleSuggestDetectionTargetsForStep3 = async () => {
     const cameraSceneContext = formStep2.getValues('cameraSceneContext');
-    const sceneDescription = formStep2.getValues('sceneDescription');
+    const sceneDescription = formStep2.getValues('sceneDescription'); // Use current sceneDescription from form
     if (!cameraSceneContext) {
         toast({ variant: "destructive", title: "Input Required", description: "Please provide 'What does this camera typically view/do?' in Step 2 first." });
         return;
@@ -889,6 +956,7 @@ const CamerasPage: NextPage = () => {
         }
         const data = await response.json();
         if (data && Array.isArray(data.suggestedEvents) && data.suggestedEvents.length > 0) {
+            // Replace existing alert events with the new suggestions
             formStep3.setValue('alertEvents', data.suggestedEvents.map((event: any) => ({ name: event.name || '', condition: event.condition || '' })));
         } else {
              toast({ variant: "destructive", title: "Suggestion Failed", description: data.error || "AI did not return valid alert event suggestions." });
@@ -922,7 +990,7 @@ const CamerasPage: NextPage = () => {
         return <AddCameraStep2Form
                   formStep2={formStep2}
                   onSubmitStep2={onSubmitStep2}
-                  isProcessingStep2Snapshot={isProcessingStep2Snapshot}
+                  isProcessingStep2Snapshot={isProcessingStep2} // Changed to isProcessingStep2
                   isLoadingSnapshotUrl={isLoadingSnapshotUrl}
                   displayableSnapshotUrl={displayableSnapshotUrl}
                   handleGenerateSceneDescription={handleGenerateSceneDescription}
@@ -962,8 +1030,8 @@ const CamerasPage: NextPage = () => {
       } else if (drawerStep === 2) {
         return (
           <div className="flex justify-between p-4 border-t">
-            <Button variant="outline" onClick={handleStep2Back} disabled={isProcessingStep2Snapshot || isLoadingSnapshotUrl || isGeneratingDescription}>Back</Button>
-            <Button type="submit" form="add-camera-form-step2" disabled={isProcessingStep2Snapshot || isLoadingSnapshotUrl || isGeneratingDescription || formStep2.formState.isSubmitting || !formStep2.formState.isValid}>
+            <Button variant="outline" onClick={handleStep2Back} disabled={isProcessingStep2 || isLoadingSnapshotUrl || isGeneratingDescription}>Back</Button>
+            <Button type="submit" form="add-camera-form-step2" disabled={isProcessingStep2 || isLoadingSnapshotUrl || isGeneratingDescription || formStep2.formState.isSubmitting || !formStep2.formState.isValid}>
               {(formStep2.formState.isSubmitting) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Next
             </Button>
           </div>
@@ -981,7 +1049,7 @@ const CamerasPage: NextPage = () => {
     } else if (drawerType === 'chatCamera') {
       return (
         <div className="p-4 border-t flex items-center space-x-2">
-          <Avatar className="h-8 w-8"><AvatarImage src="https://placehold.co/50x50.png?data-ai-hint=user+avatar" alt="User" data-ai-hint="user avatar" /><AvatarFallback>U</AvatarFallback></Avatar>
+          <Avatar className="h-8 w-8"><AvatarImage src="https://placehold.co/50x50.png" alt="User" data-ai-hint="user avatar" /><AvatarFallback>U</AvatarFallback></Avatar>
           <Input placeholder="Add a comment..." value={currentChatMessage} onChange={(e) => setCurrentChatMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !isSendingMessage && handleSendChatMessage()} className="flex-grow" disabled={isSendingMessage} />
           <Button onClick={handleSendChatMessage} disabled={isSendingMessage || !currentChatMessage.trim()}>
             {isSendingMessage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} <span className="hidden sm:inline ml-1">Send</span>

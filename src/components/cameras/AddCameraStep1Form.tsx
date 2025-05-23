@@ -26,8 +26,7 @@ interface AddCameraStep1FormProps {
   isProcessingStep1Submitting: boolean;
   showRtspPassword: boolean;
   setShowRtspPassword: (show: boolean) => void;
-  onConnectionSuccess: () => void; // Add a callback for successful connection/snapshot
-  onConnectionError: (error: string) => void; // Add a callback for connection errors
+  // Removed onConnectionSuccess and onConnectionError as the button is removed
 }
 
 const AddCameraStep1Form: React.FC<AddCameraStep1FormProps> = ({
@@ -43,33 +42,12 @@ const AddCameraStep1Form: React.FC<AddCameraStep1FormProps> = ({
   isProcessingStep1Submitting,
   showRtspPassword,
   setShowRtspPassword,
-  onConnectionSuccess,
-  onConnectionError,
 }) => {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+  // Removed isConnecting and connectionError states as the button is removed
 
   const rtspUrlValue = formStep1.watch('rtspUrl');
 
-  const handleTestConnection = async () => {
-    setConnectionError(null);
-    setIsConnecting(true);
-
-    // Simulate camera connection and snapshot retrieval
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
-
-    // Simulate success or failure
-    if (rtspUrlValue && rtspUrlValue.includes('fail')) {
-      setConnectionError('Failed to connect to the camera or retrieve snapshot.');
-      onConnectionError('Failed to connect to the camera or retrieve snapshot.');
-    } else {
-      // In a real scenario, you would get the snapshot data here
-      // For simulation, just call the success callback
-      onConnectionSuccess();
-    }
-
-    setIsConnecting(false);
-  };
+  // Removed handleTestConnection function
 
   return (
     <div className="p-6">
@@ -86,21 +64,11 @@ const AddCameraStep1Form: React.FC<AddCameraStep1FormProps> = ({
                   <Input placeholder="rtsp://..." {...field} />
                 </FormControl>
                 <FormMessage />
- {connectionError && (
-                  <p className="text-sm font-medium text-destructive">{connectionError}</p>
- )}
               </FormItem>
             )}
           />
 
-          <Button
-            type="button" // Important: prevent form submission
-            onClick={handleTestConnection}
-            disabled={isConnecting || !rtspUrlValue}
-          >
-            {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Test Connection / Get Snapshot
-          </Button>
+          {/* Removed Test Connection Button */}
           <FormField
             name="rtspUsername"
             render={({ field }) => (
