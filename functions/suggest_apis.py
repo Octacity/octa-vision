@@ -39,7 +39,7 @@ cors_options = options.CorsOptions(cors_origins=allowed_origins_list, cors_metho
 
 
 # Helper to handle Gemini API configuration check before model calls.
-def get_gemini_model(model_name="gemini-pro-vision"): # Default to vision model
+def get_gemini_model(model_name="gemini-2.0-flash"): # Default to vision model
     GEMINI_MODEL_NAME = os.environ.get('GEMINI_MODEL_NAME', model_name) # Read model name from env, default to provided or gemini-pro-vision
     if not GEMINI_API_KEY:
         print("SUGGEST_APIS.PY: Gemini API key not configured. Cannot get model.")
@@ -100,7 +100,7 @@ def suggest_scene_description(req: https_fn.Request) -> https_fn.Response:
     content = [text_part, image_part]
 
     try:
-        model, error = get_gemini_model('gemini-pro-vision') # Ensure 'gemini-pro-vision' is correct
+        model, error = get_gemini_model()
         if error:
             print(f"SUGGEST_APIS.PY: Error getting Gemini model: {error}")
             return https_fn.Response(json.dumps({'status': 'error', 'message': error}), status=500, mimetype='application/json')
@@ -147,7 +147,7 @@ Suggest a concise comma-separated list of detection targets (e.g., "Person, Vehi
 """
 
     try:
-        model, error = get_gemini_model('gemini-pro') # Text model for this
+        model, error = get_gemini_model() # Text model for this
         if error:
             print(f"SUGGEST_APIS.PY: Error getting Gemini model: {error}")
             return https_fn.Response(json.dumps({'status': 'error', 'message': error}), status=500, mimetype='application/json')
@@ -197,7 +197,7 @@ Example format:
 ]
 """
     try:
-        model, error = get_gemini_model('gemini-pro') # Text model
+        model, error = get_gemini_model() # Text model
         if error:
             print(f"SUGGEST_APIS.PY: Error getting Gemini model: {error}")
             return https_fn.Response(json.dumps({'status': 'error', 'message': error}), status=500, mimetype='application/json')
