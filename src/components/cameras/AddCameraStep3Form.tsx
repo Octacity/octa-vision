@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import type { UseFormReturn, FieldErrors } from 'react-hook-form';
-import { useFieldArray } from 'react-hook-form';
+// Removed useFieldArray import as it's no longer used for alertEvents
 import type { AddCameraStep3Values } from '@/app/(main)/cameras/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -11,18 +11,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, HelpCircle, Wand2, Diamond, Film, BarChart, AlertCircle as AlertCircleIconLucide, PlusCircle, Trash2, Loader2, Sparkles } from 'lucide-react';
-import { vssBasePromptTemplate, vssCaptionPromptTemplate, vssSummaryPromptTemplate } from '@/lib/vssPrompts';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useToast } from '@/hooks/use-toast';
+// VSS Prompts are generated in the parent, not directly used here for display
+// import { vssBasePromptTemplate, vssCaptionPromptTemplate, vssSummaryPromptTemplate } from '@/lib/vssPrompts';
+import { useLanguage } from '@/contexts/LanguageContext'; // Added for translation if needed
+import { useToast } from '@/hooks/use-toast'; // Added for notifications
+// AI Suggestion functions are now called from the parent page (cameras/page.tsx)
+// import { suggestDetectionTargets } from '@/ai/flows/suggest-detection-targets';
+// import { suggestAlertEvents } from '@/ai/flows/suggest-alert-events';
 
 
 interface AddCameraStep3FormProps {
   formStep3: UseFormReturn<AddCameraStep3Values>;
   onSubmitStep3: (data: AddCameraStep3Values) => void;
+  // Handlers are now passed from the parent page
   handleSuggestDetectionTargets: () => Promise<void>;
   isSuggestingDetectionTargets: boolean;
   handleSuggestAlertEvents: () => Promise<void>;
   isSuggestingAlertEvents: boolean;
+  // Props related to formStep2 for context needed by AI suggestions
+  getCameraSceneContext: () => string | undefined;
+  getSceneDescription: () => string | undefined;
 }
 
 const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
@@ -32,30 +40,21 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
   isSuggestingDetectionTargets,
   handleSuggestAlertEvents,
   isSuggestingAlertEvents,
+  getCameraSceneContext, // Used by parent to pass to AI
+  getSceneDescription,   // Used by parent to pass to AI
 }) => {
   const { control, formState, getValues, setValue } = formStep3;
   const { errors } = formState;
+  const { translate } = useLanguage(); // For potential future translations
+  const { toast } = useToast();
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'alertEvents',
-  });
-
-  const alertEventsErrors = errors.alertEvents as FieldErrors<{ name: string; condition: string }>[] | undefined;
-  
-  // This part is problematic as formStep2 is not available here.
-  // The necessary values (cameraSceneContext, sceneDescription) for prompt generation
-  // need to be passed from the parent (CamerasPage) or fetched if not available.
-  // For now, I'll assume CamerasPage will pass the necessary context if these prompts are to be displayed here.
-  // For simplicity of this component, I will remove the direct VSS prompt display from here.
-  // The VSS prompts are generated in CamerasPage onSubmitStep3.
 
   return (
     <div className="p-6">
       <Form {...formStep3}>
         <form id="add-camera-form-step3" onSubmit={formStep3.handleSubmit(onSubmitStep3)} className="space-y-6">
           <FormField
-            control={formStep3.control}
+            control={control}
             name="aiDetectionTarget"
             render={({ field }) => (
               <FormItem className="text-left">
@@ -91,11 +90,12 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
             )}
           />
 
+          {/* VSS Alert Configuration Section */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <FormLabel className="flex items-center text-base">
                 <Diamond className="w-4 h-4 mr-2 text-muted-foreground" />
-                Define Alert Events
+                Define VSS Alert
               </FormLabel>
               <Button
                 type="button"
@@ -106,67 +106,49 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 className="text-xs"
               >
                  {isSuggestingAlertEvents ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                Suggest Alert Events
+                Suggest Alert & Events
               </Button>
             </div>
-            <div className="space-y-4">
-              {fields.map((item, index) => (
-                <div key={item.id} className="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-md p-4">
-                   <FormField
-                    control={control}
-                    name={`alertEvents.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center text-xs">Alert Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Unauthorized Entry" {...field} value={field.value || ''} />
-                        </FormControl>
-                        <FormMessage>{alertEventsErrors?.[index]?.name?.message}</FormMessage>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name={`alertEvents.${index}.condition`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center text-xs">Alert Condition/Description</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Person detected in restricted area" {...field} value={field.value || ''} />
-                        </FormControl>
-                         <FormMessage>{alertEventsErrors?.[index]?.condition?.message}</FormMessage>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="md:col-span-2 flex justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => remove(index)}
-                      className="text-red-500 hover:text-red-600 text-xs"
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" /> Remove
-                    </Button>
-                  </div>
-                </div>
-              ))}
+
+            <div className="space-y-4 border rounded-md p-4">
+              <FormField
+                control={control}
+                name="alertName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center text-xs">Alert Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Restricted Area Monitoring" {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={control}
+                name="events"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center text-xs">Event(s)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter comma-separated event names (e.g., Fire, Intrusion, Person detected)"
+                        {...field}
+                        value={field.value || ''}
+                        rows={2}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">These events will be used in the VSS API `events` array.</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-             {isSuggestingAlertEvents && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
-             {fields.length === 0 && !isSuggestingAlertEvents && (
-                <p className="text-sm text-muted-foreground text-center mt-4">Click below to add your first alert event or use the AI suggestions.</p>
-             )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => append({ name: '', condition: '' })}
-              className="mt-4 w-full"
-            >
-              <PlusCircle className="h-4 w-4 mr-2" /> Add New Alert Event
-            </Button>
-             {errors.alertEvents?.root?.message && <p className="text-sm font-medium text-destructive mt-2">{errors.alertEvents.root.message}</p>}
+            {isSuggestingAlertEvents && <p className="text-xs text-muted-foreground mt-1 text-primary">AI is generating suggestions...</p>}
+            {errors.alertName && <FormMessage>{errors.alertName.message}</FormMessage>}
+            {errors.events && <FormMessage>{errors.events.message}</FormMessage>}
           </div>
+
 
           <div className="space-y-4 mt-6">
             <h3 className="text-base font-semibold flex items-center">
@@ -175,7 +157,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
             </h3>
             <div className="grid grid-cols-2 gap-x-4">
                 <FormField
-                control={formStep3.control}
+                control={control}
                 name="videoChunksValue"
                 render={({ field }) => (
                     <FormItem>
@@ -188,7 +170,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 )}
                 />
                 <FormField
-                control={formStep3.control}
+                control={control}
                 name="videoChunksUnit"
                 render={({ field }) => (
                     <FormItem className="self-end">
@@ -210,7 +192,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
             </div>
              <div className="grid grid-cols-2 gap-x-4">
                 <FormField
-                control={formStep3.control}
+                control={control}
                 name="videoOverlapValue"
                 render={({ field }) => (
                     <FormItem>
@@ -225,7 +207,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 )}
                 />
                 <FormField
-                control={formStep3.control}
+                control={control}
                 name="videoOverlapUnit"
                 render={({ field }) => (
                     <FormItem className="self-end">
@@ -246,7 +228,7 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
                 />
             </div>
             <FormField
-                control={formStep3.control}
+                control={control}
                 name="numFrames"
                 render={({ field }) => (
                     <FormItem>
@@ -273,3 +255,5 @@ const AddCameraStep3Form: React.FC<AddCameraStep3FormProps> = ({
 };
 
 export default AddCameraStep3Form;
+
+    
