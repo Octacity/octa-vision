@@ -39,8 +39,7 @@ else:
 
 cors_options_config = options.CorsOptions(
     cors_origins=allowed_origins_list,
-    cors_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"] # Ensure Authorization is allowed
+    cors_methods=["GET", "POST", "OPTIONS"]
 )
 
 
