@@ -43,12 +43,8 @@ def get_gemini_model(model_name="gemini-pro-vision"): # Default to vision model
     if not GEMINI_API_KEY:
         print("SUGGEST_APIS.PY: Gemini API key not configured or configuration failed. Cannot get model.")
         return None, "Gemini API key not configured."
+    # Assumes genai.configure(api_key=GEMINI_API_KEY) has been called globally
     try:
-        # Ensure genai is configured (might be redundant if done globally but safe)
-        if not genai.API_KEY: # Check if API_KEY is set on the genai module
-            genai.configure(api_key=GEMINI_API_KEY)
-            print("SUGGEST_APIS.PY: Re-confirmed Gemini API configuration in get_gemini_model.")
-
         return genai.GenerativeModel(model_name), None
     except Exception as e:
         print(f"SUGGEST_APIS.PY: Failed to initialize Gemini model {model_name}: {e}")
