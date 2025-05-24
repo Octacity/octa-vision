@@ -40,14 +40,18 @@ cors_options = options.CorsOptions(cors_origins=allowed_origins_list, cors_metho
 
 # Helper to handle Gemini API configuration check before model calls.
 def get_gemini_model(model_name="gemini-pro-vision"): # Default to vision model
+    GEMINI_MODEL_NAME = os.environ.get('GEMINI_MODEL_NAME', model_name) # Read model name from env, default to provided or gemini-pro-vision
     if not GEMINI_API_KEY:
-        print("SUGGEST_APIS.PY: Gemini API key not configured or configuration failed. Cannot get model.")
+        print("SUGGEST_APIS.PY: Gemini API key not configured. Cannot get model.")
         return None, "Gemini API key not configured."
     # Assumes genai.configure(api_key=GEMINI_API_KEY) has been called globally
     try:
         return genai.GenerativeModel(model_name), None
     except Exception as e:
-        print(f"SUGGEST_APIS.PY: Failed to initialize Gemini model {model_name}: {e}")
+        print(f"SUGGEST_APIS.PY: Using Gemini model: {GEMINI_MODEL_NAME}") # Log the model being used
+        return genai.GenerativeModel(GEMINI_MODEL_NAME), None
+    except Exception as e:
+        print(f"SUGGEST_APIS.PY: Failed to initialize Gemini model {GEMINI_MODEL_NAME}: {e}")
         return None, f"Failed to initialize Gemini model {model_name}: {e}"
 
 
