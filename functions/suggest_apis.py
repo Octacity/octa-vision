@@ -5,6 +5,7 @@ import google.generativeai as genai
 import os
 import json
 import base64
+import re # Import the regex module
 from auth_helper import verify_firebase_token
 
 # --- Gemini API Key Configuration ---
@@ -53,6 +54,31 @@ def get_gemini_model(model_name="gemini-2.0-flash"): # Default to vision model
     except Exception as e:
         print(f"SUGGEST_APIS.PY: Failed to initialize Gemini model {GEMINI_MODEL_NAME}: {e}")
         return None, f"Failed to initialize Gemini model {model_name}: {e}"
+
+
+# Helper function to clean Gemini response text
+def clean_gemini_json_response(response_text: str) -> str:
+    """
+    Cleans the Gemini API response text to extract potential JSON.
+    Removes leading/trailing whitespace and common non-JSON elements.
+    Attempts to find and return the JSON array part of the string.
+    """
+    # Strip leading/trailing whitespace
+    cleaned_text = response_text.strip()
+
+    # Find the first occurrence of '[' and the last occurrence of ']'
+    start_index = cleaned_text.find('[')
+    end_index = cleaned_text.rfind(']')
+
+    # If both are found and the start is before the end, extract the substring
+    if start_index != -1 and end_index != -1 and start_index < end_index:
+        # Extract the potential JSON array string
+        json_string = cleaned_text[start_index : end_index + 1]
+        return json_string.strip()
+    else:
+        # If no clear JSON array structure is found, return the original stripped text
+        # This might still fail JSON parsing later, but it's the best guess.
+        return cleaned_text
 
 
 # --- Suggest Scene Description Function ---
@@ -206,6 +232,7 @@ Example format:
         response = model.generate_content(prompt)
         response_text = response.text.strip()
 
+        response_text = clean_gemini_json_response(response_text)
         try:
             suggested_events = json.loads(response_text)
             if not isinstance(suggested_events, list) or not all(isinstance(item, dict) and 'name' in item and 'condition' in item for item in suggested_events):
