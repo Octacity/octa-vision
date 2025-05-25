@@ -160,7 +160,7 @@ def suggest_detection_targets(req: https_fn.Request) -> https_fn.Response:
     camera_scene_context = request_json.get('cameraSceneContext', '')
     scene_description = request_json.get('sceneDescription', '') # This can be empty
 
-    prompt = f"""Based on the following camera scene context and scene description, suggest a concise comma-separated list of relevant physical objects, people, or vehicles that an AI detection system should focus on detecting. Provide only the comma-separated list, with no other text, labels, or formatting. Example: "Person, Vehicle, Package, Animal".
+    prompt = f"""Based on the following camera scene context and scene description, suggest a concise comma-separated list of relevant objects or events that an AI detection system should focus on detecting. Provide only the comma-separated list, with no other text, labels, or formatting. Example: "Person walking, Vehicle, Theft, Animal, Violence".
 
 Camera Scene Context: {camera_scene_context}
 Scene Description (if available): {scene_description if scene_description else 'Not provided.'}
@@ -204,7 +204,7 @@ def suggest_alert_events(req: https_fn.Request) -> https_fn.Response:
     ai_detection_target = request_json.get('aiDetectionTarget', '')
 
     prompt = f"""Considering the following camera scene context and the desired AI detection targets, suggest:
-1. A concise overall 'Alert Name' for a VSS alert configuration (e.g., "Warehouse Zone A Monitoring").
+1. A concise overall 'Alert Name' for a alert configuration (e.g., "Warehouse Zone A Monitoring").
 2. A list of specific, concise 'Event Names' (strings, like 'Fire', 'Person Detected', or 'Vehicle Idling Too Long') that should be included in this alert's event array for the VSS API. These event names should be suitable for direct use in an API that expects an array of event strings like ["Fire", "More than 5 people"].
 
 Format the output as a JSON object with 'suggestedAlertName' (string) and 'suggestedEventNames' (array of strings) keys.
